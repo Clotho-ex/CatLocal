@@ -62,4 +62,3 @@ private struct SettingsPlaceholderView: View {
 #Preview {
     RootView()
 }
-

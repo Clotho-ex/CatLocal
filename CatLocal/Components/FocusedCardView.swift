@@ -81,4 +81,3 @@ struct FocusedCardView: View {
         .accessibilityAction(.escape, dismiss)
     }
 }
-

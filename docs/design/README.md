@@ -12,4 +12,3 @@ catalogue with the warmth and energy of an Istanbul street archive.
 
 The reference image in this folder is a visual target, not a literal layout
 specification. Native behavior, legibility, and accessibility take priority.
-

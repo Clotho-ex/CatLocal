@@ -9,4 +9,3 @@ struct CatLocalApp: App {
         }
     }
 }
-

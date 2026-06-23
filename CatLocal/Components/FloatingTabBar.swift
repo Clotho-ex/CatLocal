@@ -82,4 +82,3 @@ struct FloatingTabBar: View {
         .accessibilityAddTraits(selection == tab ? .isSelected : [])
     }
 }
-

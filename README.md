@@ -14,4 +14,3 @@ into tactile collectible cards.
 
 Open `CatLocal.xcodeproj` in Xcode 26 and run the `CatLocal` scheme on an
 iOS 26 simulator.
-
