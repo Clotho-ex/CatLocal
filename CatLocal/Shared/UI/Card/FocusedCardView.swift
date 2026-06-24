@@ -5,11 +5,14 @@ struct FocusedCardView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     let record: CatRecord
 
     @State private var nickname: String
     @State private var note: String
+    @State private var placeName: String
+    @State private var placeDetail: String
     @State private var style: CardStyle
     @State private var isEditing = false
     @State private var showingDeleteConfirmation = false
@@ -19,6 +22,8 @@ struct FocusedCardView: View {
         self.record = record
         _nickname = State(initialValue: record.nickname)
         _note = State(initialValue: record.note)
+        _placeName = State(initialValue: record.placeName)
+        _placeDetail = State(initialValue: record.placeDetail)
         _style = State(initialValue: record.cardStyle)
     }
 
@@ -35,7 +40,7 @@ struct FocusedCardView: View {
                 LiveInteractiveCardView(width: nil, height: nil, cornerRadius: 34) {
                     CatCardView(record: record, presentation: .focused)
                 }
-                    .frame(maxWidth: 365)
+                    .frame(maxWidth: dynamicTypeSize.isAccessibilitySize ? 335 : 365)
                     .aspectRatio(0.67, contentMode: .fit)
 
                 Label(
@@ -47,10 +52,12 @@ struct FocusedCardView: View {
                 .padding(.horizontal, 18)
                 .padding(.vertical, 11)
                 .catGlass(cornerRadius: 22)
+                .lineLimit(2)
+                .multilineTextAlignment(.center)
 
-                Spacer(minLength: 84)
+                Spacer(minLength: dynamicTypeSize.isAccessibilitySize ? 44 : 84)
             }
-            .padding(.horizontal, 22)
+            .padding(.horizontal, CatLocalTheme.screenHorizontalPadding)
             .padding(.top, 12)
         }
         .sheet(isPresented: $isEditing) {
@@ -80,29 +87,31 @@ struct FocusedCardView: View {
     }
 
     private var topBar: some View {
-        HStack {
-            Button {
-                dismiss()
-            } label: {
-                Image(systemName: "xmark")
-                    .frame(width: 46, height: 46)
-                    .catGlass(cornerRadius: 23, interactive: true)
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Close card")
+        CatGlassGroup(spacing: 18) {
+            HStack {
+                Button {
+                    dismiss()
+                } label: {
+                    Image(systemName: "xmark")
+                        .frame(width: 46, height: 46)
+                        .catGlass(cornerRadius: 23, interactive: true)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Close card")
 
-            Spacer()
+                Spacer()
 
-            Button {
-                isEditing = true
-            } label: {
-                Label("Edit", systemImage: "pencil")
-                    .font(.subheadline.weight(.semibold))
-                    .padding(.horizontal, 16)
-                    .frame(height: 46)
-                    .catGlass(cornerRadius: 23, interactive: true)
+                Button {
+                    isEditing = true
+                } label: {
+                    Label("Edit", systemImage: "pencil")
+                        .font(.subheadline.weight(.semibold))
+                        .padding(.horizontal, 16)
+                        .frame(minHeight: 46)
+                        .catGlass(cornerRadius: 23, interactive: true)
+                }
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
         }
         .foregroundStyle(CatLocalTheme.primaryText)
     }
@@ -119,6 +128,19 @@ struct FocusedCardView: View {
 
                         TextField("A note about this encounter", text: $note, axis: .vertical)
                             .lineLimit(3...7)
+                    }
+
+                    Section("Memory Atlas") {
+                        TextField("Memory place", text: $placeName)
+                            .textInputAutocapitalization(.words)
+
+                        TextField("Place detail", text: $placeDetail, axis: .vertical)
+                            .lineLimit(1...4)
+                            .textInputAutocapitalization(.sentences)
+
+                        Text("Manual label only. CatLocal does not request GPS or save coordinates.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
                     }
 
                     Section("Design") {
@@ -146,6 +168,8 @@ struct FocusedCardView: View {
                     Button("Cancel") {
                         nickname = record.nickname
                         note = record.note
+                        placeName = record.placeName
+                        placeDetail = record.placeDetail
                         style = record.cardStyle
                         isEditing = false
                     }
@@ -161,6 +185,8 @@ struct FocusedCardView: View {
     private func saveChanges() {
         record.nickname = nickname
         record.note = note
+        record.placeName = trimmedMemoryText(placeName)
+        record.placeDetail = trimmedMemoryText(placeDetail)
         record.cardStyle = style
         do {
             try modelContext.save()
@@ -168,6 +194,10 @@ struct FocusedCardView: View {
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    private func trimmedMemoryText(_ value: String) -> String {
+        value.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     private func deleteRecord() async {

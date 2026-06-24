@@ -20,8 +20,7 @@ struct RootView: View {
             selectedTab
         } set: { newTab in
             guard newTab != .capture else {
-                selectedTab = lastContentTab
-                presentedSheet = .capture
+                presentCapture()
                 return
             }
 
@@ -36,7 +35,7 @@ struct RootView: View {
             TabView(selection: tabSelection) {
                 Tab("Collection", systemImage: "rectangle.stack", value: AppTab.collection) {
                     tabContent {
-                        CollectionView()
+                        CollectionView(onCaptureRequested: presentCapture)
                     }
                 }
 
@@ -46,18 +45,21 @@ struct RootView: View {
                     }
                 }
 
-                Tab("Camera", systemImage: "camera", value: AppTab.capture, role: .search) {
+                Tab(value: AppTab.capture, role: .search) {
                     tabContent {
-                        CollectionView()
+                        CollectionView(onCaptureRequested: presentCapture)
                     }
+                } label: {
+                    cameraTabLabel
                 }
             }
             .tabViewStyle(.sidebarAdaptable)
+            .tint(CatLocalTheme.blueAction)
         } else {
             TabView(selection: tabSelection) {
                 Tab("Collection", systemImage: "rectangle.stack", value: AppTab.collection) {
                     tabContent {
-                        CollectionView()
+                        CollectionView(onCaptureRequested: presentCapture)
                     }
                 }
 
@@ -67,13 +69,16 @@ struct RootView: View {
                     }
                 }
 
-                Tab("Camera", systemImage: "camera", value: AppTab.capture) {
+                Tab(value: AppTab.capture) {
                     tabContent {
-                        CollectionView()
+                        CollectionView(onCaptureRequested: presentCapture)
                     }
+                } label: {
+                    cameraTabLabel
                 }
             }
             .tabViewStyle(.sidebarAdaptable)
+            .tint(CatLocalTheme.blueAction)
         }
     }
 
@@ -83,6 +88,20 @@ struct RootView: View {
         ZStack {
             CatLocalBackground()
             content()
+        }
+    }
+
+    private func presentCapture() {
+        selectedTab = lastContentTab
+        presentedSheet = .capture
+    }
+
+    private var cameraTabLabel: some View {
+        Label {
+            Text("Camera")
+        } icon: {
+            Image("CameraTabIcon")
+                .renderingMode(.original)
         }
     }
 }

@@ -34,7 +34,6 @@ actor CatImageStore: CatImageStoring {
     static let cutoutMaximumDimension: CGFloat = 1_400
     static let thumbnailMaximumDimension: CGFloat = 512
     static let originalCompressionQuality: CGFloat = 0.72
-    static let thumbnailCompressionQuality: CGFloat = 0.78
 
     private let fileManager: FileManager
     private let rootURL: URL
@@ -74,7 +73,7 @@ actor CatImageStore: CatImageStoring {
                 maximumDimension: Self.originalMaximumDimension
             )
             let optimizedCutout = Self.optimizedCutout(from: cutout.value)
-            let thumbnail = Self.downsampledOpaqueImage(
+            let thumbnail = Self.downsampledTransparentImage(
                 from: optimizedCutout,
                 maximumDimension: Self.thumbnailMaximumDimension
             )
@@ -84,14 +83,11 @@ actor CatImageStore: CatImageStoring {
                 quality: Self.originalCompressionQuality
             )
             let cutoutData = try Self.pngData(from: optimizedCutout)
-            let thumbnailData = try Self.jpegData(
-                from: thumbnail,
-                quality: Self.thumbnailCompressionQuality
-            )
+            let thumbnailData = try Self.pngData(from: thumbnail)
 
             let originalURL = temporaryDirectory.appendingPathComponent("original.heic")
             let cutoutURL = temporaryDirectory.appendingPathComponent("cutout.png")
-            let thumbnailURL = temporaryDirectory.appendingPathComponent("thumbnail.jpg")
+            let thumbnailURL = temporaryDirectory.appendingPathComponent("thumbnail.png")
 
             try originalData.write(to: originalURL, options: .atomic)
             try cutoutData.write(to: cutoutURL, options: .atomic)
@@ -111,7 +107,7 @@ actor CatImageStore: CatImageStoring {
             return StoredCatImages(
                 originalPath: "\(id.uuidString)/original.heic",
                 cutoutPath: "\(id.uuidString)/cutout.png",
-                thumbnailPath: "\(id.uuidString)/thumbnail.jpg"
+                thumbnailPath: "\(id.uuidString)/thumbnail.png"
             )
         } catch {
             try? fileManager.removeItem(at: temporaryDirectory)

@@ -8,45 +8,21 @@ struct SettingsView: View {
     @State private var storageText = "Calculating..."
     @State private var showingDeleteConfirmation = false
     @State private var errorMessage: String?
-    @State private var didOptimizeExistingStorage = false
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("CatLocal")
-                        .catEditorialTitle(size: 54)
-                        .foregroundStyle(CatLocalTheme.primaryText)
-                    Text("PRIVACY & STORAGE")
-                        .font(.system(size: 14, weight: .semibold))
-                        .tracking(3)
-                        .foregroundStyle(CatLocalTheme.secondaryText)
-                }
-
+            VStack(alignment: .leading, spacing: 18) {
+                header
                 privacyCard
                 storageCard
-
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("About")
-                        .font(.headline)
-                    Text("CatLocal is a private field journal for the cats you meet. There is no account, public map, advertising identifier, location collection, cloud AI, or model-training upload.")
-                        .foregroundStyle(.secondary)
-                }
-                .padding(20)
-                .background(CatLocalTheme.elevatedSurface.opacity(0.82), in: RoundedRectangle(cornerRadius: 26, style: .continuous))
-
-                Text("Version 0.1")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity)
+                aboutCard
             }
-            .padding(.horizontal, 22)
+            .padding(.horizontal, CatLocalTheme.screenHorizontalPadding)
             .padding(.top, 18)
             .padding(.bottom, 140)
         }
         .scrollIndicators(.hidden)
         .task {
-            await optimizeExistingStorageIfNeeded()
             await refreshStorage()
         }
         .confirmationDialog(
@@ -69,64 +45,124 @@ struct SettingsView: View {
         .accessibilityIdentifier("settings-screen")
     }
 
+    private var header: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text("Settings")
+                .font(.largeTitle.weight(.semibold))
+                .foregroundStyle(CatLocalTheme.primaryText)
+                .lineLimit(2)
+
+            Text("PRIVACY & STORAGE")
+                .font(.system(size: 12, weight: .semibold))
+                .tracking(2.4)
+                .foregroundStyle(CatLocalTheme.secondaryText)
+        }
+    }
+
     private var privacyCard: some View {
         VStack(alignment: .leading, spacing: 16) {
             Label("On this iPhone, by design", systemImage: "lock.shield.fill")
-                .font(.title3.weight(.semibold))
+                .font(.headline.weight(.semibold))
                 .foregroundStyle(CatLocalTheme.primaryText)
+                .lineLimit(nil)
 
-            privacyRow(
-                icon: "camera.fill",
-                title: "Photos",
-                detail: "Only captures and imports you choose are stored."
-            )
-            privacyRow(
-                icon: "brain.head.profile",
-                title: "Recognition",
-                detail: "Apple Vision finds and separates cats entirely on-device."
-            )
-            privacyRow(
-                icon: "location.slash.fill",
-                title: "Location",
-                detail: "CatLocal does not request or store your location."
-            )
-            privacyRow(
-                icon: "network.slash",
-                title: "Network",
-                detail: "The collection requires no account or upload."
-            )
+            VStack(alignment: .leading, spacing: 13) {
+                privacyRow(
+                    icon: "camera.fill",
+                    title: "Photos",
+                    detail: "Only captures and imports you choose are stored."
+                )
+                privacyRow(
+                    icon: "brain.head.profile",
+                    title: "Recognition",
+                    detail: "Apple Vision finds and separates cats entirely on-device."
+                )
+                privacyRow(
+                    icon: "location.slash.fill",
+                    title: "Location",
+                    detail: "CatLocal does not request GPS or save coordinates. Memory Atlas labels are typed by you."
+                )
+                privacyRow(
+                    icon: "network.slash",
+                    title: "Network",
+                    detail: "The collection requires no account or upload."
+                )
+            }
         }
-        .padding(20)
-        .background(CatLocalTheme.elevatedSurface.opacity(0.84), in: RoundedRectangle(cornerRadius: 28, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .stroke(CatLocalTheme.imageOutline, lineWidth: 1)
-        )
+        .padding(18)
+        .catPanelSurface()
     }
 
     private var storageCard: some View {
-        VStack(alignment: .leading, spacing: 15) {
-            HStack {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("Local storage")
-                        .font(.headline)
-                    Text("\(records.count) cards · \(storageText)")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 12) {
+            ViewThatFits(in: .horizontal) {
+                storageSummaryRow
+                VStack(alignment: .leading, spacing: 10) {
+                    storageSummaryText
+                    storageIcon
                 }
-                Spacer()
-                Image(systemName: "internaldrive.fill")
-                    .font(.title2)
-                    .foregroundStyle(CatLocalTheme.blueAction)
             }
 
-            Button("Delete Entire Collection", role: .destructive) {
+            Button(role: .destructive) {
                 showingDeleteConfirmation = true
+            } label: {
+                Label("Delete Entire Collection", systemImage: "trash")
+                    .font(.headline)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.vertical, 10)
             }
             .disabled(records.isEmpty)
+            .opacity(records.isEmpty ? 0.45 : 1)
+            .accessibilityHint("Permanently removes every stored card and local image")
         }
-        .padding(20)
-        .catGlass(cornerRadius: 28)
+        .padding(18)
+        .catPanelSurface()
+    }
+
+    private var storageSummaryRow: some View {
+        HStack {
+            storageSummaryText
+            Spacer()
+            storageIcon
+        }
+    }
+
+    private var storageSummaryText: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text("Local storage")
+                .font(.headline)
+                .foregroundStyle(CatLocalTheme.primaryText)
+            Text("\(records.count) cards · \(storageText)")
+                .font(.subheadline)
+                .foregroundStyle(CatLocalTheme.secondaryText)
+                .lineLimit(nil)
+        }
+    }
+
+    private var storageIcon: some View {
+        Image(systemName: "internaldrive.fill")
+            .font(.title2)
+            .foregroundStyle(CatLocalTheme.blueAction)
+            .accessibilityHidden(true)
+    }
+
+    private var aboutCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("About")
+                    .font(.headline)
+                    .foregroundStyle(CatLocalTheme.primaryText)
+                Spacer()
+                Text("Version 0.1")
+                    .font(.footnote)
+                    .foregroundStyle(CatLocalTheme.secondaryText)
+            }
+            Text("A private field journal for the cats you meet. There is no account, public map, advertising identifier, GPS tracking, cloud AI, or model-training upload.")
+                .foregroundStyle(CatLocalTheme.secondaryText)
+                .lineLimit(nil)
+        }
+        .padding(18)
+        .catPanelSurface()
     }
 
     private func privacyRow(icon: String, title: String, detail: String) -> some View {
@@ -134,12 +170,19 @@ struct SettingsView: View {
             Image(systemName: icon)
                 .font(.system(size: 17, weight: .semibold))
                 .foregroundStyle(CatLocalTheme.warning)
-                .frame(width: 24)
+                .frame(width: 30)
+                .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 3) {
-                Text(title).font(.subheadline.weight(.semibold))
-                Text(detail).font(.footnote).foregroundStyle(.secondary)
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(CatLocalTheme.primaryText)
+                Text(detail)
+                    .font(.footnote)
+                    .foregroundStyle(CatLocalTheme.secondaryText)
+                    .lineLimit(nil)
             }
         }
+        .accessibilityElement(children: .combine)
     }
 
     private func refreshStorage() async {
@@ -149,20 +192,6 @@ struct SettingsView: View {
         } catch {
             storageText = "Unavailable"
         }
-    }
-
-    private func optimizeExistingStorageIfNeeded() async {
-        guard !didOptimizeExistingStorage else { return }
-        didOptimizeExistingStorage = true
-
-        let references = records.map {
-            StoredCatImageReferences(
-                id: $0.id,
-                originalPath: $0.originalImagePath,
-                cutoutPath: $0.cutoutImagePath
-            )
-        }
-        await CatImageStore.shared.optimizeExisting(records: references)
     }
 
     private func deleteAll() async {

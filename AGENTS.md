@@ -1,8 +1,15 @@
 # CatLocal Agent Guide
 
-CatLocal is a private, local-first iOS cat journal. The core loop is:
+CatLocal is a private, local-first iPhone journal that turns real cat
+encounters into tactile collectible cards. The core loop is:
 
 `capture/import -> on-device Vision processing -> transparent cutout -> card reveal/editor -> local collection`
+
+The README leads with this product promise and the four-step flow:
+photograph or privately import a cat, detect and separate it with Apple Vision
+on-device, reveal/edit a card, then save the card and local image variants with
+SwiftData and Application Support. Let that sequence dominate product, design,
+and implementation decisions before adding secondary settings or metrics.
 
 ## Product Guardrails
 
@@ -14,16 +21,40 @@ CatLocal is a private, local-first iOS cat journal. The core loop is:
 
 ## Project Structure
 
-- `CatLocal/App`: app entry point, root navigation, sheet routing.
-- `CatLocal/Core/Models`: SwiftData/domain models.
-- `CatLocal/Core/Services`: camera, image storage, Vision processing, and other app services.
-- `CatLocal/Features`: feature screens grouped by product area.
-- `CatLocal/Shared/DesignSystem`: semantic colors, surfaces, and shared styling tokens.
-- `CatLocal/Shared/UI`: reusable UI components grouped by purpose.
+- `CatLocal/App/CatLocalApp.swift`: app entry point and SwiftData container setup.
+- `CatLocal/App/RootView.swift`: native tab shell, camera sheet routing, and iOS 26 sidebar-adaptable tab behavior.
+- `CatLocal/Core/Models/CatRecord.swift`: SwiftData source of truth for card metadata, local image filenames, capture source, sequence, notes, and deterministic card styles (`Archive`, `Sunstamp`, `Clear`).
+- `CatLocal/Core/Services/CameraController.swift`: camera permission, preview, capture session, and camera error copy.
+- `CatLocal/Core/Services/CatImageStore.swift`: Application Support storage, EXIF/GPS stripping, downsampling, HEIC/PNG encoding, thumbnails, storage size, and deletion cleanup.
+- `CatLocal/Core/Services/CatVisionProcessor.swift`: on-device Apple Vision cat recognition, foreground mask generation, cutout creation, and Vision error copy.
+- `CatLocal/Features/Capture/CaptureView.swift`: primary capture/import flow, processing states, multi-cat selection, card editor, fallback/error handling, and save path.
+- `CatLocal/Features/Collection/CollectionView.swift`: default tab, empty state, privacy proof points, collection summary, and card grid.
+- `CatLocal/Features/Settings/SettingsView.swift`: privacy/storage explanations, local storage size, destructive deletion, and version copy.
+- `CatLocal/Shared/DesignSystem/CatLocalTheme.swift`: semantic dynamic colors, glass helper, background treatment, and editorial title helper.
+- `CatLocal/Shared/UI/Card`: card surfaces, focused-card editing, and presentation details.
+- `CatLocal/Shared/UI/Effects/LiveInteractiveCardView.swift`: live drag tilt, foil lighting, spring constants, and boundary haptics.
+- `CatLocal/Shared/UI/Images/StoredImageView.swift`: local image loading/display helper.
 - `CatLocal/Resources`: asset catalogs and bundled resources.
 - `CatLocalTests`: unit tests for persistence, storage, Vision helpers, and card logic.
 - `CatLocalUITests`: UI smoke tests for launch and primary flows.
 - `docs`: architecture, design, and implementation notes.
+
+## Product Goals
+
+- Make the first-use path feel like a camera-first private field journal: `Camera`, `Choose private photo`, `Looking for cats`, `Lifting the subject`, `Make it yours`, and `Add to Collection`.
+- Keep the collection organized around real saved cards: `CatRecord.displayName`, three-digit sequence numbers, capture dates, optional notes, and card styles are the product's native data shape.
+- Treat privacy as visible product behavior, not a generic claim: use existing copy such as `On-device only`, `On this iPhone, by design`, `No Account`, `No Public Map`, and `No Model Training`.
+- Preserve local data safety: originals, cutouts, and thumbnails stay in Application Support; SwiftData stores metadata and filenames only.
+- Keep v1 focused on tactile card collecting rather than discovery, maps, sharing, feeds, accounts, or remote processing.
+
+## Content And Design Grounding
+
+- Before designing UI, read `README.md`, `docs/architecture.md`, `docs/design/README.md`, and the relevant Swift files. The repo is the source of truth.
+- Pull product language from existing app strings and docs. Use real labels such as `CatLocal`, `YOUR COLLECTION`, `Meet Your First Local`, `Private import`, `Local storage`, `Edit Card`, `Delete Card`, and `A private field journal for the cats you meet`.
+- Do not invent taglines, features, metrics, social claims, map concepts, cloud behavior, testimonials, placeholder cats, or fake sample data that the repo does not already support.
+- Inherit the current visual identity: the design note is `Sunlit Gallery Archive`, with pale mineral/limestone surfaces, ink/deep forest typography, sparing warm apricot and cobalt details, personal notes beside structured metadata, native Liquid Glass tab navigation, and foil/depth reserved for focused cards.
+- Use `CatLocalTheme` rather than hardcoded colors. Key tokens include limestone/background, chalk/elevated surface, card surface, forest/ink primary text, secondary text, separator, shadow, apricot/warning, and cobalt/blue action.
+- Let the product's shape organize screens: capture/import pipeline, Vision processing, transparent cutout, card reveal/editor, local collection, and privacy/storage settings.
 
 ## Navigation
 
