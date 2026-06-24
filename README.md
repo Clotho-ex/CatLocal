@@ -20,6 +20,16 @@ encounters into tactile collectible cards.
 
 - Swift 6 with complete concurrency checking.
 - iOS 18 minimum deployment target.
-- Native Liquid Glass controls on iOS 26 with material-based fallbacks.
+- Native SwiftUI tabs and Liquid Glass controls on iOS 26 with material-based fallbacks where custom surfaces are needed.
 
 Open `CatLocal.xcodeproj` and run the shared `CatLocal` scheme.
+
+## Project Map
+
+- `CatLocal/App`: app entry point and root navigation.
+- `CatLocal/Core`: SwiftData model and camera/image/Vision services.
+- `CatLocal/Features`: capture, collection, and settings screens.
+- `CatLocal/Shared`: design system and reusable UI components.
+- `CatLocal/Resources`: asset catalog.
+- `docs/architecture.md`: implementation architecture and handoff notes.
+- `AGENTS.md`: working rules for future coding agents.

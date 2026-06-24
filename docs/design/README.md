@@ -7,7 +7,7 @@ catalogue with the warmth and energy of an Istanbul street archive.
 - Ink and deep forest typography
 - Warm apricot and cobalt details used sparingly
 - Personal notes alongside structured metadata
-- Floating Liquid Glass navigation with camera as the primary action
+- Native Liquid Glass tab navigation with camera as the detached primary action
 - Foil light and depth reserved for focused cards
 
 The reference image in this folder is a visual target, not a literal layout

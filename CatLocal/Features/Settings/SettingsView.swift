@@ -8,6 +8,7 @@ struct SettingsView: View {
     @State private var storageText = "Calculating..."
     @State private var showingDeleteConfirmation = false
     @State private var errorMessage: String?
+    @State private var didOptimizeExistingStorage = false
 
     var body: some View {
         ScrollView {
@@ -15,10 +16,11 @@ struct SettingsView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("CatLocal")
                         .catEditorialTitle(size: 54)
-                        .foregroundStyle(CatLocalTheme.forest)
+                        .foregroundStyle(CatLocalTheme.primaryText)
                     Text("PRIVACY & STORAGE")
-                        .font(.system(size: 14, weight: .semibold, design: .rounded))
+                        .font(.system(size: 14, weight: .semibold))
                         .tracking(3)
+                        .foregroundStyle(CatLocalTheme.secondaryText)
                 }
 
                 privacyCard
@@ -31,7 +33,7 @@ struct SettingsView: View {
                         .foregroundStyle(.secondary)
                 }
                 .padding(20)
-                .background(CatLocalTheme.chalk.opacity(0.72), in: RoundedRectangle(cornerRadius: 26, style: .continuous))
+                .background(CatLocalTheme.elevatedSurface.opacity(0.82), in: RoundedRectangle(cornerRadius: 26, style: .continuous))
 
                 Text("Version 0.1")
                     .font(.footnote)
@@ -43,7 +45,10 @@ struct SettingsView: View {
             .padding(.bottom, 140)
         }
         .scrollIndicators(.hidden)
-        .task { await refreshStorage() }
+        .task {
+            await optimizeExistingStorageIfNeeded()
+            await refreshStorage()
+        }
         .confirmationDialog(
             "Delete the entire collection?",
             isPresented: $showingDeleteConfirmation,
@@ -68,7 +73,7 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: 16) {
             Label("On this iPhone, by design", systemImage: "lock.shield.fill")
                 .font(.title3.weight(.semibold))
-                .foregroundStyle(CatLocalTheme.forest)
+                .foregroundStyle(CatLocalTheme.primaryText)
 
             privacyRow(
                 icon: "camera.fill",
@@ -92,10 +97,10 @@ struct SettingsView: View {
             )
         }
         .padding(20)
-        .background(CatLocalTheme.chalk.opacity(0.78), in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .background(CatLocalTheme.elevatedSurface.opacity(0.84), in: RoundedRectangle(cornerRadius: 28, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .stroke(.white.opacity(0.72), lineWidth: 1)
+                .stroke(CatLocalTheme.imageOutline, lineWidth: 1)
         )
     }
 
@@ -112,7 +117,7 @@ struct SettingsView: View {
                 Spacer()
                 Image(systemName: "internaldrive.fill")
                     .font(.title2)
-                    .foregroundStyle(CatLocalTheme.cobalt)
+                    .foregroundStyle(CatLocalTheme.blueAction)
             }
 
             Button("Delete Entire Collection", role: .destructive) {
@@ -128,7 +133,7 @@ struct SettingsView: View {
         HStack(alignment: .top, spacing: 13) {
             Image(systemName: icon)
                 .font(.system(size: 17, weight: .semibold))
-                .foregroundStyle(CatLocalTheme.apricot)
+                .foregroundStyle(CatLocalTheme.warning)
                 .frame(width: 24)
             VStack(alignment: .leading, spacing: 3) {
                 Text(title).font(.subheadline.weight(.semibold))
@@ -144,6 +149,20 @@ struct SettingsView: View {
         } catch {
             storageText = "Unavailable"
         }
+    }
+
+    private func optimizeExistingStorageIfNeeded() async {
+        guard !didOptimizeExistingStorage else { return }
+        didOptimizeExistingStorage = true
+
+        let references = records.map {
+            StoredCatImageReferences(
+                id: $0.id,
+                originalPath: $0.originalImagePath,
+                cutoutPath: $0.cutoutImagePath
+            )
+        }
+        await CatImageStore.shared.optimizeExisting(records: references)
     }
 
     private func deleteAll() async {

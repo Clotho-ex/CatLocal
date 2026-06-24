@@ -8,8 +8,6 @@ struct FocusedCardView: View {
 
     let record: CatRecord
 
-    @StateObject private var motion = MotionTiltModel()
-    @State private var dragOffset: CGSize = .zero
     @State private var nickname: String
     @State private var note: String
     @State private var style: CardStyle
@@ -27,46 +25,25 @@ struct FocusedCardView: View {
     var body: some View {
         ZStack {
             CatLocalBackground()
-                .overlay(CatLocalTheme.ink.opacity(0.09))
+                .overlay(CatLocalTheme.primaryText.opacity(0.05))
 
             VStack(spacing: 16) {
                 topBar
 
                 Spacer(minLength: 0)
 
-                CatCardView(record: record, presentation: .focused)
+                LiveInteractiveCardView(width: nil, height: nil, cornerRadius: 34) {
+                    CatCardView(record: record, presentation: .focused)
+                }
                     .frame(maxWidth: 365)
-                    .rotation3DEffect(
-                        .degrees(reduceMotion ? 0 : tiltY * -7),
-                        axis: (x: 1, y: 0, z: 0),
-                        perspective: 0.66
-                    )
-                    .rotation3DEffect(
-                        .degrees(reduceMotion ? 0 : tiltX * 8),
-                        axis: (x: 0, y: 1, z: 0),
-                        perspective: 0.66
-                    )
-                    .overlay {
-                        if !reduceMotion {
-                            LinearGradient(
-                                colors: [.clear, .white.opacity(0.46), .clear],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                            .blendMode(.screen)
-                            .offset(x: tiltX * 90, y: tiltY * 65)
-                            .mask(RoundedRectangle(cornerRadius: 34, style: .continuous))
-                            .allowsHitTesting(false)
-                        }
-                    }
-                    .gesture(cardDrag)
+                    .aspectRatio(0.67, contentMode: .fit)
 
                 Label(
-                    reduceMotion ? "Lighting motion is reduced" : "Drag or tilt to catch the light",
+                    reduceMotion ? "Lighting motion is reduced" : "Drag to catch the light",
                     systemImage: reduceMotion ? "figure.stand" : "gyroscope"
                 )
                 .font(.subheadline.weight(.medium))
-                .foregroundStyle(CatLocalTheme.forest)
+                .foregroundStyle(CatLocalTheme.primaryText)
                 .padding(.horizontal, 18)
                 .padding(.vertical, 11)
                 .catGlass(cornerRadius: 22)
@@ -99,11 +76,6 @@ struct FocusedCardView: View {
         } message: {
             Text(errorMessage ?? "")
         }
-        .task {
-            guard !reduceMotion else { return }
-            motion.start()
-        }
-        .onDisappear { motion.stop() }
         .accessibilityAction(.escape) { dismiss() }
     }
 
@@ -132,7 +104,7 @@ struct FocusedCardView: View {
             }
             .buttonStyle(.plain)
         }
-        .foregroundStyle(CatLocalTheme.forest)
+        .foregroundStyle(CatLocalTheme.primaryText)
     }
 
     private var editSheet: some View {
@@ -184,30 +156,6 @@ struct FocusedCardView: View {
                 }
             }
         }
-    }
-
-    private var cardDrag: some Gesture {
-        DragGesture(minimumDistance: 0)
-            .onChanged { value in
-                guard !reduceMotion else { return }
-                dragOffset = CGSize(
-                    width: max(-90, min(90, value.translation.width)),
-                    height: max(-90, min(90, value.translation.height))
-                )
-            }
-            .onEnded { _ in
-                withAnimation(.spring(duration: 0.42, bounce: 0.18)) {
-                    dragOffset = .zero
-                }
-            }
-    }
-
-    private var tiltX: Double {
-        Double(dragOffset.width / 90) + motion.x * 0.42
-    }
-
-    private var tiltY: Double {
-        Double(dragOffset.height / 90) + motion.y * 0.32
     }
 
     private func saveChanges() {

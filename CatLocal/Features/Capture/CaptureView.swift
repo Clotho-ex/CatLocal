@@ -116,7 +116,7 @@ struct CaptureView: View {
     private var cameraGuidance: some View {
         VStack(spacing: 7) {
             Text("Give them a little room")
-                .font(.system(size: 24, weight: .semibold, design: .serif))
+                .font(.system(size: 24, weight: .semibold))
             Text("Keep the whole cat visible for the cleanest card cutout.")
                 .font(.subheadline)
                 .foregroundStyle(.white.opacity(0.76))
@@ -213,7 +213,7 @@ struct CaptureView: View {
                     UIApplication.shared.open(url)
                 }
                 .buttonStyle(.borderedProminent)
-                .tint(CatLocalTheme.apricot)
+                .tint(CatLocalTheme.warning)
             } else if let cameraError = camera.errorMessage {
                 Text(cameraError)
                     .multilineTextAlignment(.center)
@@ -228,7 +228,7 @@ struct CaptureView: View {
 
     private var processingScreen: some View {
         ZStack {
-            CatLocalTheme.ink.ignoresSafeArea()
+            CatLocalTheme.primaryText.ignoresSafeArea()
 
             if let originalImage {
                 Image(uiImage: originalImage)
@@ -244,7 +244,7 @@ struct CaptureView: View {
                     .controlSize(.large)
                     .tint(.white)
                 Text(stage == .analyzing ? "Looking for cats" : "Lifting the subject")
-                    .font(.system(size: 29, weight: .semibold, design: .serif))
+                    .font(.system(size: 29, weight: .semibold))
                     .foregroundStyle(.white)
                 Text("This happens entirely on your iPhone.")
                     .foregroundStyle(.white.opacity(0.66))
@@ -264,7 +264,7 @@ struct CaptureView: View {
                     Spacer()
                     Label("\(detections.count) cats found", systemImage: "checkmark.circle.fill")
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(CatLocalTheme.forest)
+                        .foregroundStyle(CatLocalTheme.primaryText)
                 }
 
                 if let originalImage {
@@ -274,14 +274,14 @@ struct CaptureView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
                         .overlay(
                             RoundedRectangle(cornerRadius: 28, style: .continuous)
-                                .stroke(.white.opacity(0.8), lineWidth: 1)
+                                .stroke(CatLocalTheme.imageOutline, lineWidth: 1)
                         )
                 }
 
                 VStack(spacing: 8) {
                     Text("Which cat gets the card?")
-                        .font(.system(size: 28, weight: .semibold, design: .serif))
-                        .foregroundStyle(CatLocalTheme.forest)
+                        .font(.system(size: 28, weight: .semibold))
+                        .foregroundStyle(CatLocalTheme.primaryText)
 
                     Text("Choose one subject. The photo still stays private.")
                         .font(.subheadline)
@@ -301,7 +301,7 @@ struct CaptureView: View {
                             Image(systemName: "chevron.right")
                         }
                         .font(.headline)
-                        .foregroundStyle(CatLocalTheme.forest)
+                        .foregroundStyle(CatLocalTheme.primaryText)
                         .padding(.horizontal, 18)
                         .frame(height: 56)
                         .catGlass(cornerRadius: 20, interactive: true)
@@ -337,19 +337,19 @@ struct CaptureView: View {
 
                     VStack(alignment: .leading, spacing: 14) {
                         Text("Make it yours")
-                            .font(.system(size: 25, weight: .semibold, design: .serif))
-                            .foregroundStyle(CatLocalTheme.forest)
+                            .font(.system(size: 25, weight: .semibold))
+                            .foregroundStyle(CatLocalTheme.primaryText)
 
                         TextField("Nickname (optional)", text: $nickname)
                             .textInputAutocapitalization(.words)
                             .padding(.horizontal, 16)
                             .frame(height: 52)
-                            .background(.white.opacity(0.58), in: RoundedRectangle(cornerRadius: 16))
+                            .background(CatLocalTheme.elevatedSurface.opacity(0.86), in: RoundedRectangle(cornerRadius: 16))
 
                         TextField("A note about this encounter", text: $note, axis: .vertical)
                             .lineLimit(2...5)
                             .padding(16)
-                            .background(.white.opacity(0.58), in: RoundedRectangle(cornerRadius: 16))
+                            .background(CatLocalTheme.elevatedSurface.opacity(0.86), in: RoundedRectangle(cornerRadius: 16))
 
                         Text("CARD DESIGN")
                             .font(.caption2.weight(.bold))
@@ -364,7 +364,7 @@ struct CaptureView: View {
                         .pickerStyle(.segmented)
                     }
                     .padding(18)
-                    .background(CatLocalTheme.chalk.opacity(0.68), in: RoundedRectangle(cornerRadius: 26))
+                    .background(CatLocalTheme.elevatedSurface.opacity(0.82), in: RoundedRectangle(cornerRadius: 26))
 
                     Button {
                         Task { await saveCard() }
@@ -378,7 +378,7 @@ struct CaptureView: View {
                         .foregroundStyle(.white)
                         .frame(maxWidth: .infinity)
                         .frame(height: 56)
-                        .background(CatLocalTheme.forest, in: RoundedRectangle(cornerRadius: 19))
+                        .background(CatLocalTheme.blueAction, in: RoundedRectangle(cornerRadius: 19))
                     }
                     .buttonStyle(.plain)
                     .disabled(isSaving)
@@ -394,7 +394,7 @@ struct CaptureView: View {
     private var editorTopBar: some View {
         HStack {
             Button("Retake") { reset() }
-                .foregroundStyle(CatLocalTheme.forest)
+                .foregroundStyle(CatLocalTheme.primaryText)
             Spacer()
             VStack(spacing: 2) {
                 Text("A new local")
@@ -415,12 +415,12 @@ struct CaptureView: View {
             VStack(spacing: 20) {
                 Image(systemName: "viewfinder.circle")
                     .font(.system(size: 64, weight: .ultraLight))
-                    .foregroundStyle(CatLocalTheme.apricot)
+                    .foregroundStyle(CatLocalTheme.warning)
 
                 VStack(spacing: 8) {
                     Text("That one was tricky")
-                        .font(.system(size: 31, weight: .semibold, design: .serif))
-                        .foregroundStyle(CatLocalTheme.forest)
+                        .font(.system(size: 31, weight: .semibold))
+                        .foregroundStyle(CatLocalTheme.primaryText)
                     Text(errorMessage ?? "CatLocal could not create a clean card from this photo.")
                         .multilineTextAlignment(.center)
                         .foregroundStyle(.secondary)
@@ -435,12 +435,12 @@ struct CaptureView: View {
                     .foregroundStyle(.white)
                     .padding(.horizontal, 20)
                     .frame(height: 52)
-                    .background(CatLocalTheme.forest, in: Capsule())
+                    .background(CatLocalTheme.blueAction, in: Capsule())
                 }
 
                 Button("Try Another Photo") { reset() }
                     .font(.headline)
-                    .foregroundStyle(CatLocalTheme.forest)
+                    .foregroundStyle(CatLocalTheme.primaryText)
 
                 Button("Close") { dismiss() }
                     .foregroundStyle(.secondary)

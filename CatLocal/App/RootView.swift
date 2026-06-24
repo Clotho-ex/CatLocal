@@ -2,28 +2,11 @@ import SwiftUI
 
 struct RootView: View {
     @State private var selectedTab: AppTab = .collection
+    @State private var lastContentTab: AppTab = .collection
     @State private var presentedSheet: AppSheet?
 
     var body: some View {
-        ZStack(alignment: .bottom) {
-            CatLocalBackground()
-
-            Group {
-                switch selectedTab {
-                case .collection:
-                    CollectionView()
-                case .settings:
-                    SettingsView()
-                }
-            }
-
-            FloatingTabBar(
-                selection: $selectedTab,
-                captureAction: { presentedSheet = .capture }
-            )
-            .padding(.horizontal, 20)
-            .padding(.bottom, 8)
-        }
+        nativeTabs
         .fullScreenCover(item: $presentedSheet) { sheet in
             switch sheet {
             case .capture:
@@ -31,11 +14,83 @@ struct RootView: View {
             }
         }
     }
+
+    private var tabSelection: Binding<AppTab> {
+        Binding {
+            selectedTab
+        } set: { newTab in
+            guard newTab != .capture else {
+                selectedTab = lastContentTab
+                presentedSheet = .capture
+                return
+            }
+
+            selectedTab = newTab
+            lastContentTab = newTab
+        }
+    }
+
+    @ViewBuilder
+    private var nativeTabs: some View {
+        if #available(iOS 26.0, *) {
+            TabView(selection: tabSelection) {
+                Tab("Collection", systemImage: "rectangle.stack", value: AppTab.collection) {
+                    tabContent {
+                        CollectionView()
+                    }
+                }
+
+                Tab("Settings", systemImage: "gearshape", value: AppTab.settings) {
+                    tabContent {
+                        SettingsView()
+                    }
+                }
+
+                Tab("Camera", systemImage: "camera", value: AppTab.capture, role: .search) {
+                    tabContent {
+                        CollectionView()
+                    }
+                }
+            }
+            .tabViewStyle(.sidebarAdaptable)
+        } else {
+            TabView(selection: tabSelection) {
+                Tab("Collection", systemImage: "rectangle.stack", value: AppTab.collection) {
+                    tabContent {
+                        CollectionView()
+                    }
+                }
+
+                Tab("Settings", systemImage: "gearshape", value: AppTab.settings) {
+                    tabContent {
+                        SettingsView()
+                    }
+                }
+
+                Tab("Camera", systemImage: "camera", value: AppTab.capture) {
+                    tabContent {
+                        CollectionView()
+                    }
+                }
+            }
+            .tabViewStyle(.sidebarAdaptable)
+        }
+    }
+
+    private func tabContent<Content: View>(
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        ZStack {
+            CatLocalBackground()
+            content()
+        }
+    }
 }
 
 enum AppTab: Hashable {
     case collection
     case settings
+    case capture
 }
 
 enum AppSheet: String, Identifiable {

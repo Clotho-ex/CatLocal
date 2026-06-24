@@ -15,7 +15,6 @@
 		6FC5B067FF532B333FABD953 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 967BEF2D565B94E8EC6F4EF3 /* Foundation.framework */; };
 		719658CD6B4B2F4F6A26FB22 /* CameraController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43A3A8DDF9E12EB996E7D22C /* CameraController.swift */; };
 		8F847FED1F5449C0F43A9747 /* CollectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2FBE7F3793602ECCC9827A9 /* CollectionView.swift */; };
-		90FD9907CC8212E51A3F22A8 /* FloatingTabBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72774632AA574A61B0C87F0F /* FloatingTabBar.swift */; };
 		9137CE1F99BC861E1406F6A1 /* CatRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4BAC1D9BEDD36E357BB086E /* CatRecord.swift */; };
 		916D253087912F72BBC53ADC /* CatImageStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85591EB21ABD2F35EF504327 /* CatImageStore.swift */; };
 		A1069F8537A27BFAD0DCDFD1 /* CatLocalApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 683862D5532B40306057D2FC /* CatLocalApp.swift */; };
@@ -23,6 +22,7 @@
 		A51BF322F9A811A7B3A601F0 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 967BEF2D565B94E8EC6F4EF3 /* Foundation.framework */; };
 		BA93CEB9F3312E542294D25B /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B964E0402B2EFBC1640AA3 /* RootView.swift */; };
 		BE3264658977EC597C497F98 /* MotionTiltModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 870094315B13497DC8452AF4 /* MotionTiltModel.swift */; };
+		C22F46ED2FEBDC7400385C0F /* LiveInteractiveCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C22F46EC2FEBDC6F00385C0F /* LiveInteractiveCardView.swift */; };
 		C982ADF153B9B1AF278AD467 /* CatVisionProcessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEAFBCFBDEEE3B140EB0F707 /* CatVisionProcessor.swift */; };
 		F3D62FB694EA4B9B098653C8 /* CatLocalCoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDEA3652F9D08C3C1F43DC5B /* CatLocalCoreTests.swift */; };
 		F520AAC5A08D2F036EA19216 /* CatLocalTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B34D0EFB9539E239D6122F2 /* CatLocalTheme.swift */; };
@@ -48,28 +48,28 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		2B34D0EFB9539E239D6122F2 /* CatLocalTheme.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CatLocalTheme.swift; path = CatLocal/Theme/CatLocalTheme.swift; sourceTree = "<group>"; };
-		43A3A8DDF9E12EB996E7D22C /* CameraController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CameraController.swift; path = CatLocal/Services/CameraController.swift; sourceTree = "<group>"; };
+		2B34D0EFB9539E239D6122F2 /* CatLocalTheme.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CatLocalTheme.swift; path = CatLocal/Shared/DesignSystem/CatLocalTheme.swift; sourceTree = "<group>"; };
+		43A3A8DDF9E12EB996E7D22C /* CameraController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CameraController.swift; path = CatLocal/Core/Services/CameraController.swift; sourceTree = "<group>"; };
 		4DD6277F493A6531139863AF /* SettingsView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SettingsView.swift; path = CatLocal/Features/Settings/SettingsView.swift; sourceTree = "<group>"; };
 		5C0C1CE8A57605EDE232C146 /* Assets.xcassets */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder.assetcatalog; name = Assets.xcassets; path = CatLocal/Resources/Assets.xcassets; sourceTree = "<group>"; };
 		683862D5532B40306057D2FC /* CatLocalApp.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CatLocalApp.swift; path = CatLocal/App/CatLocalApp.swift; sourceTree = "<group>"; };
-		72774632AA574A61B0C87F0F /* FloatingTabBar.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = FloatingTabBar.swift; path = CatLocal/Components/FloatingTabBar.swift; sourceTree = "<group>"; };
-		85591EB21ABD2F35EF504327 /* CatImageStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CatImageStore.swift; path = CatLocal/Services/CatImageStore.swift; sourceTree = "<group>"; };
-		870094315B13497DC8452AF4 /* MotionTiltModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = MotionTiltModel.swift; path = CatLocal/Components/MotionTiltModel.swift; sourceTree = "<group>"; };
+		85591EB21ABD2F35EF504327 /* CatImageStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CatImageStore.swift; path = CatLocal/Core/Services/CatImageStore.swift; sourceTree = "<group>"; };
+		870094315B13497DC8452AF4 /* MotionTiltModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = MotionTiltModel.swift; path = CatLocal/Shared/UI/Effects/MotionTiltModel.swift; sourceTree = "<group>"; };
 		872CE0A98DC98769A19E8C4F /* CaptureView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CaptureView.swift; path = CatLocal/Features/Capture/CaptureView.swift; sourceTree = "<group>"; };
 		89C160CA64DB03DC6DEC2A8E /* CatLocalTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CatLocalTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		8C47EA3464B1FBC2455EE014 /* CatLocal.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CatLocal.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		967BEF2D565B94E8EC6F4EF3 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 		9F01F95B5EC6531850C07090 /* CatLocalUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CatLocalUITests.swift; path = CatLocalUITests/CatLocalUITests.swift; sourceTree = "<group>"; };
 		9F13918D6D9901DE5CBD9D7F /* CatLocalUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CatLocalUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		A2FC4E54CFCDDB8993A0999A /* StoredImageView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = StoredImageView.swift; path = CatLocal/Components/StoredImageView.swift; sourceTree = "<group>"; };
+		A2FC4E54CFCDDB8993A0999A /* StoredImageView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = StoredImageView.swift; path = CatLocal/Shared/UI/Images/StoredImageView.swift; sourceTree = "<group>"; };
+		C22F46EC2FEBDC6F00385C0F /* LiveInteractiveCardView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LiveInteractiveCardView.swift; path = CatLocal/Shared/UI/Effects/LiveInteractiveCardView.swift; sourceTree = "<group>"; };
 		C8B964E0402B2EFBC1640AA3 /* RootView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = RootView.swift; path = CatLocal/App/RootView.swift; sourceTree = "<group>"; };
-		D58C11AD2A0BE295FE2FDE73 /* FocusedCardView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = FocusedCardView.swift; path = CatLocal/Components/FocusedCardView.swift; sourceTree = "<group>"; };
+		D58C11AD2A0BE295FE2FDE73 /* FocusedCardView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = FocusedCardView.swift; path = CatLocal/Shared/UI/Card/FocusedCardView.swift; sourceTree = "<group>"; };
 		DDEA3652F9D08C3C1F43DC5B /* CatLocalCoreTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CatLocalCoreTests.swift; path = CatLocalTests/CatLocalCoreTests.swift; sourceTree = "<group>"; };
-		EFDD8B2A8E859982240AAF1B /* CatCardView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CatCardView.swift; path = CatLocal/Components/CatCardView.swift; sourceTree = "<group>"; };
+		EFDD8B2A8E859982240AAF1B /* CatCardView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CatCardView.swift; path = CatLocal/Shared/UI/Card/CatCardView.swift; sourceTree = "<group>"; };
 		F2FBE7F3793602ECCC9827A9 /* CollectionView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CollectionView.swift; path = CatLocal/Features/Collection/CollectionView.swift; sourceTree = "<group>"; };
-		F4BAC1D9BEDD36E357BB086E /* CatRecord.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CatRecord.swift; path = CatLocal/Models/CatRecord.swift; sourceTree = "<group>"; };
-		FEAFBCFBDEEE3B140EB0F707 /* CatVisionProcessor.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CatVisionProcessor.swift; path = CatLocal/Services/CatVisionProcessor.swift; sourceTree = "<group>"; };
+		F4BAC1D9BEDD36E357BB086E /* CatRecord.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CatRecord.swift; path = CatLocal/Core/Models/CatRecord.swift; sourceTree = "<group>"; };
+		FEAFBCFBDEEE3B140EB0F707 /* CatVisionProcessor.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CatVisionProcessor.swift; path = CatLocal/Core/Services/CatVisionProcessor.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -103,27 +103,155 @@
 		442345A2C5CC9A905E052CF5 = {
 			isa = PBXGroup;
 			children = (
+				A00000000000000000000001 /* App */,
+				A00000000000000000000002 /* Core */,
+				A00000000000000000000005 /* Features */,
+				A00000000000000000000009 /* Shared */,
+				A00000000000000000000014 /* Resources */,
+				A00000000000000000000015 /* Tests */,
 				CEFF255F458A45847CE5966D /* Products */,
 				4D238D6D2E24B80F5C74FFA8 /* Frameworks */,
+			);
+			sourceTree = "<group>";
+		};
+		A00000000000000000000001 /* App */ = {
+			isa = PBXGroup;
+			children = (
 				683862D5532B40306057D2FC /* CatLocalApp.swift */,
 				C8B964E0402B2EFBC1640AA3 /* RootView.swift */,
-				EFDD8B2A8E859982240AAF1B /* CatCardView.swift */,
-				72774632AA574A61B0C87F0F /* FloatingTabBar.swift */,
-				D58C11AD2A0BE295FE2FDE73 /* FocusedCardView.swift */,
-				870094315B13497DC8452AF4 /* MotionTiltModel.swift */,
-				A2FC4E54CFCDDB8993A0999A /* StoredImageView.swift */,
-				872CE0A98DC98769A19E8C4F /* CaptureView.swift */,
-				F2FBE7F3793602ECCC9827A9 /* CollectionView.swift */,
-				4DD6277F493A6531139863AF /* SettingsView.swift */,
+			);
+			name = App;
+			sourceTree = "<group>";
+		};
+		A00000000000000000000002 /* Core */ = {
+			isa = PBXGroup;
+			children = (
+				A00000000000000000000003 /* Models */,
+				A00000000000000000000004 /* Services */,
+			);
+			name = Core;
+			sourceTree = "<group>";
+		};
+		A00000000000000000000003 /* Models */ = {
+			isa = PBXGroup;
+			children = (
 				F4BAC1D9BEDD36E357BB086E /* CatRecord.swift */,
+			);
+			name = Models;
+			sourceTree = "<group>";
+		};
+		A00000000000000000000004 /* Services */ = {
+			isa = PBXGroup;
+			children = (
 				43A3A8DDF9E12EB996E7D22C /* CameraController.swift */,
 				85591EB21ABD2F35EF504327 /* CatImageStore.swift */,
 				FEAFBCFBDEEE3B140EB0F707 /* CatVisionProcessor.swift */,
+			);
+			name = Services;
+			sourceTree = "<group>";
+		};
+		A00000000000000000000005 /* Features */ = {
+			isa = PBXGroup;
+			children = (
+				A00000000000000000000006 /* Capture */,
+				A00000000000000000000007 /* Collection */,
+				A00000000000000000000008 /* Settings */,
+			);
+			name = Features;
+			sourceTree = "<group>";
+		};
+		A00000000000000000000006 /* Capture */ = {
+			isa = PBXGroup;
+			children = (
+				872CE0A98DC98769A19E8C4F /* CaptureView.swift */,
+			);
+			name = Capture;
+			sourceTree = "<group>";
+		};
+		A00000000000000000000007 /* Collection */ = {
+			isa = PBXGroup;
+			children = (
+				F2FBE7F3793602ECCC9827A9 /* CollectionView.swift */,
+			);
+			name = Collection;
+			sourceTree = "<group>";
+		};
+		A00000000000000000000008 /* Settings */ = {
+			isa = PBXGroup;
+			children = (
+				4DD6277F493A6531139863AF /* SettingsView.swift */,
+			);
+			name = Settings;
+			sourceTree = "<group>";
+		};
+		A00000000000000000000009 /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				A00000000000000000000010 /* DesignSystem */,
+				A00000000000000000000011 /* UI */,
+			);
+			name = Shared;
+			sourceTree = "<group>";
+		};
+		A00000000000000000000010 /* DesignSystem */ = {
+			isa = PBXGroup;
+			children = (
 				2B34D0EFB9539E239D6122F2 /* CatLocalTheme.swift */,
+			);
+			name = DesignSystem;
+			sourceTree = "<group>";
+		};
+		A00000000000000000000011 /* UI */ = {
+			isa = PBXGroup;
+			children = (
+				A00000000000000000000012 /* Card */,
+				A00000000000000000000013 /* Effects */,
+				A00000000000000000000016 /* Images */,
+			);
+			name = UI;
+			sourceTree = "<group>";
+		};
+		A00000000000000000000012 /* Card */ = {
+			isa = PBXGroup;
+			children = (
+				EFDD8B2A8E859982240AAF1B /* CatCardView.swift */,
+				D58C11AD2A0BE295FE2FDE73 /* FocusedCardView.swift */,
+			);
+			name = Card;
+			sourceTree = "<group>";
+		};
+		A00000000000000000000013 /* Effects */ = {
+			isa = PBXGroup;
+			children = (
+				C22F46EC2FEBDC6F00385C0F /* LiveInteractiveCardView.swift */,
+				870094315B13497DC8452AF4 /* MotionTiltModel.swift */,
+			);
+			name = Effects;
+			sourceTree = "<group>";
+		};
+		A00000000000000000000016 /* Images */ = {
+			isa = PBXGroup;
+			children = (
+				A2FC4E54CFCDDB8993A0999A /* StoredImageView.swift */,
+			);
+			name = Images;
+			sourceTree = "<group>";
+		};
+		A00000000000000000000014 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
 				5C0C1CE8A57605EDE232C146 /* Assets.xcassets */,
+			);
+			name = Resources;
+			sourceTree = "<group>";
+		};
+		A00000000000000000000015 /* Tests */ = {
+			isa = PBXGroup;
+			children = (
 				DDEA3652F9D08C3C1F43DC5B /* CatLocalCoreTests.swift */,
 				9F01F95B5EC6531850C07090 /* CatLocalUITests.swift */,
 			);
+			name = Tests;
 			sourceTree = "<group>";
 		};
 		4D238D6D2E24B80F5C74FFA8 /* Frameworks */ = {
@@ -216,6 +344,18 @@
 			attributes = {
 				LastSwiftUpdateCheck = 1600;
 				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+					4C345592E23D19C862941792 = {
+						DevelopmentTeam = 5SN9TWDXQ4;
+						ProvisioningStyle = Automatic;
+					};
+					5C45A023E229E099F4C49D51 = {
+						DevelopmentTeam = 5SN9TWDXQ4;
+					};
+					E7B6FAD7225BBCC53AC87D23 = {
+						DevelopmentTeam = 5SN9TWDXQ4;
+					};
+				};
 			};
 			buildConfigurationList = DC7DD92DE5287F6CA1BFABF6 /* Build configuration list for PBXProject "CatLocal" */;
 			compatibilityVersion = "Xcode 3.2";
@@ -226,8 +366,6 @@
 				Base,
 			);
 			mainGroup = 442345A2C5CC9A905E052CF5;
-			minimizedProjectReferenceProxies = 0;
-			preferredProjectObjectVersion = 77;
 			productRefGroup = CEFF255F458A45847CE5966D /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -287,7 +425,7 @@
 				A1069F8537A27BFAD0DCDFD1 /* CatLocalApp.swift in Sources */,
 				BA93CEB9F3312E542294D25B /* RootView.swift in Sources */,
 				4A31E0703AD4C8BD186596FE /* CatCardView.swift in Sources */,
-				90FD9907CC8212E51A3F22A8 /* FloatingTabBar.swift in Sources */,
+				C22F46ED2FEBDC7400385C0F /* LiveInteractiveCardView.swift in Sources */,
 				A40767F8673B5D8FF238D313 /* FocusedCardView.swift in Sources */,
 				BE3264658977EC597C497F98 /* MotionTiltModel.swift in Sources */,
 				25EBED58CBB7EFA817A27B0D /* StoredImageView.swift in Sources */,
@@ -370,8 +508,7 @@
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_COMPILATION_MODE = wholemodule;
-				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_OPTIMIZATION_LEVEL = "-Owholemodule";
 				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_VERSION = 6.0;
 			};

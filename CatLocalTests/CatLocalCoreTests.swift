@@ -78,6 +78,46 @@ struct CatLocalCoreTests {
         }
     }
 
+    @Test @MainActor
+    func imageStoreDownsamplesAndTrimsStoredImages() async throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let store = CatImageStore(rootURL: root)
+        let id = UUID()
+        let original = renderedImage(size: CGSize(width: 2_400, height: 1_600), opaque: true) { context in
+            UIColor.systemOrange.setFill()
+            context.fill(CGRect(x: 0, y: 0, width: 2_400, height: 1_600))
+            UIColor.systemBlue.setFill()
+            context.fill(CGRect(x: 160, y: 160, width: 280, height: 240))
+        }
+        let cutout = renderedImage(size: CGSize(width: 1_000, height: 1_000), opaque: false) { context in
+            UIColor.clear.setFill()
+            context.fill(CGRect(x: 0, y: 0, width: 1_000, height: 1_000))
+            UIColor.black.setFill()
+            context.fill(CGRect(x: 380, y: 330, width: 220, height: 260))
+        }
+
+        let paths = try await store.save(
+            id: id,
+            original: SendableImage(value: original),
+            cutout: SendableImage(value: cutout)
+        )
+
+        let originalData = try await store.data(at: paths.originalPath)
+        let cutoutData = try await store.data(at: paths.cutoutPath)
+        let thumbnailData = try await store.data(at: paths.thumbnailPath)
+
+        #expect(originalData.count < 1_500_000)
+        #expect(cutoutData.count < 1_500_000)
+        #expect(thumbnailData.count < 250_000)
+        #expect(try imagePixelSize(from: originalData).width <= CatImageStore.originalMaximumDimension)
+        #expect(try imagePixelSize(from: thumbnailData).width <= CatImageStore.thumbnailMaximumDimension)
+
+        let cutoutSize = try imagePixelSize(from: cutoutData)
+        #expect(cutoutSize.width < 340)
+        #expect(cutoutSize.height < 380)
+    }
+
     @Test
     func detectionResolutionCoversEmptySingleAndMultipleResults() {
         let low = CatDetection(
@@ -92,5 +132,64 @@ struct CatLocalCoreTests {
         #expect(CatDetectionSelector.resolve([]) == .none)
         #expect(CatDetectionSelector.resolve([low]) == .single(low))
         #expect(CatDetectionSelector.resolve([low, high]) == .multiple([high, low]))
+    }
+
+    @Test
+    func liveInteractiveCardTiltClampsAndDetectsLimit() {
+        let size = CGSize(width: 350, height: 220)
+        let center = LiveInteractiveCardMath.tilt(
+            for: CGPoint(x: 175, y: 110),
+            in: size,
+            maxTiltAngle: 12
+        )
+        #expect(center.rotateX == 0)
+        #expect(center.rotateY == 0)
+        #expect(center.isAtLimit == false)
+
+        let edge = LiveInteractiveCardMath.tilt(
+            for: CGPoint(x: 350, y: 0),
+            in: size,
+            maxTiltAngle: 12
+        )
+        #expect(edge.rotateX == 12)
+        #expect(edge.rotateY == 12)
+        #expect(edge.isAtLimit)
+
+        let outOfBounds = LiveInteractiveCardMath.tilt(
+            for: CGPoint(x: 700, y: -220),
+            in: size,
+            maxTiltAngle: 12
+        )
+        #expect(outOfBounds.location == CGPoint(x: 350, y: 0))
+        #expect(outOfBounds.rotateX == 12)
+        #expect(outOfBounds.rotateY == 12)
+        #expect(outOfBounds.isAtLimit)
+    }
+
+    private func renderedImage(
+        size: CGSize,
+        opaque: Bool,
+        actions: (CGContext) -> Void
+    ) -> UIImage {
+        let format = UIGraphicsImageRendererFormat()
+        format.opaque = opaque
+        format.scale = 1
+        return UIGraphicsImageRenderer(size: size, format: format).image { context in
+            actions(context.cgContext)
+        }
+    }
+
+    private func imagePixelSize(from data: Data) throws -> CGSize {
+        let source = CGImageSourceCreateWithData(data as CFData, nil)
+        let properties = source.flatMap {
+            CGImageSourceCopyPropertiesAtIndex($0, 0, nil) as? [CFString: Any]
+        }
+        guard
+            let width = properties?[kCGImagePropertyPixelWidth] as? Int,
+            let height = properties?[kCGImagePropertyPixelHeight] as? Int
+        else {
+            throw CatImageStoreError.imageEncodingFailed
+        }
+        return CGSize(width: width, height: height)
     }
 }

@@ -70,13 +70,22 @@ actor CatVisionProcessor: CatAnalyzing {
             throw CatVisionError.noForeground
         }
 
-        let pixelBuffer = try observation.generateMaskedImage(
-            ofInstances: instances,
-            from: handler,
-            croppedToInstancesExtent: true
+        let maskBuffer = try observation.generateScaledMaskForImage(
+            forInstances: instances,
+            from: handler
         )
-        let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
-        guard let output = context.createCGImage(ciImage, from: ciImage.extent) else {
+        let original = CIImage(cgImage: cgImage)
+        let mask = CIImage(cvPixelBuffer: maskBuffer)
+        let clearBackground = CIImage(color: .clear).cropped(to: original.extent)
+        let cutout = original.applyingFilter(
+            "CIBlendWithAlphaMask",
+            parameters: [
+                kCIInputBackgroundImageKey: clearBackground,
+                kCIInputMaskImageKey: mask
+            ]
+        )
+
+        guard let output = context.createCGImage(cutout, from: original.extent) else {
             throw CatVisionError.cutoutFailed
         }
         return SendableImage(value: UIImage(cgImage: output))

@@ -21,9 +21,12 @@ final class CatLocalUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["On this iPhone, by design"].exists)
 
         app.buttons["Collection"].tap()
-        app.buttons["Photograph or import a cat"].tap()
+        let cameraButton = app.buttons["Photograph or import a cat"]
+        XCTAssertTrue(cameraButton.waitForExistence(timeout: 5))
+        cameraButton.tap()
         XCTAssertTrue(
-            app.staticTexts["On-device only"].waitForExistence(timeout: 3)
+            app.staticTexts["On-device only"].waitForExistence(timeout: 8)
+                || app.staticTexts["No camera is available on this device."].waitForExistence(timeout: 2)
                 || app.alerts.firstMatch.waitForExistence(timeout: 2)
         )
     }

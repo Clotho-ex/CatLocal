@@ -49,19 +49,19 @@ struct CollectionView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("CatLocal")
                         .catEditorialTitle(size: 58)
-                        .foregroundStyle(CatLocalTheme.forest)
+                        .foregroundStyle(CatLocalTheme.primaryText)
 
                     Text("YOUR COLLECTION")
-                        .font(.system(size: 14, weight: .semibold, design: .rounded))
+                        .font(.system(size: 14, weight: .semibold))
                         .tracking(3.2)
-                        .foregroundStyle(CatLocalTheme.ink.opacity(0.8))
+                        .foregroundStyle(CatLocalTheme.secondaryText)
                 }
 
                 Spacer()
 
                 Image(systemName: "square.grid.2x2")
                     .font(.system(size: 18, weight: .medium))
-                    .foregroundStyle(CatLocalTheme.forest)
+                    .foregroundStyle(CatLocalTheme.primaryText)
                     .frame(width: 48, height: 48)
                     .catGlass(cornerRadius: 24)
                     .accessibilityHidden(true)
@@ -72,7 +72,7 @@ struct CollectionView: View {
                     .font(.subheadline.weight(.semibold))
 
                 Rectangle()
-                    .fill(CatLocalTheme.apricot)
+                    .fill(CatLocalTheme.separator)
                     .frame(width: 2, height: 16)
 
                 Text("Sorted by recent")
@@ -86,12 +86,12 @@ struct CollectionView: View {
         VStack(spacing: 18) {
             Image(systemName: "camera.aperture")
                 .font(.system(size: 52, weight: .ultraLight))
-                .foregroundStyle(CatLocalTheme.forest)
+                .foregroundStyle(CatLocalTheme.primaryText)
 
             VStack(spacing: 7) {
                 Text("Your first local is out there")
-                    .font(.system(size: 27, weight: .semibold, design: .serif))
-                    .foregroundStyle(CatLocalTheme.forest)
+                    .font(.system(size: 27, weight: .semibold))
+                    .foregroundStyle(CatLocalTheme.primaryText)
 
                 Text("Use the camera button to turn a cat encounter into a private card. Nothing leaves this iPhone.")
                     .font(.body)
@@ -102,15 +102,15 @@ struct CollectionView: View {
 
             Label("No account. No public map. No model training.", systemImage: "lock.shield.fill")
                 .font(.footnote.weight(.semibold))
-                .foregroundStyle(CatLocalTheme.forest.opacity(0.76))
+                .foregroundStyle(CatLocalTheme.secondaryText)
         }
         .frame(maxWidth: .infinity)
         .padding(.horizontal, 22)
         .padding(.vertical, 46)
-        .background(CatLocalTheme.chalk.opacity(0.72), in: RoundedRectangle(cornerRadius: 32, style: .continuous))
+        .background(CatLocalTheme.elevatedSurface.opacity(0.82), in: RoundedRectangle(cornerRadius: 32, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 32, style: .continuous)
-                .stroke(.white.opacity(0.7), lineWidth: 1)
+                .stroke(CatLocalTheme.imageOutline, lineWidth: 1)
         )
         .accessibilityIdentifier("empty-collection")
     }
