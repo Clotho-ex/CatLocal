@@ -57,6 +57,9 @@ struct LiveInteractiveCardView<Content: View>: View {
                 perspective: 0.66
             )
             .gesture(dragGesture(size: size))
+            .accessibilityAdjustableAction { direction in
+                adjustLighting(direction: direction, size: size)
+            }
             .onAppear {
                 spotlightLocation = CGPoint(x: size.width / 2, y: size.height / 2)
             }
@@ -74,8 +77,8 @@ struct LiveInteractiveCardView<Content: View>: View {
             .fill(
                 RadialGradient(
                     gradient: Gradient(colors: [
-                        .white.opacity(0.22),
-                        CatLocalTheme.blueAction.opacity(0.08),
+                        .white.opacity(0.18),
+                        .cyan.opacity(0.05),
                         .clear
                     ]),
                     center: UnitPoint(
@@ -130,6 +133,36 @@ struct LiveInteractiveCardView<Content: View>: View {
         rotateX = 0
         rotateY = 0
         spotlightLocation = CGPoint(x: size.width / 2, y: size.height / 2)
+    }
+
+    private func adjustLighting(direction: AccessibilityAdjustmentDirection, size: CGSize) {
+        guard !reduceMotion else { return }
+
+        let targetX: CGFloat
+        switch direction {
+        case .increment:
+            targetX = size.width
+        case .decrement:
+            targetX = 0
+        @unknown default:
+            targetX = size.width / 2
+        }
+
+        let tilt = LiveInteractiveCardMath.tilt(
+            for: CGPoint(x: targetX, y: size.height / 2),
+            in: size,
+            maxTiltAngle: maxTiltAngle
+        )
+        spotlightLocation = tilt.location
+
+        if hapticsEnabled && tilt.isAtLimit {
+            UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
+        }
+
+        withAnimation(.interactiveSpring(response: 0.25, dampingFraction: 0.65)) {
+            rotateX = tilt.rotateX
+            rotateY = tilt.rotateY
+        }
     }
 }
 

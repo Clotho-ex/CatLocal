@@ -8,6 +8,8 @@ final class CatRecord {
     var capturedAt: Date
     var nickname: String
     var note: String
+    var placeName: String = ""
+    var placeDetail: String = ""
     var sourceRawValue: String
     var cardStyleRawValue: String
     var styleSeed: Int
@@ -21,6 +23,8 @@ final class CatRecord {
         capturedAt: Date = Date(),
         nickname: String = "",
         note: String = "",
+        placeName: String = "",
+        placeDetail: String = "",
         source: CaptureSource,
         cardStyle: CardStyle,
         styleSeed: Int,
@@ -33,6 +37,8 @@ final class CatRecord {
         self.capturedAt = capturedAt
         self.nickname = nickname
         self.note = note
+        self.placeName = placeName
+        self.placeDetail = placeDetail
         sourceRawValue = source.rawValue
         cardStyleRawValue = cardStyle.rawValue
         self.styleSeed = styleSeed
@@ -53,6 +59,28 @@ final class CatRecord {
     var displayName: String {
         let trimmed = nickname.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? "Local \(sequence.formatted(.number.precision(.integerLength(3))))" : trimmed
+    }
+
+    var memoryPlaceName: String? {
+        let trimmed = placeName.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+
+    var memoryPlaceDetail: String? {
+        let trimmed = placeDetail.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+
+    var memoryPlaceLabel: String? {
+        guard let memoryPlaceName else { return nil }
+        if let memoryPlaceDetail {
+            return "\(memoryPlaceName), \(memoryPlaceDetail)"
+        }
+        return memoryPlaceName
+    }
+
+    var atlasGroupTitle: String {
+        memoryPlaceName ?? "Unplaced"
     }
 }
 

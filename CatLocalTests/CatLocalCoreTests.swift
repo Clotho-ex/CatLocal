@@ -1,3 +1,4 @@
+import CoreImage
 import ImageIO
 import SwiftData
 import Testing
@@ -26,12 +27,14 @@ struct CatLocalCoreTests {
             sequence: 4,
             nickname: "Local Cat",
             note: "Watched the ferry.",
+            placeName: "Ferry Steps",
+            placeDetail: "Beside the ticket booth",
             source: .photoLibrary,
             cardStyle: .sunstamp,
             styleSeed: 19,
             originalImagePath: "id/original.heic",
             cutoutImagePath: "id/cutout.png",
-            thumbnailImagePath: "id/thumbnail.jpg"
+            thumbnailImagePath: "id/thumbnail.png"
         )
         context.insert(record)
         try context.save()
@@ -39,8 +42,61 @@ struct CatLocalCoreTests {
         let fetched = try context.fetch(FetchDescriptor<CatRecord>())
         #expect(fetched.count == 1)
         #expect(fetched[0].displayName == "Local Cat")
+        #expect(fetched[0].memoryPlaceName == "Ferry Steps")
+        #expect(fetched[0].memoryPlaceDetail == "Beside the ticket booth")
+        #expect(fetched[0].memoryPlaceLabel == "Ferry Steps, Beside the ticket booth")
         #expect(fetched[0].source == .photoLibrary)
         #expect(fetched[0].cardStyle == .sunstamp)
+    }
+
+    @Test
+    func recordPlaceMemoryCanBeCleared() {
+        let record = CatRecord(
+            sequence: 7,
+            nickname: "",
+            note: "",
+            placeName: "  Garden Wall  ",
+            placeDetail: "  Afternoon sun  ",
+            source: .camera,
+            cardStyle: .archive,
+            styleSeed: 0,
+            originalImagePath: "id/original.heic",
+            cutoutImagePath: "id/cutout.png",
+            thumbnailImagePath: "id/thumbnail.png"
+        )
+
+        #expect(record.memoryPlaceName == "Garden Wall")
+        #expect(record.memoryPlaceDetail == "Afternoon sun")
+        record.placeName = "  "
+        record.placeDetail = "\n"
+        #expect(record.memoryPlaceName == nil)
+        #expect(record.memoryPlaceDetail == nil)
+        #expect(record.atlasGroupTitle == "Unplaced")
+    }
+
+    @Test
+    func projectDoesNotRequestCoordinateLocationForAtlas() throws {
+        let repository = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let projectFile = repository
+            .appendingPathComponent("CatLocal.xcodeproj")
+            .appendingPathComponent("project.pbxproj")
+        let projectText = try String(contentsOf: projectFile, encoding: .utf8)
+        #expect(!projectText.contains("NSLocation"))
+
+        let sourceRoot = repository.appendingPathComponent("CatLocal")
+        let sourcePaths = try FileManager.default.subpathsOfDirectory(atPath: sourceRoot.path)
+            .filter { $0.hasSuffix(".swift") }
+
+        for path in sourcePaths {
+            let text = try String(
+                contentsOf: sourceRoot.appendingPathComponent(path),
+                encoding: .utf8
+            )
+            #expect(!text.contains("import CoreLocation"))
+            #expect(!text.contains("import MapKit"))
+        }
     }
 
     @Test @MainActor
@@ -62,7 +118,7 @@ struct CatLocalCoreTests {
 
         #expect(paths.originalPath == "\(id.uuidString)/original.heic")
         #expect(paths.cutoutPath == "\(id.uuidString)/cutout.png")
-        #expect(paths.thumbnailPath == "\(id.uuidString)/thumbnail.jpg")
+        #expect(paths.thumbnailPath == "\(id.uuidString)/thumbnail.png")
 
         let originalData = try await store.data(at: paths.originalPath)
         let source = CGImageSourceCreateWithData(originalData as CFData, nil)
@@ -135,6 +191,70 @@ struct CatLocalCoreTests {
     }
 
     @Test
+    func visionCutoutUsesMaskLuminanceForTransparency() async throws {
+        let original = renderedImage(size: CGSize(width: 80, height: 80), opaque: true) { context in
+            UIColor.systemOrange.setFill()
+            context.fill(CGRect(x: 0, y: 0, width: 80, height: 80))
+        }
+        let mask = renderedImage(size: CGSize(width: 80, height: 80), opaque: true) { context in
+            UIColor.black.setFill()
+            context.fill(CGRect(x: 0, y: 0, width: 80, height: 80))
+            UIColor.white.setFill()
+            context.fill(CGRect(x: 24, y: 24, width: 32, height: 32))
+        }
+
+        let processor = CatVisionProcessor()
+        let cutout = try await processor.makeTransparentCutout(
+            from: try #require(original.cgImage),
+            mask: CIImage(cgImage: try #require(mask.cgImage))
+        )
+
+        #expect(processor.hasVisibleSubjectAndTransparentBackground(cutout))
+        #expect(try alphaValue(in: cutout, x: 4, y: 4) == 0)
+        #expect(try alphaValue(in: cutout, x: 40, y: 40) > 200)
+    }
+
+    @Test
+    func visionCutoutRejectsWholeRectangleMask() async throws {
+        let original = renderedImage(size: CGSize(width: 80, height: 80), opaque: true) { context in
+            UIColor.systemOrange.setFill()
+            context.fill(CGRect(x: 0, y: 0, width: 80, height: 80))
+        }
+        let mask = renderedImage(size: CGSize(width: 80, height: 80), opaque: true) { context in
+            UIColor.white.setFill()
+            context.fill(CGRect(x: 0, y: 0, width: 80, height: 80))
+        }
+
+        let processor = CatVisionProcessor()
+        await #expect(throws: CatVisionError.self) {
+            _ = try await processor.makeTransparentCutout(
+                from: try #require(original.cgImage),
+                mask: CIImage(cgImage: try #require(mask.cgImage))
+            )
+        }
+    }
+
+    @Test
+    func catCropExpandsDetectionAndStaysInsideImageBounds() {
+        let processor = CatVisionProcessor()
+        let crop = processor.expandedCatCropRect(
+            for: CGRect(x: 0.4, y: 0.25, width: 0.2, height: 0.3),
+            imageWidth: 1_000,
+            imageHeight: 800
+        )
+
+        let detectedPixelRect = CGRect(x: 400, y: 360, width: 200, height: 240)
+        #expect(crop.contains(detectedPixelRect.origin))
+        #expect(crop.contains(CGPoint(x: detectedPixelRect.maxX, y: detectedPixelRect.maxY)))
+        #expect(crop.width > detectedPixelRect.width)
+        #expect(crop.height > detectedPixelRect.height)
+        #expect(crop.minX >= 0)
+        #expect(crop.minY >= 0)
+        #expect(crop.maxX <= 1_000)
+        #expect(crop.maxY <= 800)
+    }
+
+    @Test
     func liveInteractiveCardTiltClampsAndDetectsLimit() {
         let size = CGSize(width: 350, height: 220)
         let center = LiveInteractiveCardMath.tilt(
@@ -191,5 +311,27 @@ struct CatLocalCoreTests {
             throw CatImageStoreError.imageEncodingFailed
         }
         return CGSize(width: width, height: height)
+    }
+
+    private func alphaValue(in image: CGImage, x: Int, y: Int) throws -> UInt8 {
+        let width = image.width
+        let height = image.height
+        let bytesPerPixel = 4
+        let bytesPerRow = width * bytesPerPixel
+        var pixels = [UInt8](repeating: 0, count: height * bytesPerRow)
+        guard let context = CGContext(
+            data: &pixels,
+            width: width,
+            height: height,
+            bitsPerComponent: 8,
+            bytesPerRow: bytesPerRow,
+            space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ) else {
+            throw CatImageStoreError.imageEncodingFailed
+        }
+
+        context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+        return pixels[(y * bytesPerRow) + (x * bytesPerPixel) + 3]
     }
 }

@@ -73,7 +73,9 @@ Future captures/imports should continue to use optimized local variants:
 - Cutout: transparent PNG, trimmed around non-empty alpha bounds, long edge around 1400px.
 - Thumbnail: generated from cutout, long edge around 512px.
 
-Do not add remote image storage, synced photos, or location metadata in v1.
+Do not add remote image storage, synced photos, GPS coordinates, or automatic
+location metadata in v1. Manual Memory Atlas labels are user-entered card
+metadata and stay in SwiftData.
 
 ## UI System
 

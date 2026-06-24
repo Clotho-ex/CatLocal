@@ -12,7 +12,8 @@ encounters into tactile collectible cards.
 
 ## Privacy
 
-- No account, backend, public map, location collection, advertising, or cloud AI.
+- No account, backend, public map, GPS coordinates, advertising, or cloud AI.
+- Memory Atlas place labels are typed intentionally by you and stay local.
 - Originals are rewritten without EXIF or GPS metadata before local storage.
 - Cat recognition and foreground separation happen on the device.
 

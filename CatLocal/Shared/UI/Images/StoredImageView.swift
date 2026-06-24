@@ -21,7 +21,9 @@ struct StoredImageView<Placeholder: View>: View {
         .task(id: path) {
             do {
                 let data = try await CatImageStore.shared.data(at: path)
-                image = UIImage(data: data)
+                image = await Task.detached(priority: .utility) {
+                    UIImage(data: data)
+                }.value
             } catch {
                 image = nil
             }

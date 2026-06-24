@@ -12,6 +12,8 @@ struct CatCardView: View {
             name: record.displayName,
             date: record.capturedAt,
             note: record.note,
+            placeName: record.memoryPlaceName,
+            placeDetail: record.memoryPlaceDetail,
             style: record.cardStyle,
             presentation: presentation
         ) {
@@ -21,12 +23,17 @@ struct CatCardView: View {
             }
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(record.displayName), captured \(record.capturedAt.formatted(date: .abbreviated, time: .omitted))")
-        .accessibilityHint(isFocused ? "Drag the card to shift its light" : "Opens the card")
+        .accessibilityLabel(accessibilityLabel)
+        .accessibilityHint(isFocused ? "Drag the card to shift its light" : "Double tap to open full gallery view.")
     }
 
     private var imagePath: String {
         isFocused ? record.cutoutImagePath : record.thumbnailImagePath
+    }
+
+    private var accessibilityLabel: String {
+        let place = record.memoryPlaceLabel.map { " Memory place, \($0)." } ?? ""
+        return "Cat Record, \(record.displayName). ID number \(record.sequence.formatted(.number.precision(.integerLength(3)))). \(record.cardStyle.title) style. Captured \(record.capturedAt.formatted(date: .abbreviated, time: .omitted)).\(place)"
     }
 }
 
@@ -35,6 +42,8 @@ struct DraftCatCardView: View {
     let sequence: Int
     let name: String
     let note: String
+    let placeName: String
+    let placeDetail: String
     let style: CardStyle
 
     var body: some View {
@@ -45,6 +54,8 @@ struct DraftCatCardView: View {
                 : name,
             date: Date(),
             note: note,
+            placeName: trimmedPlaceName,
+            placeDetail: trimmedPlaceDetail,
             style: style,
             presentation: .focused
         ) {
@@ -52,6 +63,16 @@ struct DraftCatCardView: View {
                 .resizable()
                 .scaledToFit()
         }
+    }
+
+    private var trimmedPlaceName: String? {
+        let trimmed = placeName.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+
+    private var trimmedPlaceDetail: String? {
+        let trimmed = placeDetail.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
     }
 }
 
@@ -61,10 +82,14 @@ enum CatCardPresentation {
 }
 
 private struct CatCardSurface<CatImage: View>: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     let sequence: Int
     let name: String
     let date: Date
     let note: String
+    let placeName: String?
+    let placeDetail: String?
     let style: CardStyle
     let presentation: CatCardPresentation
     @ViewBuilder let catImage: () -> CatImage
@@ -73,9 +98,12 @@ private struct CatCardSurface<CatImage: View>: View {
 
     var body: some View {
         GeometryReader { proxy in
+            let cardWidth = max(proxy.size.width, 1)
+            let cardHeight = max(proxy.size.height, 1)
             let cornerRadius: CGFloat = focused ? 34 : 22
             let outerPadding: CGFloat = focused ? 20 : 11
-            let imageStageHeight = proxy.size.height * (focused ? 0.54 : 0.50)
+            let imageStageHeight = max(cardHeight * imageStageRatio, 1)
+            let imageMaxWidth = max(cardWidth - outerPadding * 2, 1)
 
             VStack(alignment: .leading, spacing: focused ? 16 : 9) {
                 header
@@ -86,7 +114,7 @@ private struct CatCardSurface<CatImage: View>: View {
                     catImage()
                         .scaledToFit()
                         .frame(
-                            maxWidth: proxy.size.width - outerPadding * 2,
+                            maxWidth: imageMaxWidth,
                             maxHeight: imageStageHeight * 0.96,
                             alignment: .center
                         )
@@ -98,7 +126,7 @@ private struct CatCardSurface<CatImage: View>: View {
                 footer
             }
             .padding(outerPadding)
-            .frame(width: proxy.size.width, height: proxy.size.height, alignment: .topLeading)
+            .frame(width: cardWidth, height: cardHeight, alignment: .topLeading)
             .background(surface)
             .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
             .overlay(
@@ -115,12 +143,20 @@ private struct CatCardSurface<CatImage: View>: View {
         .aspectRatio(focused ? 0.67 : 0.72, contentMode: .fit)
     }
 
+    private var imageStageRatio: CGFloat {
+        if dynamicTypeSize.isAccessibilitySize {
+            focused ? 0.46 : 0.44
+        } else {
+            focused ? 0.54 : 0.50
+        }
+    }
+
     private var header: some View {
         HStack(alignment: .firstTextBaseline) {
             VStack(alignment: .leading, spacing: focused ? 3 : 1) {
                 Text(name)
-                    .font(.system(size: focused ? 31 : 18, weight: .semibold))
-                    .lineLimit(1)
+                    .font(focused ? .title.weight(.semibold) : .headline.weight(.semibold))
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
                     .minimumScaleFactor(0.7)
 
                 Text(date, format: .dateTime.month(.abbreviated).day().year())
@@ -129,11 +165,6 @@ private struct CatCardSurface<CatImage: View>: View {
             }
 
             Spacer(minLength: 10)
-
-            Text(sequence.formatted(.number.precision(.integerLength(3))))
-                .font(.system(size: focused ? 17 : 12, weight: .semibold, design: .monospaced))
-                .foregroundStyle(CatLocalTheme.secondaryText)
-                .monospacedDigit()
         }
         .foregroundStyle(CatLocalTheme.primaryText)
     }
@@ -152,18 +183,41 @@ private struct CatCardSurface<CatImage: View>: View {
 
                 Text(note.isEmpty ? "No note yet." : note)
                     .font(.body)
-                    .lineLimit(3)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? 5 : 3)
                     .foregroundStyle(note.isEmpty ? CatLocalTheme.secondaryText : CatLocalTheme.primaryText)
+
+                if let placeName {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Memory")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(CatLocalTheme.secondaryText)
+
+                        Text(placeDetail.map { "\(placeName), \($0)" } ?? placeName)
+                            .font(.footnote.weight(.medium))
+                            .lineLimit(dynamicTypeSize.isAccessibilitySize ? 3 : 2)
+                            .foregroundStyle(CatLocalTheme.primaryText)
+                    }
+                    .padding(.top, 2)
+                }
             }
         } else {
-            HStack(spacing: 8) {
-                Circle()
-                    .fill(CatLocalTheme.accent(for: style))
-                    .frame(width: 5, height: 5)
-                Text(style.title)
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(CatLocalTheme.secondaryText)
-                    .lineLimit(1)
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 8) {
+                    Circle()
+                        .fill(CatLocalTheme.accent(for: style))
+                        .frame(width: 5, height: 5)
+                    Text(style.title)
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(CatLocalTheme.secondaryText)
+                        .lineLimit(1)
+                }
+
+                if let placeName {
+                    Text(placeName)
+                        .font(.caption2.weight(.medium))
+                        .foregroundStyle(CatLocalTheme.secondaryText)
+                        .lineLimit(1)
+                }
             }
         }
     }
@@ -224,11 +278,16 @@ private struct CatCardSurface<CatImage: View>: View {
     private var styleMark: some View {
         Circle()
             .stroke(CatLocalTheme.accent(for: style).opacity(0.34), lineWidth: 1)
-            .frame(width: focused ? 34 : 22, height: focused ? 34 : 22)
+            .frame(width: focused ? 42 : 30, height: focused ? 42 : 30)
             .overlay {
                 Circle()
                     .fill(CatLocalTheme.accent(for: style).opacity(0.12))
-                    .padding(5)
+                    .padding(focused ? 5 : 4)
+                Text(sequence.formatted(.number.precision(.integerLength(3))))
+                    .font(.system(size: focused ? 13 : 9, weight: .bold, design: .monospaced))
+                    .foregroundStyle(CatLocalTheme.secondaryText)
+                    .monospacedDigit()
+                    .minimumScaleFactor(0.7)
             }
             .padding(focused ? 20 : 11)
             .accessibilityHidden(true)
