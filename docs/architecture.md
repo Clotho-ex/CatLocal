@@ -38,7 +38,7 @@ CatLocal/
 
 `RootView` owns the app-level navigation state:
 
-- `CollectionView` is the default tab.
+- `CollectionView` powers the Home tab.
 - `SettingsView` is the secondary tab.
 - `CaptureView` is presented as a full-screen cover.
 - The camera entry is modeled as a `Tab` with `role: .search` so iOS 26 renders it as the detached right-side Liquid Glass control.
@@ -74,7 +74,7 @@ Future captures/imports should continue to use optimized local variants:
 - Thumbnail: generated from cutout, long edge around 512px.
 
 Do not add remote image storage, synced photos, GPS coordinates, or automatic
-location metadata in v1. Manual Memory Atlas labels are user-entered card
+location metadata in v1. Manual Catlas labels are user-entered cat
 metadata and stay in SwiftData.
 
 ## UI System

@@ -14,7 +14,7 @@ The product is organized around this loop:
 1. Photograph a cat or choose a private photo.
 2. Detect and separate the cat with Apple Vision on-device.
 3. Reveal a card, choose a design, and add an optional name or note.
-4. Save the card and its images locally with SwiftData and Application Support.
+4. Save the cat and its images locally with SwiftData and Application Support.
 
 The first screen should privilege the collection and the camera path. Settings,
 storage, and privacy proof points support the loop, but they do not replace it.
@@ -56,13 +56,13 @@ CatLocal's native shape is a capture-to-card pipeline:
 
 - `Camera` and `Choose private photo` start the experience.
 - `Looking for cats` and `Lifting the subject` make the on-device processing visible.
-- `Which cat gets the card?` appears when multiple cats are detected.
+- `Which cat should CatLocal save?` appears when multiple cats are detected.
 - `Make it yours` turns the cutout into a collectible card.
-- `Add to Collection` saves the card privately.
-- `YOUR COLLECTION` presents saved cards sorted by recent capture.
-- `Edit Card` keeps the focused-card state editable without leaving the card context.
-- `Memory Atlas` groups saved cards by manual place labels typed by the user.
-- `PRIVACY & STORAGE` explains local-only behavior and destructive data controls.
+- `Add Cat` saves the cat privately.
+- Home presents saved cats sorted by sequence number.
+- `Edit Cat` keeps the focused-cat state editable without leaving the cat context.
+- `Catlas` groups saved cats by manual place labels typed by the user.
+- Settings explains local-only behavior, Local Storage, and destructive data controls.
 
 ## Color System
 
@@ -79,9 +79,9 @@ Use `CatLocalTheme` tokens instead of hardcoded colors.
 | `separator`                      | `#1A2F25` at 12% | `#8FA89B` at 16%    | Dividers                           |
 | `imageOutline`                   | black at 10%     | white at 10%        | Image/card strokes                 |
 | `shadow`                         | `#1A2F25` at 16% | black at 45%        | Depth                              |
-| `blueAction` / `cobalt`          | RGB `0, 0.32, 1` | RGB `0.30, 0.58, 1` | Primary action and Clear style     |
-| `warning` / `apricot`            | `#D95B32`        | `#FF7A59`           | Warnings and Sunstamp style        |
-| `sage`                           | `#1A2F25`        | `#8FA89B`           | Background wash and Archive tone   |
+| `blueAction` / `cobalt`          | RGB `0, 0.32, 1` | RGB `0.30, 0.58, 1` | Primary actions                    |
+| `warning` / `apricot`            | `#D95B32`        | `#FF7A59`           | Warnings                           |
+| `sage`                           | `#1A2F25`        | `#8FA89B`           | Background wash and card tone      |
 
 The app background is layered: a limestone base, a soft top-left radial glow,
 and a subtle diagonal sage-to-apricot wash. Avoid flat single-color screens.
@@ -91,8 +91,8 @@ and a subtle diagonal sage-to-apricot wash. Avoid flat single-color screens.
 The app currently uses native SwiftUI system typography with semibold editorial
 titles. Do not introduce a new type family without updating the design system.
 
-- App title: `CatLocal`, 42pt semibold via `catEditorialTitle`.
-- Settings title: `Settings`, 40pt semibold via `catEditorialTitle`.
+- App title: `CatLocal`, large native SwiftUI title treatment.
+- Settings title: `Settings`, native large navigation title that collapses while scrolling.
 - Focused card name: 31pt semibold.
 - Thumbnail card name: 18pt semibold.
 - Empty-state title: 27pt semibold.
@@ -104,7 +104,7 @@ titles. Do not introduce a new type family without updating the design system.
 Shared screen rhythm:
 
 - Main scroll screens use 22pt horizontal padding.
-- Collection and settings use 18pt top padding and 140pt bottom padding.
+- Home and settings use 18pt top padding and 140pt bottom padding.
 - Card grids use two flexible columns with 14pt column spacing and 18pt row spacing.
 - Empty states and settings cards are generous, centered or left-aligned, and bounded by continuous rounded rectangles.
 
@@ -120,14 +120,18 @@ Card geometry:
 ### Native Shell
 
 `RootView` uses a native SwiftUI `TabView` with `.tabViewStyle(.sidebarAdaptable)`.
-Tabs are `Collection`, `Settings`, and a camera tab. On iOS 26, the camera tab
+Tabs are `Home`, `Settings`, and a camera tab. On iOS 26, the camera tab
 uses `role: .search` (or `.prominent` where available) so the system renders it as a detached Liquid Glass action.
 
-### Collection
+### Home
 
-The empty state leads with `Meet Your First Local`, the line `Capture a cat
-encounter and keep the card private on this iPhone.`, and three proof points:
-`No Account`, `No Public Map`, and `No Model Training`.
+The empty state leads with `Meet Your First Cat`, the line `Capture a cat
+encounter and keep it private on this iPhone.`, and three proof points:
+`No Account`, `No Public Map`, and `No AI Training`.
+
+Saved cats appear under the `Cats` segmented mode and sort ascending by sequence
+number. `Catlas` groups the same saved cats by manual place labels without
+requesting GPS or storing coordinates.
 
 ### Capture
 
@@ -136,11 +140,9 @@ black gradient. Controls are icon-first and glass-backed.
 
 ### Cards
 
-Cards are polished editorial surfaces. Card styles:
-
-- `Archive`: card surface with a subtle white-to-sage diagonal gradient.
-- `Sunstamp`: card surface with a warm apricot radial glow.
-- `Clear`: card surface with a light cobalt gradient.
+Cards are polished editorial surfaces with one consistent CatLocal treatment.
+Do not expose card theme selection in capture, editing, or focused card views.
+The card number is a plain sequence number, not a padded collectible ID.
 
 ### Focused Card
 

@@ -6,25 +6,25 @@ final class CatLocalUITests: XCTestCase {
         continueAfterFailure = false
     }
 
-    func testEmptyCollectionPrivacyAndCaptureEntry() {
+    func testEmptyHomePrivacyAndCaptureEntry() {
         let app = XCUIApplication()
         app.launchArguments = ["-ui-testing-reset"]
         app.launch()
 
         XCTAssertTrue(app.staticTexts["CatLocal"].waitForExistence(timeout: 8))
-        XCTAssertTrue(app.staticTexts["Meet Your First Local"].exists)
+        XCTAssertTrue(app.staticTexts["Meet Your First Cat"].exists)
         XCTAssertTrue(app.staticTexts["No Account"].exists)
         XCTAssertTrue(app.staticTexts["No Public Map"].exists)
-        XCTAssertTrue(app.staticTexts["No Model Training"].exists)
+        XCTAssertTrue(app.staticTexts["No AI Training"].exists)
 
         let settingsButton = app.tabBars.buttons["Settings"]
         XCTAssertTrue(settingsButton.waitForExistence(timeout: 5))
         settingsButton.tap()
         XCTAssertTrue(app.staticTexts["Settings"].waitForExistence(timeout: 8))
-        XCTAssertTrue(app.staticTexts["PRIVACY & STORAGE"].waitForExistence(timeout: 8))
-        XCTAssertTrue(app.staticTexts["On this iPhone, by design"].exists)
+        XCTAssertTrue(app.staticTexts["On this iPhone, by Design"].exists)
+        XCTAssertTrue(app.staticTexts["Local Storage"].exists)
 
-        app.tabBars.buttons["Collection"].tap()
+        app.tabBars.buttons["Home"].tap()
         let cameraButton = app.tabBars.buttons["Camera"]
         XCTAssertTrue(cameraButton.waitForExistence(timeout: 5))
         cameraButton.tap()
@@ -37,26 +37,25 @@ final class CatLocalUITests: XCTestCase {
         let closeCameraButton = app.buttons["Close camera"]
         if closeCameraButton.waitForExistence(timeout: 2) {
             closeCameraButton.tap()
-            XCTAssertTrue(app.staticTexts["Meet Your First Local"].waitForExistence(timeout: 5))
+            XCTAssertTrue(app.staticTexts["Meet Your First Cat"].waitForExistence(timeout: 5))
         }
     }
 
-    func testSeededMemoryAtlasGroupsPlacesPrivately() {
+    func testSeededCatlasGroupsPlacesPrivately() {
         let app = XCUIApplication()
         app.launchArguments = ["-ui-testing-reset", "-ui-testing-seed-atlas"]
         app.launch()
 
         XCTAssertTrue(app.staticTexts["CatLocal"].waitForExistence(timeout: 8))
-        XCTAssertTrue(app.buttons["Cards"].exists)
+        XCTAssertTrue(app.buttons["Cats"].exists)
 
-        let atlasButton = app.buttons["Atlas"]
+        let atlasButton = app.buttons["Catlas"]
         XCTAssertTrue(atlasButton.waitForExistence(timeout: 5))
         atlasButton.tap()
 
-        XCTAssertTrue(app.staticTexts["Memory Atlas"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["A private index of the places you type yourself. No GPS, coordinates, or public map."].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Ferry Steps"].exists)
         XCTAssertTrue(app.staticTexts["Garden Wall"].exists)
-        XCTAssertTrue(app.staticTexts["Unplaced"].exists)
-        XCTAssertTrue(app.staticTexts["A private index of the places you type yourself. No GPS, coordinates, or public map."].exists)
+        XCTAssertTrue(app.staticTexts["Unplaced cats"].exists)
     }
 }

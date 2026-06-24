@@ -3,28 +3,17 @@ import SwiftUI
 
 struct FocusedCardView: View {
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.modelContext) private var modelContext
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     let record: CatRecord
+    let onClose: (() -> Void)?
 
-    @State private var nickname: String
-    @State private var note: String
-    @State private var placeName: String
-    @State private var placeDetail: String
-    @State private var style: CardStyle
     @State private var isEditing = false
-    @State private var showingDeleteConfirmation = false
-    @State private var errorMessage: String?
 
-    init(record: CatRecord) {
+    init(record: CatRecord, onClose: (() -> Void)? = nil) {
         self.record = record
-        _nickname = State(initialValue: record.nickname)
-        _note = State(initialValue: record.note)
-        _placeName = State(initialValue: record.placeName)
-        _placeDetail = State(initialValue: record.placeDetail)
-        _style = State(initialValue: record.cardStyle)
+        self.onClose = onClose
     }
 
     var body: some View {
@@ -32,7 +21,7 @@ struct FocusedCardView: View {
             CatLocalBackground()
                 .overlay(CatLocalTheme.primaryText.opacity(0.05))
 
-            VStack(spacing: 16) {
+            VStack(spacing: 12) {
                 topBar
 
                 Spacer(minLength: 0)
@@ -40,8 +29,8 @@ struct FocusedCardView: View {
                 LiveInteractiveCardView(width: nil, height: nil, cornerRadius: 34) {
                     CatCardView(record: record, presentation: .focused)
                 }
-                    .frame(maxWidth: dynamicTypeSize.isAccessibilitySize ? 335 : 365)
-                    .aspectRatio(0.67, contentMode: .fit)
+                    .frame(maxWidth: dynamicTypeSize.isAccessibilitySize ? 350 : 390)
+                    .aspectRatio(0.64, contentMode: .fit)
 
                 Label(
                     reduceMotion ? "Lighting motion is reduced" : "Drag to catch the light",
@@ -55,49 +44,34 @@ struct FocusedCardView: View {
                 .lineLimit(2)
                 .multilineTextAlignment(.center)
 
-                Spacer(minLength: dynamicTypeSize.isAccessibilitySize ? 44 : 84)
+                Spacer(minLength: dynamicTypeSize.isAccessibilitySize ? 24 : 48)
             }
-            .padding(.horizontal, CatLocalTheme.screenHorizontalPadding)
+            .padding(.horizontal, dynamicTypeSize.isAccessibilitySize ? 8 : 10)
             .padding(.top, 12)
         }
         .sheet(isPresented: $isEditing) {
-            editSheet
+            CatRecordEditSheet(record: record) {
+                closeFocusedCat()
+            }
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
                 .presentationContentInteraction(.resizes)
         }
-        .confirmationDialog(
-            "Delete this card?",
-            isPresented: $showingDeleteConfirmation,
-            titleVisibility: .visible
-        ) {
-            Button("Delete Card", role: .destructive) {
-                Task { await deleteRecord() }
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("The original photo, cutout, notes, and card will be removed from this iPhone.")
-        }
-        .alert("Could not update card", isPresented: .constant(errorMessage != nil)) {
-            Button("OK") { errorMessage = nil }
-        } message: {
-            Text(errorMessage ?? "")
-        }
-        .accessibilityAction(.escape) { dismiss() }
+        .accessibilityAction(.escape) { closeFocusedCat() }
     }
 
     private var topBar: some View {
         CatGlassGroup(spacing: 18) {
             HStack {
                 Button {
-                    dismiss()
+                    closeFocusedCat()
                 } label: {
                     Image(systemName: "xmark")
                         .frame(width: 46, height: 46)
                         .catGlass(cornerRadius: 23, interactive: true)
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("Close card")
+                .accessibilityLabel("Close cat")
 
                 Spacer()
 
@@ -116,13 +90,45 @@ struct FocusedCardView: View {
         .foregroundStyle(CatLocalTheme.primaryText)
     }
 
-    private var editSheet: some View {
+    private func closeFocusedCat() {
+        if let onClose {
+            onClose()
+        } else {
+            dismiss()
+        }
+    }
+}
+
+struct CatRecordEditSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
+
+    let record: CatRecord
+    let onDeleted: (() -> Void)?
+
+    @State private var nickname: String
+    @State private var note: String
+    @State private var placeName: String
+    @State private var placeDetail: String
+    @State private var showingDeleteConfirmation = false
+    @State private var errorMessage: String?
+
+    init(record: CatRecord, onDeleted: (() -> Void)? = nil) {
+        self.record = record
+        self.onDeleted = onDeleted
+        _nickname = State(initialValue: record.nickname)
+        _note = State(initialValue: record.note)
+        _placeName = State(initialValue: record.placeName)
+        _placeDetail = State(initialValue: record.placeDetail)
+    }
+
+    var body: some View {
         NavigationStack {
             ZStack {
                 CatLocalBackground()
 
                 Form {
-                    Section("Card") {
+                    Section("Cat") {
                         TextField("Nickname", text: $nickname)
                             .textInputAutocapitalization(.words)
 
@@ -130,8 +136,8 @@ struct FocusedCardView: View {
                             .lineLimit(3...7)
                     }
 
-                    Section("Memory Atlas") {
-                        TextField("Memory place", text: $placeName)
+                    Section("Catlas") {
+                        TextField("Memory Place", text: $placeName)
                             .textInputAutocapitalization(.words)
 
                         TextField("Place detail", text: $placeDetail, axis: .vertical)
@@ -143,35 +149,20 @@ struct FocusedCardView: View {
                             .foregroundStyle(.secondary)
                     }
 
-                    Section("Design") {
-                        Picker("Card style", selection: $style) {
-                            ForEach(CardStyle.allCases) { style in
-                                Text(style.title).tag(style)
-                            }
-                        }
-                        .pickerStyle(.segmented)
-                    }
-
                     Section {
-                        Button("Delete Card", role: .destructive) {
-                            isEditing = false
+                        Button("Delete Cat", role: .destructive) {
                             showingDeleteConfirmation = true
                         }
                     }
                 }
                 .scrollContentBackground(.hidden)
             }
-            .navigationTitle("Edit Card")
+            .navigationTitle("Edit Cat")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
-                        nickname = record.nickname
-                        note = record.note
-                        placeName = record.placeName
-                        placeDetail = record.placeDetail
-                        style = record.cardStyle
-                        isEditing = false
+                        dismiss()
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {
@@ -180,24 +171,36 @@ struct FocusedCardView: View {
                 }
             }
         }
-    }
-
-    private func saveChanges() {
-        record.nickname = nickname
-        record.note = note
-        record.placeName = trimmedMemoryText(placeName)
-        record.placeDetail = trimmedMemoryText(placeDetail)
-        record.cardStyle = style
-        do {
-            try modelContext.save()
-            isEditing = false
-        } catch {
-            errorMessage = error.localizedDescription
+        .confirmationDialog(
+            "Delete this cat?",
+            isPresented: $showingDeleteConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Delete Cat", role: .destructive) {
+                Task { await deleteRecord() }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("The original photo, cutout, notes, and cat will be removed from this iPhone.")
+        }
+        .alert("Could not update cat", isPresented: .constant(errorMessage != nil)) {
+            Button("OK") { errorMessage = nil }
+        } message: {
+            Text(errorMessage ?? "")
         }
     }
 
-    private func trimmedMemoryText(_ value: String) -> String {
-        value.trimmingCharacters(in: .whitespacesAndNewlines)
+    private func saveChanges() {
+        record.nickname = trimmedMemoryText(nickname)
+        record.note = note
+        record.placeName = trimmedMemoryText(placeName)
+        record.placeDetail = trimmedMemoryText(placeDetail)
+        do {
+            try modelContext.save()
+            dismiss()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 
     private func deleteRecord() async {
@@ -206,8 +209,13 @@ struct FocusedCardView: View {
             modelContext.delete(record)
             try modelContext.save()
             dismiss()
+            onDeleted?()
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    private func trimmedMemoryText(_ value: String) -> String {
+        value.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }

@@ -13,7 +13,7 @@ encounters into tactile collectible cards.
 ## Privacy
 
 - No account, backend, public map, GPS coordinates, advertising, or cloud AI.
-- Memory Atlas place labels are typed intentionally by you and stay local.
+- Catlas place labels are typed intentionally by you and stay local.
 - Originals are rewritten without EXIF or GPS metadata before local storage.
 - Cat recognition and foreground separation happen on the device.
 
@@ -29,7 +29,7 @@ Open `CatLocal.xcodeproj` and run the shared `CatLocal` scheme.
 
 - `CatLocal/App`: app entry point and root navigation.
 - `CatLocal/Core`: SwiftData model and camera/image/Vision services.
-- `CatLocal/Features`: capture, collection, and settings screens.
+- `CatLocal/Features`: capture, Home/Catlas, and settings screens.
 - `CatLocal/Shared`: design system and reusable UI components.
 - `CatLocal/Resources`: asset catalog.
 - `docs/architecture.md`: implementation architecture and handoff notes.

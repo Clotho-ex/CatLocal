@@ -1,9 +1,10 @@
 import SwiftUI
 
 struct RootView: View {
-    @State private var selectedTab: AppTab = .collection
-    @State private var lastContentTab: AppTab = .collection
+    @State private var selectedTab: AppTab = .home
+    @State private var lastContentTab: AppTab = .home
     @State private var presentedSheet: AppSheet?
+    @State private var homeReselectionID = 0
 
     var body: some View {
         nativeTabs
@@ -24,6 +25,10 @@ struct RootView: View {
                 return
             }
 
+            if selectedTab == .home, newTab == .home {
+                homeReselectionID += 1
+            }
+
             selectedTab = newTab
             lastContentTab = newTab
         }
@@ -33,9 +38,12 @@ struct RootView: View {
     private var nativeTabs: some View {
         if #available(iOS 26.0, *) {
             TabView(selection: tabSelection) {
-                Tab("Collection", systemImage: "rectangle.stack", value: AppTab.collection) {
+                Tab("Home", systemImage: "house", value: AppTab.home) {
                     tabContent {
-                        CollectionView(onCaptureRequested: presentCapture)
+                        CollectionView(
+                            onCaptureRequested: presentCapture,
+                            homeReselectionID: homeReselectionID
+                        )
                     }
                 }
 
@@ -47,19 +55,25 @@ struct RootView: View {
 
                 Tab(value: AppTab.capture, role: .search) {
                     tabContent {
-                        CollectionView(onCaptureRequested: presentCapture)
+                        CollectionView(
+                            onCaptureRequested: presentCapture,
+                            homeReselectionID: homeReselectionID
+                        )
                     }
                 } label: {
-                    cameraTabLabel
+                    Label("Camera", systemImage: "camera")
                 }
             }
             .tabViewStyle(.sidebarAdaptable)
             .tint(CatLocalTheme.blueAction)
         } else {
             TabView(selection: tabSelection) {
-                Tab("Collection", systemImage: "rectangle.stack", value: AppTab.collection) {
+                Tab("Home", systemImage: "house", value: AppTab.home) {
                     tabContent {
-                        CollectionView(onCaptureRequested: presentCapture)
+                        CollectionView(
+                            onCaptureRequested: presentCapture,
+                            homeReselectionID: homeReselectionID
+                        )
                     }
                 }
 
@@ -71,10 +85,13 @@ struct RootView: View {
 
                 Tab(value: AppTab.capture) {
                     tabContent {
-                        CollectionView(onCaptureRequested: presentCapture)
+                        CollectionView(
+                            onCaptureRequested: presentCapture,
+                            homeReselectionID: homeReselectionID
+                        )
                     }
                 } label: {
-                    cameraTabLabel
+                    Label("Camera", systemImage: "camera")
                 }
             }
             .tabViewStyle(.sidebarAdaptable)
@@ -96,18 +113,10 @@ struct RootView: View {
         presentedSheet = .capture
     }
 
-    private var cameraTabLabel: some View {
-        Label {
-            Text("Camera")
-        } icon: {
-            Image("CameraTabIcon")
-                .renderingMode(.original)
-        }
-    }
 }
 
 enum AppTab: Hashable {
-    case collection
+    case home
     case settings
     case capture
 }

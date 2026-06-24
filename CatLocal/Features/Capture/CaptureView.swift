@@ -20,8 +20,6 @@ struct CaptureView: View {
     @State private var note = ""
     @State private var placeName = ""
     @State private var placeDetail = ""
-    @State private var styleSeed = Int.random(in: 0...Int.max)
-    @State private var selectedStyle = CardStyle.archive
     @State private var errorMessage: String?
     @State private var canUseForegroundFallback = false
     @State private var isSaving = false
@@ -124,7 +122,7 @@ struct CaptureView: View {
             Text("Give them a little room")
                 .font(.title3.weight(.semibold))
                 .lineLimit(nil)
-            Text("Keep the whole cat visible for the cleanest card cutout.")
+            Text("Keep the whole cat visible for the cleanest cutout.")
                 .font(.subheadline)
                 .foregroundStyle(.white.opacity(0.76))
                 .lineLimit(nil)
@@ -299,7 +297,7 @@ struct CaptureView: View {
                     }
 
                     VStack(spacing: 8) {
-                        Text("Which cat gets the card?")
+                        Text("Which cat should CatLocal save?")
                             .font(.title2.weight(.semibold))
                             .foregroundStyle(CatLocalTheme.primaryText)
                             .multilineTextAlignment(.center)
@@ -357,8 +355,7 @@ struct CaptureView: View {
                             name: nickname,
                             note: note,
                             placeName: placeName,
-                            placeDetail: placeDetail,
-                            style: selectedStyle
+                            placeDetail: placeDetail
                         )
                         .frame(maxWidth: 350)
                         .transition(.scale(scale: 0.9).combined(with: .opacity))
@@ -385,16 +382,16 @@ struct CaptureView: View {
                             .focused($focusedEditorField, equals: .note)
                             .catInputSurface()
 
-                        Text("MEMORY ATLAS")
+                        Text("CATLAS")
                             .font(.caption2.weight(.bold))
                             .tracking(1.8)
                             .foregroundStyle(CatLocalTheme.secondaryText)
 
-                        TextField("Memory place (optional)", text: $placeName)
+                        TextField("Memory Place (optional)", text: $placeName)
                             .textInputAutocapitalization(.words)
                             .focused($focusedEditorField, equals: .placeName)
                             .catInputSurface()
-                            .accessibilityHint("Adds a manual place label to the private memory atlas")
+                            .accessibilityHint("Adds a manual place label to the private Catlas")
 
                         TextField("Place detail (optional)", text: $placeDetail, axis: .vertical)
                             .lineLimit(1...3)
@@ -406,18 +403,6 @@ struct CaptureView: View {
                             .font(.footnote)
                             .foregroundStyle(CatLocalTheme.secondaryText)
                             .lineLimit(nil)
-
-                        Text("CARD DESIGN")
-                            .font(.caption2.weight(.bold))
-                            .tracking(1.8)
-                            .foregroundStyle(CatLocalTheme.secondaryText)
-
-                        Picker("Card design", selection: $selectedStyle) {
-                            ForEach(CardStyle.allCases) { style in
-                                Text(style.title).tag(style)
-                            }
-                        }
-                        .pickerStyle(.segmented)
                     }
                     .padding(18)
                     .catPanelSurface(fillOpacity: 0.86, shadowOpacity: 0.18)
@@ -464,10 +449,10 @@ struct CaptureView: View {
 
     private var editorStageTitle: some View {
         VStack(spacing: 2) {
-            Text("A new local")
+            Text("A new cat")
                 .font(.headline)
                 .foregroundStyle(CatLocalTheme.primaryText)
-            Text("Surprise: \(selectedStyle.title)")
+            Text("Number \(nextSequence.formatted())")
                 .font(.caption)
                 .foregroundStyle(CatLocalTheme.secondaryText)
         }
@@ -485,8 +470,8 @@ struct CaptureView: View {
                     ProgressView()
                         .tint(.white)
                 }
-                Image(systemName: isSaving ? "hourglass" : "rectangle.stack.badge.plus")
-                Text(isSaving ? "Saving privately" : "Add to Collection")
+                Image(systemName: isSaving ? "hourglass" : "cat.fill")
+                Text(isSaving ? "Saving privately" : "Add Cat")
                     .lineLimit(2)
             }
             .font(.headline)
@@ -494,7 +479,7 @@ struct CaptureView: View {
         }
         .buttonStyle(.plain)
         .disabled(isSaving)
-        .accessibilityHint("Saves the card and image variants on this iPhone")
+        .accessibilityHint("Saves the cat and image variants on this iPhone")
     }
 
     private var failureScreen: some View {
@@ -510,7 +495,7 @@ struct CaptureView: View {
                     Text("That one was tricky")
                         .font(.system(size: 31, weight: .semibold))
                         .foregroundStyle(CatLocalTheme.primaryText)
-                    Text(errorMessage ?? "CatLocal could not create a clean card from this photo.")
+                    Text(errorMessage ?? "CatLocal could not create a clean cat cutout from this photo.")
                         .multilineTextAlignment(.center)
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: 320)
@@ -628,8 +613,6 @@ struct CaptureView: View {
                 detection: detection
             )
             cutoutImage = result.value
-            styleSeed = Int.random(in: 0...Int.max)
-            selectedStyle = CardStyle.deterministic(seed: styleSeed)
             errorMessage = nil
             stage = .editing
         } catch {
@@ -640,7 +623,7 @@ struct CaptureView: View {
 
     private func saveCard() async {
         guard let originalImage, let cutoutImage else {
-            fail(with: "The card images are missing. Please try the capture again.")
+            fail(with: "The cat images are missing. Please try the capture again.")
             return
         }
 
@@ -655,13 +638,13 @@ struct CaptureView: View {
             let record = CatRecord(
                 id: id,
                 sequence: nextSequence,
-                nickname: nickname,
+                nickname: savedNickname,
                 note: note,
                 placeName: trimmedMemoryText(placeName),
                 placeDetail: trimmedMemoryText(placeDetail),
                 source: source,
-                cardStyle: selectedStyle,
-                styleSeed: styleSeed,
+                cardStyle: .archive,
+                styleSeed: 0,
                 originalImagePath: stored.originalPath,
                 cutoutImagePath: stored.cutoutPath,
                 thumbnailImagePath: stored.thumbnailPath
@@ -712,6 +695,14 @@ struct CaptureView: View {
 
     private func trimmedMemoryText(_ value: String) -> String {
         value.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var savedNickname: String {
+        let trimmedName = trimmedMemoryText(nickname)
+        guard trimmedName.isEmpty else { return trimmedName }
+
+        let existingNames = Set(existingRecords.map(\.displayName))
+        return CatNamePool.randomName(excluding: existingNames)
     }
 }
 

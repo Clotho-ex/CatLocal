@@ -58,8 +58,8 @@ struct CatLocalApp: App {
                 placeName: "Garden Wall",
                 placeDetail: "",
                 source: .photoLibrary,
-                cardStyle: .sunstamp,
-                styleSeed: 1,
+                cardStyle: .archive,
+                styleSeed: 0,
                 originalImagePath: "ui-test/original.heic",
                 cutoutImagePath: "ui-test/cutout.png",
                 thumbnailImagePath: "ui-test/thumbnail.png"
@@ -72,8 +72,8 @@ struct CatLocalApp: App {
                 placeName: "",
                 placeDetail: "",
                 source: .camera,
-                cardStyle: .clear,
-                styleSeed: 2,
+                cardStyle: .archive,
+                styleSeed: 0,
                 originalImagePath: "ui-test/original.heic",
                 cutoutImagePath: "ui-test/cutout.png",
                 thumbnailImagePath: "ui-test/thumbnail.png"

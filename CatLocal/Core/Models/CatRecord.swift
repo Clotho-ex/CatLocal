@@ -58,7 +58,7 @@ final class CatRecord {
 
     var displayName: String {
         let trimmed = nickname.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? "Local \(sequence.formatted(.number.precision(.integerLength(3))))" : trimmed
+        return trimmed.isEmpty ? CatNamePool.stableName(id: id, sequence: sequence) : trimmed
     }
 
     var memoryPlaceName: String? {
@@ -100,20 +100,57 @@ enum CardStyle: String, Codable, CaseIterable, Identifiable, Sendable {
     case archive
     case sunstamp
     case clear
+    case garden
+    case midnight
+    case apricot
 
     var id: String { rawValue }
 
-    var title: String {
-        switch self {
-        case .archive: "Archive"
-        case .sunstamp: "Sunstamp"
-        case .clear: "Clear"
-        }
+    static func deterministic(seed: Int) -> CardStyle {
+        .archive
+    }
+}
+
+enum CatNamePool {
+    static let names: [String] = [
+        "Nimbus Nibbler", "Juniper Jumps", "Maple Menace", "Velvet Voltage", "Cosmic Crumbs",
+        "Mothball Monarch", "Cricket Commander", "Pickpocket Peach", "Snuggle Static", "Marble Mirage",
+        "Purrlock Holmes", "Fennel Phantom", "Wobblesworth", "Cherry Chomper", "Dust Bunny",
+        "Hazel Hiccup", "Sugar Goblin", "Zipper Zephyr", "Mango Minister", "Taco Bandolier",
+        "Coconut Courier", "Quasar Kitty", "Pancetta Paws", "Bubble Baroness", "Tofu Tycoon",
+        "Licorice Lurker", "Mittens McZoom", "Pistachio Phantom", "Yogurt Yeti", "Ramen Ranger",
+        "Gizmo Gremlin", "Peachy Purrkins", "Froyo Bandit", "Sprout Sniper", "Muffler Munch",
+        "Cactus Cuddles", "Tiramisu Tiger", "Pillow Pirate", "Clover Comet", "Bumble Beans",
+        "Sardine Sultan", "Mulberry Mew", "Whisker Wobble", "Plum Bandit", "Cabbage King",
+        "Dizzy Dumpling", "Sushi Specter", "Brûlée Bandit", "Cereal Baron", "Mochaccino Mew",
+        "Turbo Tofu", "Lemon Loaf", "Bramble Biscuit", "Caramel Gremlin", "Snail Sprinter",
+        "Paprika Purr", "Taco Phantom", "Pearl Pouncer", "Meringue Menace", "Saffron Sultan",
+        "Cuddle Circuit", "Cloudberry Cat", "Bumble Baron", "Tuna Typhoon", "Riceball Rogue",
+        "Hazelnut Houdini", "Kiki Kaboom", "Marshmallow Mage", "Zucchini Zoomer", "Cashew Count",
+        "Lentil Legend", "Pickled Phantom", "Purrito Bandit", "Wiggle Wizard", "Couscous Captain",
+        "Mango Monarch", "Bento Bandit", "Twinkle Tofu", "Macaron Marauder", "Basil Bandit",
+        "Carrot Comet", "Nectarine Ninja", "Snuggle Sphinx", "Grape Goblin", "Crackle Cat",
+        "Poppy Phantom", "Coconut Countess", "Mushroom Mayor", "Papaya Pirate", "Fizzy Feline",
+        "Butterscotch Boss", "Hazel Hopper", "Slinky Sultan", "Cranberry Count", "Purrfect Storm",
+        "Chonky Chimera", "Dandelion Dash", "Nori Nomad", "Miso Meteor", "Burrito Baron",
+        "Sable Scooter", "Cheeky Chestnut", "Tangerine Trickster", "Pecan Pouncer", "Mellow Mackerel",
+        "Fudge Falcon", "Curry Cloud", "Waffle Wraith", "Peanut Phantom", "Loki Loaf",
+        "Sultan Snuggle", "Mango Mancer", "Tumble Truffle", "Cocoa Courier", "Whimsy Whiskers",
+        "Pillow Pasha", "Moonbeam Miso", "Sprinkles McPurr", "Biscuit Mirage", "Taffy Tycoon",
+        "Karamel Kitty", "Simit Sultan", "Lokum Loafer", "Börek Bandit", "Meze Monarch",
+        "Kumpir King", "Ayran Admiral", "Dolma Drifter", "Zeytin Zoomer", "Künefe Comet"
+    ]
+
+    static func randomName(excluding existingNames: Set<String> = []) -> String {
+        let availableNames = names.filter { !existingNames.contains($0) }
+        return (availableNames.isEmpty ? names : availableNames).randomElement() ?? "Nimbus Nibbler"
     }
 
-    static func deterministic(seed: Int) -> CardStyle {
-        let styles = allCases
-        return styles[abs(seed) % styles.count]
+    static func stableName(id: UUID, sequence: Int) -> String {
+        let seed = id.uuidString.unicodeScalars.reduce(sequence) { partial, scalar in
+            partial + Int(scalar.value)
+        }
+        return names[abs(seed) % names.count]
     }
 }
 

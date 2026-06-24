@@ -7,13 +7,32 @@ import UIKit
 
 struct CatLocalCoreTests {
     @Test
-    func cardStyleIsDeterministic() {
+    func cardStyleDefaultsToArchiveForLegacySeeds() {
         for seed in [0, 1, 2, 3, 77, 9_999] {
-            #expect(CardStyle.deterministic(seed: seed) == CardStyle.deterministic(seed: seed))
+            #expect(CardStyle.deterministic(seed: seed) == .archive)
         }
-        #expect(CardStyle.deterministic(seed: 0) == .archive)
-        #expect(CardStyle.deterministic(seed: 1) == .sunstamp)
-        #expect(CardStyle.deterministic(seed: 2) == .clear)
+    }
+
+    @Test
+    func unnamedCatsUseFunnyNamePool() {
+        #expect(CatNamePool.names.count == 130)
+        #expect(Set(CatNamePool.names).count == 130)
+
+        let record = CatRecord(
+            id: UUID(uuidString: "11111111-1111-1111-1111-111111111111")!,
+            sequence: 1,
+            nickname: "",
+            note: "",
+            source: .camera,
+            cardStyle: .archive,
+            styleSeed: 0,
+            originalImagePath: "id/original.heic",
+            cutoutImagePath: "id/cutout.png",
+            thumbnailImagePath: "id/thumbnail.png"
+        )
+
+        #expect(CatNamePool.names.contains(record.displayName))
+        #expect(record.displayName != "Cat 1")
     }
 
     @Test

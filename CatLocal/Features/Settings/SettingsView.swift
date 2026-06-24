@@ -10,32 +10,36 @@ struct SettingsView: View {
     @State private var errorMessage: String?
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
-                header
-                privacyCard
-                storageCard
-                aboutCard
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    privacyCard
+                    storageCard
+                    aboutCard
+                }
+                .padding(.horizontal, CatLocalTheme.screenHorizontalPadding)
+                .padding(.top, 18)
+                .padding(.bottom, 140)
             }
-            .padding(.horizontal, CatLocalTheme.screenHorizontalPadding)
-            .padding(.top, 18)
-            .padding(.bottom, 140)
+            .navigationTitle("Settings")
+            .navigationBarTitleDisplayMode(.large)
+            .scrollIndicators(.hidden)
+            .toolbarBackground(.visible, for: .navigationBar)
         }
-        .scrollIndicators(.hidden)
         .task {
             await refreshStorage()
         }
         .confirmationDialog(
-            "Delete the entire collection?",
+            "Delete every cat?",
             isPresented: $showingDeleteConfirmation,
             titleVisibility: .visible
         ) {
-            Button("Delete All Cards", role: .destructive) {
+            Button("Delete All Cats", role: .destructive) {
                 Task { await deleteAll() }
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("Every stored photo, cutout, note, and card will be permanently removed from this iPhone.")
+            Text("Every stored photo, cutout, note, and cat will be permanently removed from this iPhone.")
         }
         .alert("Could not update storage", isPresented: .constant(errorMessage != nil)) {
             Button("OK") { errorMessage = nil }
@@ -45,26 +49,23 @@ struct SettingsView: View {
         .accessibilityIdentifier("settings-screen")
     }
 
-    private var header: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text("Settings")
-                .font(.largeTitle.weight(.semibold))
-                .foregroundStyle(CatLocalTheme.primaryText)
-                .lineLimit(2)
-
-            Text("PRIVACY & STORAGE")
-                .font(.system(size: 12, weight: .semibold))
-                .tracking(2.4)
-                .foregroundStyle(CatLocalTheme.secondaryText)
-        }
-    }
-
     private var privacyCard: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Label("On this iPhone, by design", systemImage: "lock.shield.fill")
-                .font(.headline.weight(.semibold))
-                .foregroundStyle(CatLocalTheme.primaryText)
-                .lineLimit(nil)
+        VStack(alignment: .leading, spacing: 18) {
+            VStack(spacing: 10) {
+                Image(systemName: "lock.shield.fill")
+                    .font(.system(size: 24, weight: .semibold))
+                    .foregroundStyle(CatLocalTheme.infoSymbol)
+                    .frame(width: 48, height: 48)
+                    .background(CatLocalTheme.elevatedSurface.opacity(0.76), in: Circle())
+
+                Text("On this iPhone, by Design")
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(CatLocalTheme.primaryText)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(nil)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 4)
 
             VStack(alignment: .leading, spacing: 13) {
                 privacyRow(
@@ -80,7 +81,7 @@ struct SettingsView: View {
                 privacyRow(
                     icon: "location.slash.fill",
                     title: "Location",
-                    detail: "CatLocal does not request GPS or save coordinates. Memory Atlas labels are typed by you."
+                    detail: "CatLocal does not request GPS or save coordinates. Catlas labels are typed by you."
                 )
                 privacyRow(
                     icon: "network.slash",
@@ -106,14 +107,14 @@ struct SettingsView: View {
             Button(role: .destructive) {
                 showingDeleteConfirmation = true
             } label: {
-                Label("Delete Entire Collection", systemImage: "trash")
+                Label("Delete All Cats", systemImage: "trash")
                     .font(.headline)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.vertical, 10)
             }
             .disabled(records.isEmpty)
             .opacity(records.isEmpty ? 0.45 : 1)
-            .accessibilityHint("Permanently removes every stored card and local image")
+            .accessibilityHint("Permanently removes every stored cat and local image")
         }
         .padding(18)
         .catPanelSurface()
@@ -129,10 +130,10 @@ struct SettingsView: View {
 
     private var storageSummaryText: some View {
         VStack(alignment: .leading, spacing: 3) {
-            Text("Local storage")
+            Text("Local Storage")
                 .font(.headline)
                 .foregroundStyle(CatLocalTheme.primaryText)
-            Text("\(records.count) cards · \(storageText)")
+            Text("\(catCountText(records.count)) - \(storageText)")
                 .font(.subheadline)
                 .foregroundStyle(CatLocalTheme.secondaryText)
                 .lineLimit(nil)
@@ -142,7 +143,7 @@ struct SettingsView: View {
     private var storageIcon: some View {
         Image(systemName: "internaldrive.fill")
             .font(.title2)
-            .foregroundStyle(CatLocalTheme.blueAction)
+            .foregroundStyle(CatLocalTheme.infoSymbol)
             .accessibilityHidden(true)
     }
 
@@ -169,7 +170,7 @@ struct SettingsView: View {
         HStack(alignment: .top, spacing: 13) {
             Image(systemName: icon)
                 .font(.system(size: 17, weight: .semibold))
-                .foregroundStyle(CatLocalTheme.warning)
+                .foregroundStyle(symbolColor(for: icon))
                 .frame(width: 30)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 3) {
@@ -183,6 +184,21 @@ struct SettingsView: View {
             }
         }
         .accessibilityElement(children: .combine)
+    }
+
+    private func symbolColor(for icon: String) -> Color {
+        switch icon {
+        case "camera.fill", "brain.head.profile":
+            CatLocalTheme.infoSymbol
+        case "trash":
+            CatLocalTheme.dangerSymbol
+        default:
+            CatLocalTheme.neutralSymbol
+        }
+    }
+
+    private func catCountText(_ count: Int) -> String {
+        count == 1 ? "1 cat" : "\(count) cats"
     }
 
     private func refreshStorage() async {

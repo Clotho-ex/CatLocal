@@ -49,6 +49,26 @@ enum CatLocalTheme {
         light: UIColor(hex: 0x1A2F25),
         dark: UIColor(hex: 0x8FA89B)
     )
+    static let information = Color(
+        light: UIColor(hex: 0x2F6F5E),
+        dark: UIColor(hex: 0x8EC8B5)
+    )
+    static let positive = Color(
+        light: UIColor(hex: 0x2F7C4F),
+        dark: UIColor(hex: 0x91D7A9)
+    )
+    static let neutralSymbol = secondaryText
+    static let infoSymbol = information
+    static let dangerSymbol = warning
+    static let successSymbol = positive
+    static let memoryPlaceFill = Color(
+        light: UIColor(hex: 0xDCE7DB, alpha: 0.88),
+        dark: UIColor(hex: 0x203329, alpha: 0.92)
+    )
+    static let memoryPlaceStroke = Color(
+        light: UIColor(hex: 0x2F6F5E, alpha: 0.22),
+        dark: UIColor(hex: 0x8EC8B5, alpha: 0.24)
+    )
 
     static let limestone = background
     static let chalk = elevatedSurface
@@ -56,31 +76,6 @@ enum CatLocalTheme {
     static let ink = primaryText
     static let apricot = warning
     static let cobalt = blueAction
-
-    static func accent(for style: CardStyle) -> Color {
-        switch style {
-        case .archive: secondaryText
-        case .sunstamp: warning
-        case .clear: blueAction
-        }
-    }
-
-    static func paperSurface(for style: CardStyle) -> Color {
-        switch style {
-        case .archive:
-            cardSurface
-        case .sunstamp:
-            Color(
-                light: UIColor(hex: 0xFAF8F5),
-                dark: UIColor(hex: 0x262927)
-            )
-        case .clear:
-            Color(
-                light: UIColor(hex: 0xFAF8F5),
-                dark: UIColor(hex: 0x262927)
-            )
-        }
-    }
 
     static let screenHorizontalPadding: CGFloat = 22
     static let largePanelRadius: CGFloat = 32
