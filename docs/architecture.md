@@ -49,9 +49,10 @@ The app uses `.tabViewStyle(.sidebarAdaptable)` rather than a custom tab bar. Th
 
 1. The user captures or imports an image in `CaptureView`.
 2. `CatVisionProcessor` detects cats and generates a transparent cutout on device.
-3. `CatImageStore` writes sanitized, downsampled image variants into Application Support.
-4. A `CatRecord` stores metadata and local filenames with SwiftData.
-5. `CollectionView` queries records and renders cards through shared UI components.
+3. The selected Vision detection bounding box is carried through the editor so the card renderer can center off-axis cats without mutating image bytes.
+4. `CatImageStore` writes sanitized, downsampled image variants into Application Support.
+5. A `CatRecord` stores metadata, the optional cat bounding box, and local filenames with SwiftData.
+6. `CollectionView` queries records and renders cards through shared UI components.
 
 ## Persistence
 
@@ -60,7 +61,8 @@ The app uses `.tabViewStyle(.sidebarAdaptable)` rather than a custom tab bar. Th
 - nickname
 - notes
 - capture date
-- deterministic card style
+- selected card style
+- optional normalized Vision bounding box for card cutout centering
 - local filenames for original, cutout, and thumbnail variants
 
 Image bytes are not stored in SwiftData. They live in Application Support so deletion and recompression can be handled by `CatImageStore`.
@@ -92,6 +94,34 @@ Keep Liquid Glass restrained:
 - Use native iOS 26 glass for tab/navigation and compact actions.
 - Keep card collection surfaces tactile and editorial, not glassy.
 - Provide iOS 18-25 material/stroke/shadow fallbacks when custom glass is unavoidable.
+
+## Current Card Rendering Handoff
+
+The card renderer now supports the expanded style set:
+
+- `archive`, `sunstamp`, `clear`
+- `garden`, `midnight`, `apricot`
+- `prism`, `gold`, `topo`
+
+Implementation notes from the foil polish pass:
+
+- `LiveInteractiveCardView` passes `rotateX`, `rotateY`, and `isInteracting` into its content closure. Keep this signature when adding focused-card effects.
+- Focused foil and spotlight effects are intentionally hidden until touch. Static previews can show foil, but the focused baseline should stay calm.
+- `prism` and `gold` use permanent dark base surfaces so blend modes do not wash out in light or dark mode.
+- `topo` is procedural and asset-free: it uses seeded gradients plus lightweight `Shape` contour strokes. Do not replace it with a heavy per-frame `Canvas` in scrolling contexts.
+- `presentation == .thumbnail` must ignore live tilt and stay cheap. Home grid thumbnails are deliberately blurred/material-muted until a card is focused.
+- The home grid wraps card buttons in an explicit aspect-ratio hit box. Preserve that wrapper so cards do not steal touches from the `Catlas` segmented control.
+- Card style selection uses an infinite-feeling carousel by rendering repeated style cycles and recentering near the ends. Selection haptics fire when the centered style changes.
+
+## Editing Handoff
+
+Card text is not directly editable on the card. The current accepted UX is:
+
+- `CaptureView` shows a draft card preview plus separate nickname, note, and Catlas fields.
+- `CatRecordEditSheet` keeps editing in sheet fields.
+- `CatCardView` renders card text as display text only.
+
+Avoid reintroducing inline card `TextField`s for cat names unless the editing model is redesigned intentionally.
 
 ## Testing Focus
 

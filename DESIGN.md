@@ -70,18 +70,18 @@ Use `CatLocalTheme` tokens instead of hardcoded colors.
 
 | Token                            | Light            | Dark                | Role                               |
 | -------------------------------- | ---------------- | ------------------- | ---------------------------------- |
-| `background` / `limestone`       | `#F2EDE4`        | `#121413`           | App background                     |
-| `backgroundGlow`                 | `#FAF8F5`        | `#1C1E1D`           | Top-left radial glow               |
-| `elevatedSurface` / `chalk`      | `#E6DFD3`        | `#1C1E1D`           | Empty states, image stages, inputs |
-| `cardSurface`                    | `#FAF8F5`        | `#262927`           | Card and settings surfaces         |
-| `primaryText` / `forest` / `ink` | `#1A2F25`        | `#8FA89B`           | Titles and primary content         |
-| `secondaryText`                  | `#6E6A61`        | `#91948F`           | Metadata and supporting text       |
-| `separator`                      | `#1A2F25` at 12% | `#8FA89B` at 16%    | Dividers                           |
-| `imageOutline`                   | black at 10%     | white at 10%        | Image/card strokes                 |
-| `shadow`                         | `#1A2F25` at 16% | black at 45%        | Depth                              |
-| `blueAction` / `cobalt`          | RGB `0, 0.32, 1` | RGB `0.30, 0.58, 1` | Primary actions                    |
-| `warning` / `apricot`            | `#D95B32`        | `#FF7A59`           | Warnings                           |
-| `sage`                           | `#1A2F25`        | `#8FA89B`           | Background wash and card tone      |
+| `background` / `limestone`       | `#FDFCF9`        | `#0B0C10`           | App background                     |
+| `backgroundGlow`                 | `#FFFFFF`        | `#1E212B`           | Top-left radial glow               |
+| `elevatedSurface` / `chalk`      | `#F5F5F7`        | `#16181F`           | Empty states, image stages, inputs |
+| `cardSurface`                    | `#FFFFFF`        | `#1C1E26`           | Card and settings surfaces         |
+| `primaryText` / `forest` / `ink` | `#0D1117`        | `#F0F2F5`           | Titles and primary content         |
+| `secondaryText`                  | `#5C6573`        | `#8B95A5`           | Metadata and supporting text       |
+| `separator`                      | `#0D1117` at 8%  | `#F0F2F5` at 12%    | Dividers                           |
+| `imageOutline`                   | black at 8%      | white at 12%        | Image/card strokes                 |
+| `shadow`                         | `#0D111F` at 12% | black at 55%        | Depth                              |
+| `blueAction` / `cobalt`          | `#005EEC`        | `#4A90E2`           | Primary actions                    |
+| `warning` / `apricot`            | `#FFA300`        | `#FFBD3D`           | Sunny warnings and warm card tones |
+| `sage`                           | `#214D3B`        | `#579174`           | Archive tone and forest accents    |
 
 The app background is layered: a limestone base, a soft top-left radial glow,
 and a subtle diagonal sage-to-apricot wash. Avoid flat single-color screens.
@@ -111,7 +111,7 @@ Shared screen rhythm:
 Card geometry:
 
 - Thumbnail cards use an aspect ratio of `0.72`.
-- Focused cards use an aspect ratio of `0.67`.
+- Focused cards use an aspect ratio of `0.64`.
 - Thumbnail card corner radius is 22pt.
 - Focused card corner radius is 34pt.
 
@@ -133,6 +133,10 @@ Saved cats appear under the `Cats` segmented mode and sort ascending by sequence
 number. `Catlas` groups the same saved cats by manual place labels without
 requesting GPS or storing coordinates.
 
+Home grid thumbnails are intentionally muted with blur/material treatment. The
+premium foil and full-fidelity card surface should be revealed in the focused
+card, not compete with Home navigation.
+
 ### Capture
 
 The camera is full-screen and dark, with camera preview underneath a vertical
@@ -140,8 +144,17 @@ black gradient. Controls are icon-first and glass-backed.
 
 ### Cards
 
-Cards are polished editorial surfaces with one consistent CatLocal treatment.
-Do not expose card theme selection in capture, editing, or focused card views.
+Cards are polished editorial surfaces with a finite theme set: `Archive`,
+`Sunstamp`, `Clear`, `Garden`, `Midnight`, `Apricot`, `Midnight Prism`,
+`Gold Leaf`, and `Topographic`.
+
+Theme selection is exposed through a horizontal carousel in capture and editing.
+The carousel should feel endless by repeating the style set and recentering near
+the ends. It should give a small selection haptic as the centered style changes.
+
+Card text is display-only on the card surface. Names, notes, and Catlas labels
+are edited through capture/editor fields, not inline card `TextField`s.
+
 The card number is a plain sequence number, not a padded collectible ID.
 
 ### Focused Card
@@ -151,6 +164,11 @@ Focused cards are full-screen, immersive, and interactive. They use
 haptics. The supporting label is either `Drag to catch the light` or `Lighting
 motion is reduced` when Reduce Motion is enabled.
 
+Premium foil light should be calm at rest and fade in while touched. `Prism`,
+`Gold`, and `Topographic` effects belong in focused cards and previews; grid
+thumbnails should remain cheap and muted. Topographic must retain visible
+contour lines, not just a rainbow gradient.
+
 ## Motion And Interaction
 
 - Stage transitions in capture use ease-in-out animation over 0.22s.
@@ -158,6 +176,8 @@ motion is reduced` when Reduce Motion is enabled.
 - Focused card tilt clamps at 12 degrees.
 - Drag tilt uses an interactive spring with response 0.25 and damping 0.65.
 - The spotlight is a screen-blended radial gradient using white, faint cyan, and clear.
+- Foil and spotlight opacity are tied to focused-card interaction state so the card has a quiet baseline before touch.
+- Tilt haptics use thresholded selection feedback based on rotation magnitude; avoid continuous buzzing.
 - Respect Reduce Motion by disabling tilt and showing the reduced-motion label.
 - Preserve the one-shot haptic gate at card tilt limits.
 

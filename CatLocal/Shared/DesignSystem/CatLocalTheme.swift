@@ -42,12 +42,12 @@ enum CatLocalTheme {
         dark: UIColor(red: 0.29, green: 0.56, blue: 0.89, alpha: 1)
     )
     static let warning = Color(
-        light: UIColor(red: 1.0, green: 0.34, blue: 0.20, alpha: 1),
-        dark: UIColor(red: 1.0, green: 0.48, blue: 0.35, alpha: 1)
+        light: UIColor(red: 1.0, green: 0.64, blue: 0.0, alpha: 1),
+        dark: UIColor(red: 1.0, green: 0.74, blue: 0.24, alpha: 1)
     )
     static let sage = Color(
-        light: UIColor(red: 0.83, green: 0.89, blue: 0.86, alpha: 1),
-        dark: UIColor(red: 0.14, green: 0.20, blue: 0.22, alpha: 1)
+        light: UIColor(red: 0.13, green: 0.30, blue: 0.23, alpha: 1),
+        dark: UIColor(red: 0.34, green: 0.57, blue: 0.46, alpha: 1)
     )
     static let information = Color(
         light: UIColor(hex: 0x2F6F5E),
@@ -112,6 +112,28 @@ enum CatLocalTheme {
         case .gold:
             Color(red: 0.15, green: 0.11, blue: 0.07)
         }
+    }
+}
+
+extension UIColor {
+    var optimalTextColor: Color {
+        var red: CGFloat = 0
+        var green: CGFloat = 0
+        var blue: CGFloat = 0
+        var alpha: CGFloat = 0
+
+        guard getRed(&red, green: &green, blue: &blue, alpha: &alpha) else {
+            return CatLocalTheme.primaryText
+        }
+
+        let luminance = (red * 0.299) + (green * 0.587) + (blue * 0.114)
+        return luminance > 0.5 ? CatLocalTheme.primaryText : .white
+    }
+}
+
+extension Color {
+    var optimalTextColor: Color {
+        UIColor(self).optimalTextColor
     }
 }
 

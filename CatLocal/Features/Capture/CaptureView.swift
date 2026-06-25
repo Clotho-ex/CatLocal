@@ -15,6 +15,7 @@ struct CaptureView: View {
     @State private var originalImage: UIImage?
     @State private var cutoutImage: UIImage?
     @State private var detections: [CatDetection] = []
+    @State private var selectedBoundingBox: CGRect?
     @State private var source: CaptureSource = .camera
     @State private var nickname = ""
     @State private var note = ""
@@ -357,7 +358,9 @@ struct CaptureView: View {
                             note: note,
                             placeName: placeName,
                             placeDetail: placeDetail,
-                            cardStyle: selectedStyle
+                            cardStyle: selectedStyle,
+                            catBoundingBox: selectedBoundingBox,
+                            topoSeed: nextSequence
                         )
                         .frame(maxWidth: 350)
                         .transition(.scale(scale: 0.9).combined(with: .opacity))
@@ -384,7 +387,9 @@ struct CaptureView: View {
                                     placeName: placeName,
                                     placeDetail: placeDetail,
                                     cardStyle: style,
-                                    presentation: .stylePreview
+                                    presentation: .stylePreview,
+                                    catBoundingBox: selectedBoundingBox,
+                                    topoSeed: nextSequence
                                 )
                             }
                         }
@@ -593,6 +598,7 @@ struct CaptureView: View {
         originalImage = image
         self.source = source
         detections = []
+        selectedBoundingBox = nil
         errorMessage = nil
         stage = .analyzing
 
@@ -624,6 +630,7 @@ struct CaptureView: View {
         }
 
         stage = .creatingCutout
+        selectedBoundingBox = detection?.boundingBox
         do {
             let result = try await processor.cutout(
                 from: SendableImage(value: originalImage),
@@ -662,6 +669,7 @@ struct CaptureView: View {
                 source: source,
                 cardStyle: selectedStyle,
                 styleSeed: 0,
+                catBoundingBox: selectedBoundingBox,
                 originalImagePath: stored.originalPath,
                 cutoutImagePath: stored.cutoutPath,
                 thumbnailImagePath: stored.thumbnailPath
@@ -696,6 +704,7 @@ struct CaptureView: View {
         originalImage = nil
         cutoutImage = nil
         detections = []
+        selectedBoundingBox = nil
         nickname = ""
         note = ""
         placeName = ""

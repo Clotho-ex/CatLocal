@@ -9,11 +9,14 @@ struct LiveInteractiveCardView<Content: View>: View {
     let maxTiltAngle: CGFloat
     let cornerRadius: CGFloat
     let hapticsEnabled: Bool
-    @ViewBuilder let content: (_ rotateX: CGFloat, _ rotateY: CGFloat) -> Content
+    let feedbackGenerator = UISelectionFeedbackGenerator()
+    @ViewBuilder let content: (_ rotateX: CGFloat, _ rotateY: CGFloat, _ isInteracting: Bool) -> Content
 
     @State private var rotateX: CGFloat = 0
     @State private var rotateY: CGFloat = 0
     @State private var spotlightLocation: CGPoint = .zero
+    @State private var isInteracting = false
+    @State private var lastHapticAngle: CGFloat = 0
     @State private var hasHitLimit = false
 
     init(
@@ -22,7 +25,7 @@ struct LiveInteractiveCardView<Content: View>: View {
         maxTiltAngle: CGFloat = 12,
         cornerRadius: CGFloat = 34,
         hapticsEnabled: Bool = true,
-        @ViewBuilder content: @escaping (_ rotateX: CGFloat, _ rotateY: CGFloat) -> Content
+        @ViewBuilder content: @escaping (_ rotateX: CGFloat, _ rotateY: CGFloat, _ isInteracting: Bool) -> Content
     ) {
         self.width = width
         self.height = height
@@ -37,11 +40,13 @@ struct LiveInteractiveCardView<Content: View>: View {
             let size = geometry.size
 
             ZStack {
-                content(rotateX, rotateY)
+                content(rotateX, rotateY, isInteracting)
                     .frame(width: size.width, height: size.height)
 
                 if !reduceMotion {
                     spotlight(size: size)
+                        .opacity(isInteracting ? 1 : 0)
+                        .animation(.easeInOut(duration: 0.18), value: isInteracting)
                 }
             }
             .frame(width: size.width, height: size.height)
@@ -105,6 +110,16 @@ struct LiveInteractiveCardView<Content: View>: View {
                     maxTiltAngle: maxTiltAngle
                 )
                 spotlightLocation = tilt.location
+                let hapticMagnitude = abs(tilt.rotateX) + abs(tilt.rotateY)
+                if hapticsEnabled, abs(hapticMagnitude - lastHapticAngle) > 2.5 {
+                    feedbackGenerator.selectionChanged()
+                    feedbackGenerator.prepare()
+                    lastHapticAngle = hapticMagnitude
+                }
+
+                withAnimation(.easeInOut(duration: 0.16)) {
+                    isInteracting = true
+                }
 
                 if hapticsEnabled && tilt.isAtLimit && !hasHitLimit {
                     UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
@@ -120,16 +135,20 @@ struct LiveInteractiveCardView<Content: View>: View {
             }
             .onEnded { _ in
                 hasHitLimit = false
+                lastHapticAngle = 0
                 withAnimation(.spring(response: 0.45, dampingFraction: 0.75)) {
                     rotateX = 0
                     rotateY = 0
                     spotlightLocation = CGPoint(x: size.width / 2, y: size.height / 2)
+                    isInteracting = false
                 }
             }
     }
 
     private func resetInteraction(size: CGSize) {
         hasHitLimit = false
+        isInteracting = false
+        lastHapticAngle = 0
         rotateX = 0
         rotateY = 0
         spotlightLocation = CGPoint(x: size.width / 2, y: size.height / 2)
@@ -154,6 +173,9 @@ struct LiveInteractiveCardView<Content: View>: View {
             maxTiltAngle: maxTiltAngle
         )
         spotlightLocation = tilt.location
+        withAnimation(.easeInOut(duration: 0.16)) {
+            isInteracting = true
+        }
 
         if hapticsEnabled && tilt.isAtLimit {
             UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
@@ -214,7 +236,7 @@ enum LiveInteractiveCardMath {
     ZStack {
         CatLocalBackground()
 
-        LiveInteractiveCardView { _, _ in
+        LiveInteractiveCardView { _, _, _ in
             RoundedRectangle(cornerRadius: 34, style: .continuous)
                 .fill(CatLocalTheme.elevatedSurface)
                 .overlay {

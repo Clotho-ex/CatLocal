@@ -17,10 +17,16 @@ struct CollectionView: View {
 
     private let onCaptureRequested: (() -> Void)?
     private let homeReselectionID: Int
+    private let selectedTab: AppTab
 
-    init(onCaptureRequested: (() -> Void)? = nil, homeReselectionID: Int = 0) {
+    init(
+        onCaptureRequested: (() -> Void)? = nil,
+        homeReselectionID: Int = 0,
+        selectedTab: AppTab = .home
+    ) {
         self.onCaptureRequested = onCaptureRequested
         self.homeReselectionID = homeReselectionID
+        self.selectedTab = selectedTab
     }
 
     private var columns: [GridItem] {
@@ -100,6 +106,10 @@ struct CollectionView: View {
                 selectedRecord = nil
             }
         }
+        .onChange(of: selectedTab) { _, tab in
+            guard tab != .home, selectedRecord != nil else { return }
+            selectedRecord = nil
+        }
         .accessibilityIdentifier("collection-screen")
     }
 
@@ -175,28 +185,47 @@ struct CollectionView: View {
 
             LazyVGrid(columns: columns, spacing: 18) {
                 ForEach(sortedRecords) { record in
-                    Button {
-                        withAnimation(focusTransitionAnimation) {
-                            selectedRecord = record
-                        }
-                    } label: {
-                        CatCardView(record: record)
-                    }
-                    .buttonStyle(.plain)
-                    .contextMenu {
-                        Button {
-                            editingRecord = record
-                        } label: {
-                            Label("Edit", systemImage: "pencil")
-                        }
-
-                        Button(role: .destructive) {
-                            removalRecord = record
-                        } label: {
-                            Label("Remove Cat", systemImage: "trash")
-                        }
-                    }
+                    catGridCard(record)
                 }
+            }
+        }
+    }
+
+    private func catGridCard(_ record: CatRecord) -> some View {
+        Button {
+            withAnimation(focusTransitionAnimation) {
+                selectedRecord = record
+            }
+        } label: {
+            CatCardView(record: record)
+                .frame(maxWidth: .infinity)
+                .aspectRatio(0.72, contentMode: .fit)
+                .blur(radius: 3.4)
+                .overlay {
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .fill(.regularMaterial)
+                        .opacity(0.56)
+                        .allowsHitTesting(false)
+                }
+                .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .frame(maxWidth: .infinity)
+        .aspectRatio(0.72, contentMode: .fit)
+        .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .clipped()
+        .contextMenu {
+            Button {
+                editingRecord = record
+            } label: {
+                Label("Edit", systemImage: "pencil")
+            }
+
+            Button(role: .destructive) {
+                removalRecord = record
+            } label: {
+                Label("Remove Cat", systemImage: "trash")
             }
         }
     }

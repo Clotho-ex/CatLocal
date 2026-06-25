@@ -51,6 +51,7 @@ struct CatLocalCoreTests {
             source: .photoLibrary,
             cardStyle: .sunstamp,
             styleSeed: 19,
+            catBoundingBox: CGRect(x: 0.2, y: 0.3, width: 0.4, height: 0.5),
             originalImagePath: "id/original.heic",
             cutoutImagePath: "id/cutout.png",
             thumbnailImagePath: "id/thumbnail.png"
@@ -66,6 +67,7 @@ struct CatLocalCoreTests {
         #expect(fetched[0].memoryPlaceLabel == "Ferry Steps, Beside the ticket booth")
         #expect(fetched[0].source == .photoLibrary)
         #expect(fetched[0].cardStyle == .sunstamp)
+        #expect(fetched[0].catBoundingBox == CGRect(x: 0.2, y: 0.3, width: 0.4, height: 0.5))
     }
 
     @Test

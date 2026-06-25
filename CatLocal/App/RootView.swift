@@ -42,7 +42,8 @@ struct RootView: View {
                     tabContent {
                         CollectionView(
                             onCaptureRequested: presentCapture,
-                            homeReselectionID: homeReselectionID
+                            homeReselectionID: homeReselectionID,
+                            selectedTab: selectedTab
                         )
                     }
                 }
@@ -57,7 +58,8 @@ struct RootView: View {
                     tabContent {
                         CollectionView(
                             onCaptureRequested: presentCapture,
-                            homeReselectionID: homeReselectionID
+                            homeReselectionID: homeReselectionID,
+                            selectedTab: selectedTab
                         )
                     }
                 } label: {
@@ -72,7 +74,8 @@ struct RootView: View {
                     tabContent {
                         CollectionView(
                             onCaptureRequested: presentCapture,
-                            homeReselectionID: homeReselectionID
+                            homeReselectionID: homeReselectionID,
+                            selectedTab: selectedTab
                         )
                     }
                 }
@@ -87,7 +90,8 @@ struct RootView: View {
                     tabContent {
                         CollectionView(
                             onCaptureRequested: presentCapture,
-                            homeReselectionID: homeReselectionID
+                            homeReselectionID: homeReselectionID,
+                            selectedTab: selectedTab
                         )
                     }
                 } label: {

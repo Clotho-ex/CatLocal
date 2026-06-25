@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct CatCardView: View {
     let record: CatRecord
@@ -6,6 +7,7 @@ struct CatCardView: View {
     var cardStyle: CardStyle?
     var rotateX: CGFloat = 0
     var rotateY: CGFloat = 0
+    var isLightActive: Bool = false
 
     private var usesCutoutImage: Bool { presentation == .focused || presentation == .stylePreview }
     private var resolvedCardStyle: CardStyle { cardStyle ?? record.cardStyle }
@@ -21,7 +23,10 @@ struct CatCardView: View {
             cardStyle: resolvedCardStyle,
             presentation: presentation,
             rotateX: rotateX,
-            rotateY: rotateY
+            rotateY: rotateY,
+            isLightActive: isLightActive,
+            catBoundingBox: record.catBoundingBox,
+            topoSeed: record.id.hashValue
         ) {
             StoredImageView(path: imagePath, contentMode: .fit) {
                 if presentation == .stylePreview {
@@ -60,6 +65,9 @@ struct DraftCatCardView: View {
     var presentation: CatCardPresentation = .focused
     var rotateX: CGFloat = 0
     var rotateY: CGFloat = 0
+    var isLightActive: Bool = false
+    var catBoundingBox: CGRect?
+    var topoSeed: Int = 0
 
     var body: some View {
         CatCardSurface(
@@ -74,7 +82,10 @@ struct DraftCatCardView: View {
             cardStyle: cardStyle,
             presentation: presentation,
             rotateX: rotateX,
-            rotateY: rotateY
+            rotateY: rotateY,
+            isLightActive: isLightActive,
+            catBoundingBox: catBoundingBox,
+            topoSeed: topoSeed
         ) {
             Image(uiImage: image)
                 .resizable()
@@ -113,16 +124,28 @@ private struct CatCardSurface<CatImage: View>: View {
     let presentation: CatCardPresentation
     let rotateX: CGFloat
     let rotateY: CGFloat
+    let isLightActive: Bool
+    let catBoundingBox: CGRect?
+    let topoSeed: Int
     @ViewBuilder let catImage: () -> CatImage
 
     private var focused: Bool { presentation == .focused }
     private var stylePreview: Bool { presentation == .stylePreview }
     private var effectiveRotateX: CGFloat { focused ? rotateX : 0 }
     private var effectiveRotateY: CGFloat { focused ? rotateY : 0 }
-    private var needsFoilContrast: Bool { cardStyle == .midnight || cardStyle == .prism }
+    private var foilLightOpacity: Double { focused ? (isLightActive ? 1 : 0) : 1 }
+    private var needsFoilContrast: Bool {
+        cardStyle == .midnight || cardStyle == .prism || cardStyle == .gold || cardStyle == .topo
+    }
+    private var usesPermanentDarkFoilSurface: Bool {
+        cardStyle == .prism || cardStyle == .gold || cardStyle == .topo
+    }
 
     private var primaryContentColor: Color {
         guard needsFoilContrast else { return CatLocalTheme.primaryText }
+        if usesPermanentDarkFoilSurface {
+            return .white
+        }
         return colorScheme == .dark ? CatLocalTheme.background : CatLocalTheme.cardSurface
     }
 
@@ -154,6 +177,9 @@ private struct CatCardSurface<CatImage: View>: View {
             let outerPadding: CGFloat = focused ? 18 : (stylePreview ? 12 : 11)
             let imageStageHeight = max(cardHeight * imageStageRatio, 1)
             let imageMaxWidth = max(cardWidth - outerPadding * 2, 1)
+            let previewImageHeight = max(cardHeight - outerPadding * 2, 1)
+            let previewCatOffset = catImageOffset(cardWidth: imageMaxWidth, cardHeight: previewImageHeight)
+            let focusedCatOffset = catImageOffset(cardWidth: imageMaxWidth, cardHeight: imageStageHeight)
 
             Group {
                 if stylePreview {
@@ -164,9 +190,10 @@ private struct CatCardSurface<CatImage: View>: View {
                             .scaledToFit()
                             .frame(
                                 maxWidth: imageMaxWidth,
-                                maxHeight: max(cardHeight - outerPadding * 2, 1),
+                                maxHeight: previewImageHeight,
                                 alignment: .center
                             )
+                            .offset(x: previewCatOffset.width, y: previewCatOffset.height)
                             .accessibilityHidden(true)
                     }
                 } else {
@@ -183,6 +210,7 @@ private struct CatCardSurface<CatImage: View>: View {
                                     maxHeight: imageStageHeight * 0.96,
                                     alignment: .center
                                 )
+                                .offset(x: focusedCatOffset.width, y: focusedCatOffset.height)
                                 .accessibilityHidden(true)
                         }
                         .frame(maxWidth: .infinity)
@@ -406,8 +434,9 @@ private struct CatCardSurface<CatImage: View>: View {
                 center: prismCenter,
                 angle: .degrees(Double(effectiveRotateY - effectiveRotateX) * 2.4)
             )
-            .opacity(0.8)
+            .opacity(0.8 * foilLightOpacity)
             .blendMode(.hardLight)
+            .animation(.easeInOut(duration: 0.18), value: foilLightOpacity)
         }
     }
 
@@ -426,8 +455,9 @@ private struct CatCardSurface<CatImage: View>: View {
                 startPoint: goldStartPoint,
                 endPoint: goldEndPoint
             )
-            .opacity(0.86)
+            .opacity(0.86 * foilLightOpacity)
             .blendMode(.hardLight)
+            .animation(.easeInOut(duration: 0.18), value: foilLightOpacity)
 
             RadialGradient(
                 colors: [
@@ -438,8 +468,9 @@ private struct CatCardSurface<CatImage: View>: View {
                 startRadius: 0,
                 endRadius: 170
             )
-            .opacity(0.4)
+            .opacity(0.4 * foilLightOpacity)
             .blendMode(.screen)
+            .animation(.easeInOut(duration: 0.18), value: foilLightOpacity)
         }
     }
 
@@ -448,23 +479,10 @@ private struct CatCardSurface<CatImage: View>: View {
             CatLocalTheme.paperSurface(for: .topo)
 
             if presentation == .thumbnail {
-                TopographicPatternView()
-                    .opacity(0.18)
+                topoFoilLayer
+                    .opacity(0.16)
             } else {
-                TopographicPatternView()
-                    .overlay {
-                        LinearGradient(
-                            colors: [
-                                .red,
-                                .yellow,
-                                .green,
-                                .pink
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                        .blendMode(.sourceAtop)
-                    }
+                topoFoilLayer
                     .mask {
                         RadialGradient(
                             colors: [
@@ -478,8 +496,54 @@ private struct CatCardSurface<CatImage: View>: View {
                         )
                     }
                     .blendMode(.plusLighter)
+                    .opacity(foilLightOpacity)
+                    .animation(.easeInOut(duration: 0.18), value: foilLightOpacity)
             }
         }
+    }
+
+    private var topoFoilLayer: some View {
+        Rectangle()
+            .fill(
+                AngularGradient(
+                    colors: topoColors,
+                    center: topoMaskCenter,
+                    angle: topoAngle
+                )
+            )
+            .overlay {
+                LinearGradient(
+                    colors: Array(topoColors.reversed()),
+                    startPoint: topoStartPoint,
+                    endPoint: topoEndPoint
+                )
+                .blendMode(.overlay)
+            }
+            .overlay {
+                AngularGradient(
+                    colors: topoSecondaryColors,
+                    center: .center,
+                    angle: .degrees(Double(topoSeed % 180) + Double(effectiveRotateX - effectiveRotateY) * 2.6)
+                )
+                .scaleEffect(1.75)
+                .blur(radius: presentation == .thumbnail ? 3 : 1.5)
+                .blendMode(.hardLight)
+                .opacity(0.64)
+            }
+            .overlay {
+                TopoContourLayer(
+                    seed: positiveSeed,
+                    lineCount: presentation == .thumbnail ? 10 : 16,
+                    lineWidth: presentation == .thumbnail ? 0.85 : 1.2,
+                    gradient: LinearGradient(
+                        colors: topoLineColors,
+                        startPoint: topoStartPoint,
+                        endPoint: topoEndPoint
+                    )
+                )
+                .opacity(presentation == .thumbnail ? 0.7 : 0.92)
+                .blendMode(.plusLighter)
+            }
     }
 
     private var prismColors: [Color] {
@@ -528,49 +592,88 @@ private struct CatCardSurface<CatImage: View>: View {
         )
     }
 
+    private var topoColors: [Color] {
+        let palettes: [[Color]] = [
+            [.red, .yellow, .green, .pink],
+            [.cyan, .yellow, .mint, .orange],
+            [.pink, .green, .yellow, .blue],
+            [.orange, .teal, .yellow, .red]
+        ]
+        let palette = palettes[positiveSeed % palettes.count]
+        let rotation = positiveSeed % palette.count
+        return Array(palette[rotation...]) + Array(palette[..<rotation]) + [palette[rotation]]
+    }
+
+    private var topoSecondaryColors: [Color] {
+        [
+            Color.white.opacity(0.78),
+            topoColors[positiveSeed % max(topoColors.count, 1)].opacity(0.42),
+            .clear,
+            Color.white.opacity(0.55)
+        ]
+    }
+
+    private var topoLineColors: [Color] {
+        [
+            .white.opacity(0.92),
+            topoColors[(positiveSeed + 1) % max(topoColors.count, 1)].opacity(0.88),
+            .white.opacity(0.72)
+        ]
+    }
+
+    private var topoAngle: Angle {
+        .degrees(Double(positiveSeed % 360) + Double(effectiveRotateY - effectiveRotateX) * 3.2)
+    }
+
+    private var topoStartPoint: UnitPoint {
+        UnitPoint(
+            x: clampedUnit(0.12 + CGFloat((positiveSeed % 17)) / 64 + effectiveRotateY / 36),
+            y: clampedUnit(0.1 + effectiveRotateX / 42)
+        )
+    }
+
+    private var topoEndPoint: UnitPoint {
+        UnitPoint(
+            x: clampedUnit(0.88 - CGFloat((positiveSeed % 13)) / 72 + effectiveRotateY / 36),
+            y: clampedUnit(0.92 + effectiveRotateX / 42)
+        )
+    }
+
+    private var positiveSeed: Int {
+        abs(topoSeed == Int.min ? 0 : topoSeed)
+    }
+
+    private func catImageOffset(cardWidth: CGFloat, cardHeight: CGFloat) -> CGSize {
+        guard let catBoundingBox else { return .zero }
+        return CGSize(
+            width: (0.5 - catBoundingBox.midX) * cardWidth,
+            height: (0.5 - catBoundingBox.midY) * cardHeight
+        )
+    }
+
     private func clampedUnit(_ value: CGFloat) -> CGFloat {
         min(max(value, 0), 1)
     }
 }
 
-private struct TopographicPatternView: View {
+private struct TopoContourLayer: View {
+    let seed: Int
+    let lineCount: Int
+    let lineWidth: CGFloat
+    let gradient: LinearGradient
+
     var body: some View {
-        Canvas { context, size in
-            let center = CGPoint(x: size.width / 2, y: size.height / 2)
-            let maximumRadius = min(size.width, size.height) * 0.58
-            let contourCount = 18
-
-            for contourIndex in 0..<contourCount {
-                var path = Path()
-                let progress = CGFloat(contourIndex + 1) / CGFloat(contourCount + 1)
-                let baseRadius = maximumRadius * progress
-
-                for angleDegrees in stride(from: 0.0, through: 360.0, by: 4.0) {
-                    let angle = angleDegrees * .pi / 180
-                    let index = Double(contourIndex)
-                    let waveA = sin(angle * 3.0 + index * 0.55)
-                    let waveB = cos(angle * 5.0 - index * 0.38)
-                    let waveC = sin(angle * 2.0 + index * 1.15)
-                    let distortion = CGFloat(waveA * 8.0 + waveB * 5.0 + waveC * 3.0)
-                    let radius = max(baseRadius + distortion, 4)
-                    let point = CGPoint(
-                        x: center.x + cos(angle) * radius,
-                        y: center.y + sin(angle) * radius
+        ZStack {
+            ForEach(0..<lineCount, id: \.self) { index in
+                TopoContourShape(index: index, total: lineCount, seed: seed)
+                    .stroke(
+                        gradient,
+                        style: StrokeStyle(
+                            lineWidth: lineWidth,
+                            lineCap: .round,
+                            lineJoin: .round
+                        )
                     )
-
-                    if angleDegrees == 0 {
-                        path.move(to: point)
-                    } else {
-                        path.addLine(to: point)
-                    }
-                }
-
-                path.closeSubpath()
-                context.stroke(
-                    path,
-                    with: .color(.white.opacity(0.8)),
-                    lineWidth: 1.2
-                )
             }
         }
         .drawingGroup()
@@ -578,10 +681,57 @@ private struct TopographicPatternView: View {
     }
 }
 
+private struct TopoContourShape: Shape {
+    let index: Int
+    let total: Int
+    let seed: Int
+
+    func path(in rect: CGRect) -> Path {
+        let center = CGPoint(
+            x: rect.midX + seedOffset(axis: 0, scale: rect.width * 0.08),
+            y: rect.midY + seedOffset(axis: 1, scale: rect.height * 0.08)
+        )
+        let maximumRadius = min(rect.width, rect.height) * 0.62
+        let progress = CGFloat(index + 1) / CGFloat(total + 2)
+        let baseRadius = maximumRadius * progress
+        let seedPhase = Double(seed % 997) * 0.017
+        var path = Path()
+
+        for angleDegrees in stride(from: 0.0, through: 360.0, by: 5.0) {
+            let angle = angleDegrees * .pi / 180
+            let contourIndex = Double(index)
+            let waveA = sin(angle * 3.0 + contourIndex * 0.47 + seedPhase)
+            let waveB = cos(angle * 5.0 - contourIndex * 0.31 + seedPhase * 0.7)
+            let waveC = sin(angle * 2.0 + contourIndex * 1.09 - seedPhase * 0.4)
+            let distortion = CGFloat(waveA * 7.5 + waveB * 4.8 + waveC * 3.2)
+            let radius = max(baseRadius + distortion, 5)
+            let point = CGPoint(
+                x: center.x + cos(angle) * radius,
+                y: center.y + sin(angle) * radius
+            )
+
+            if angleDegrees == 0 {
+                path.move(to: point)
+            } else {
+                path.addLine(to: point)
+            }
+        }
+
+        path.closeSubpath()
+        return path
+    }
+
+    private func seedOffset(axis: Int, scale: CGFloat) -> CGFloat {
+        let value = ((seed / max(axis + 1, 1)) % 31) - 15
+        return CGFloat(value) / 15 * scale
+    }
+}
+
 struct CardStyleCarousel<Preview: View>: View {
     @Binding var selectedStyle: CardStyle
     let showsTitle: Bool
-    @State private var centeredStyle: CardStyle?
+    @State private var centeredItemID: Int?
+    @State private var hapticStyle: CardStyle?
 
     @ViewBuilder let preview: (_ style: CardStyle) -> Preview
 
@@ -605,9 +755,9 @@ struct CardStyleCarousel<Preview: View>: View {
 
             ScrollView(.horizontal) {
                 LazyHStack(spacing: 14) {
-                    ForEach(CardStyle.allCases) { style in
-                        styleOption(style)
-                            .id(style)
+                    ForEach(carouselItems) { item in
+                        styleOption(item.style)
+                            .id(item.id)
                     }
                 }
                 .scrollTargetLayout()
@@ -615,20 +765,67 @@ struct CardStyleCarousel<Preview: View>: View {
             }
             .scrollIndicators(.hidden)
             .scrollTargetBehavior(.viewAligned)
-            .scrollPosition(id: $centeredStyle)
+            .scrollPosition(id: $centeredItemID)
             .onAppear {
-                centeredStyle = selectedStyle
+                centeredItemID = centeredItemID(for: selectedStyle)
             }
-            .onChange(of: centeredStyle) { _, style in
-                guard let style, style != selectedStyle else { return }
-                selectedStyle = style
+            .onChange(of: centeredItemID) { _, itemID in
+                guard let itemID, let item = carouselItems.first(where: { $0.id == itemID }) else { return }
+                if item.style != selectedStyle {
+                    selectedStyle = item.style
+                    playSelectionHaptic(for: item.style)
+                }
+                recenterIfNeeded(item)
             }
             .onChange(of: selectedStyle) { _, style in
-                guard centeredStyle != style else { return }
+                guard currentCenteredStyle != style else { return }
                 withAnimation(.snappy(duration: 0.24)) {
-                    centeredStyle = style
+                    centeredItemID = centeredItemID(for: style)
                 }
             }
+        }
+    }
+
+    private var styleCount: Int {
+        CardStyle.allCases.count
+    }
+
+    private var carouselCycleCount: Int {
+        7
+    }
+
+    private var centerCycle: Int {
+        carouselCycleCount / 2
+    }
+
+    private var carouselItems: [CarouselStyleItem] {
+        guard styleCount > 0 else { return [] }
+        return (0..<(styleCount * carouselCycleCount)).map { index in
+            CarouselStyleItem(
+                id: index,
+                style: CardStyle.allCases[index % styleCount],
+                cycle: index / styleCount
+            )
+        }
+    }
+
+    private var currentCenteredStyle: CardStyle? {
+        guard let centeredItemID else { return nil }
+        return carouselItems.first(where: { $0.id == centeredItemID })?.style
+    }
+
+    private func centeredItemID(for style: CardStyle) -> Int {
+        let styleIndex = CardStyle.allCases.firstIndex(of: style) ?? 0
+        return centerCycle * styleCount + styleIndex
+    }
+
+    private func recenterIfNeeded(_ item: CarouselStyleItem) {
+        guard item.cycle <= 1 || item.cycle >= carouselCycleCount - 2 else { return }
+        let targetID = centeredItemID(for: item.style)
+        guard centeredItemID != targetID else { return }
+
+        Task { @MainActor in
+            centeredItemID = targetID
         }
     }
 
@@ -663,11 +860,24 @@ struct CardStyleCarousel<Preview: View>: View {
         .onTapGesture {
             withAnimation(.snappy(duration: 0.24)) {
                 selectedStyle = style
-                centeredStyle = style
+                centeredItemID = centeredItemID(for: style)
             }
+            playSelectionHaptic(for: style)
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(style.title) card design")
         .accessibilityAddTraits(isSelected ? [.isSelected] : [])
     }
+
+    private func playSelectionHaptic(for style: CardStyle) {
+        guard hapticStyle != style else { return }
+        hapticStyle = style
+        UISelectionFeedbackGenerator().selectionChanged()
+    }
+}
+
+private struct CarouselStyleItem: Identifiable {
+    let id: Int
+    let style: CardStyle
+    let cycle: Int
 }
