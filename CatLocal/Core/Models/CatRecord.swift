@@ -96,15 +96,41 @@ enum CaptureSource: String, Codable, CaseIterable, Sendable {
     }
 }
 
-enum CardStyle: String, Codable, CaseIterable, Identifiable, Sendable {
+enum CardStyle: String, Codable, CaseIterable, Identifiable, Hashable, Sendable {
     case archive
     case sunstamp
     case clear
     case garden
     case midnight
     case apricot
+    case prism
+    case gold
+    case topo
 
     var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .archive:
+            "Archive"
+        case .sunstamp:
+            "Sunstamp"
+        case .clear:
+            "Clear"
+        case .garden:
+            "Garden"
+        case .midnight:
+            "Midnight"
+        case .apricot:
+            "Apricot"
+        case .prism:
+            "Midnight Prism"
+        case .gold:
+            "Gold Leaf"
+        case .topo:
+            "Topographic"
+        }
+    }
 
     static func deterministic(seed: Int) -> CardStyle {
         .archive
