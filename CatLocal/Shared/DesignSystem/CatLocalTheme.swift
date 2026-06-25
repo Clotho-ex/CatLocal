@@ -2,52 +2,52 @@ import SwiftUI
 
 enum CatLocalTheme {
     static let background = Color(
-        light: UIColor(hex: 0xF2EDE4),
-        dark: UIColor(hex: 0x121413)
+        light: UIColor(red: 0.99, green: 0.99, blue: 0.98, alpha: 1),
+        dark: UIColor(red: 0.04, green: 0.05, blue: 0.06, alpha: 1)
     )
     static let backgroundGlow = Color(
-        light: UIColor(hex: 0xFAF8F5),
-        dark: UIColor(hex: 0x1C1E1D)
+        light: UIColor(red: 1.0, green: 1.0, blue: 1.0, alpha: 1),
+        dark: UIColor(red: 0.12, green: 0.13, blue: 0.17, alpha: 1)
     )
     static let elevatedSurface = Color(
-        light: UIColor(hex: 0xE6DFD3),
-        dark: UIColor(hex: 0x1C1E1D)
+        light: UIColor(red: 0.96, green: 0.96, blue: 0.97, alpha: 1),
+        dark: UIColor(red: 0.09, green: 0.09, blue: 0.12, alpha: 1)
     )
     static let cardSurface = Color(
-        light: UIColor(hex: 0xFAF8F5),
-        dark: UIColor(hex: 0x262927)
+        light: UIColor(red: 1.0, green: 1.0, blue: 1.0, alpha: 1),
+        dark: UIColor(red: 0.11, green: 0.12, blue: 0.15, alpha: 1)
     )
     static let primaryText = Color(
-        light: UIColor(hex: 0x1A2F25),
-        dark: UIColor(hex: 0x8FA89B)
+        light: UIColor(red: 0.05, green: 0.07, blue: 0.09, alpha: 1),
+        dark: UIColor(red: 0.94, green: 0.95, blue: 0.96, alpha: 1)
     )
     static let secondaryText = Color(
-        light: UIColor(hex: 0x6E6A61),
-        dark: UIColor(hex: 0x91948F)
+        light: UIColor(red: 0.36, green: 0.40, blue: 0.45, alpha: 1),
+        dark: UIColor(red: 0.55, green: 0.58, blue: 0.65, alpha: 1)
     )
     static let separator = Color(
-        light: UIColor(hex: 0x1A2F25, alpha: 0.12),
-        dark: UIColor(hex: 0x8FA89B, alpha: 0.16)
+        light: UIColor(red: 0.05, green: 0.07, blue: 0.09, alpha: 0.08),
+        dark: UIColor(red: 0.94, green: 0.95, blue: 0.96, alpha: 0.12)
     )
     static let imageOutline = Color(
-        light: UIColor.black.withAlphaComponent(0.10),
-        dark: UIColor.white.withAlphaComponent(0.10)
+        light: UIColor.black.withAlphaComponent(0.08),
+        dark: UIColor.white.withAlphaComponent(0.12)
     )
     static let shadow = Color(
-        light: UIColor(hex: 0x1A2F25, alpha: 0.16),
-        dark: UIColor.black.withAlphaComponent(0.45)
+        light: UIColor(red: 0.05, green: 0.07, blue: 0.12, alpha: 0.12),
+        dark: UIColor.black.withAlphaComponent(0.55)
     )
     static let blueAction = Color(
-        light: UIColor(red: 0.0, green: 0.32, blue: 1.0, alpha: 1),
-        dark: UIColor(red: 0.30, green: 0.58, blue: 1.0, alpha: 1)
+        light: UIColor(red: 0.0, green: 0.37, blue: 0.93, alpha: 1),
+        dark: UIColor(red: 0.29, green: 0.56, blue: 0.89, alpha: 1)
     )
     static let warning = Color(
-        light: UIColor(hex: 0xD95B32),
-        dark: UIColor(hex: 0xFF7A59)
+        light: UIColor(red: 1.0, green: 0.34, blue: 0.20, alpha: 1),
+        dark: UIColor(red: 1.0, green: 0.48, blue: 0.35, alpha: 1)
     )
     static let sage = Color(
-        light: UIColor(hex: 0x1A2F25),
-        dark: UIColor(hex: 0x8FA89B)
+        light: UIColor(red: 0.83, green: 0.89, blue: 0.86, alpha: 1),
+        dark: UIColor(red: 0.14, green: 0.20, blue: 0.22, alpha: 1)
     )
     static let information = Color(
         light: UIColor(hex: 0x2F6F5E),
@@ -81,6 +81,38 @@ enum CatLocalTheme {
     static let largePanelRadius: CGFloat = 32
     static let panelRadius: CGFloat = 26
     static let inputRadius: CGFloat = 16
+
+    static func accent(for style: CardStyle) -> Color {
+        switch style {
+        case .archive:
+            sage
+        case .sunstamp, .apricot, .gold, .topo:
+            warning
+        case .clear:
+            blueAction
+        case .garden:
+            positive
+        case .midnight, .prism:
+            primaryText
+        }
+    }
+
+    static func paperSurface(for style: CardStyle) -> Color {
+        switch style {
+        case .archive, .sunstamp, .clear:
+            cardSurface
+        case .apricot:
+            elevatedSurface
+        case .garden:
+            memoryPlaceFill
+        case .midnight, .topo:
+            primaryText.opacity(0.92)
+        case .prism:
+            Color(red: 0.08, green: 0.09, blue: 0.12)
+        case .gold:
+            Color(red: 0.15, green: 0.11, blue: 0.07)
+        }
+    }
 }
 
 struct CatLocalBackground: View {
@@ -207,12 +239,29 @@ extension View {
         cornerRadius: CGFloat = 19,
         isDisabled: Bool = false
     ) -> some View {
-        foregroundStyle(.white)
+        foregroundStyle(
+            Color(
+                light: UIColor.white,
+                dark: UIColor(hex: 0x121413)
+            )
+            .opacity(isDisabled ? 0.72 : 1)
+        )
             .frame(maxWidth: .infinity)
             .frame(minHeight: 56)
             .background(
-                CatLocalTheme.blueAction.opacity(isDisabled ? 0.58 : 1),
+                LinearGradient(
+                    colors: [
+                        CatLocalTheme.primaryText.opacity(isDisabled ? 0.42 : 0.9),
+                        CatLocalTheme.sage.opacity(isDisabled ? 0.32 : 0.72)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                ),
                 in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .stroke(CatLocalTheme.imageOutline, lineWidth: 1)
             )
     }
 }

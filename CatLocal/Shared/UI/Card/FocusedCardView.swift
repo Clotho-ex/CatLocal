@@ -26,8 +26,13 @@ struct FocusedCardView: View {
 
                 Spacer(minLength: 0)
 
-                LiveInteractiveCardView(width: nil, height: nil, cornerRadius: 34) {
-                    CatCardView(record: record, presentation: .focused)
+                LiveInteractiveCardView(width: nil, height: nil, cornerRadius: 34) { rotateX, rotateY in
+                    CatCardView(
+                        record: record,
+                        presentation: .focused,
+                        rotateX: rotateX,
+                        rotateY: rotateY
+                    )
                 }
                     .frame(maxWidth: dynamicTypeSize.isAccessibilitySize ? 350 : 390)
                     .aspectRatio(0.64, contentMode: .fit)
@@ -110,6 +115,7 @@ struct CatRecordEditSheet: View {
     @State private var note: String
     @State private var placeName: String
     @State private var placeDetail: String
+    @State private var selectedStyle: CardStyle
     @State private var showingDeleteConfirmation = false
     @State private var errorMessage: String?
 
@@ -120,6 +126,7 @@ struct CatRecordEditSheet: View {
         _note = State(initialValue: record.note)
         _placeName = State(initialValue: record.placeName)
         _placeDetail = State(initialValue: record.placeDetail)
+        _selectedStyle = State(initialValue: record.cardStyle)
     }
 
     var body: some View {
@@ -147,6 +154,17 @@ struct CatRecordEditSheet: View {
                         Text("Manual label only. CatLocal does not request GPS or save coordinates.")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
+                    }
+
+                    Section("Card Design") {
+                        CardStyleCarousel(selectedStyle: $selectedStyle, showsTitle: false) { style in
+                            CatCardView(
+                                record: record,
+                                presentation: .stylePreview,
+                                cardStyle: style
+                            )
+                        }
+                        .listRowInsets(EdgeInsets(top: 12, leading: 0, bottom: 12, trailing: 0))
                     }
 
                     Section {
@@ -195,6 +213,7 @@ struct CatRecordEditSheet: View {
         record.note = note
         record.placeName = trimmedMemoryText(placeName)
         record.placeDetail = trimmedMemoryText(placeDetail)
+        record.cardStyle = selectedStyle
         do {
             try modelContext.save()
             dismiss()

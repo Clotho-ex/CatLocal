@@ -9,7 +9,7 @@ struct LiveInteractiveCardView<Content: View>: View {
     let maxTiltAngle: CGFloat
     let cornerRadius: CGFloat
     let hapticsEnabled: Bool
-    @ViewBuilder let content: () -> Content
+    @ViewBuilder let content: (_ rotateX: CGFloat, _ rotateY: CGFloat) -> Content
 
     @State private var rotateX: CGFloat = 0
     @State private var rotateY: CGFloat = 0
@@ -22,7 +22,7 @@ struct LiveInteractiveCardView<Content: View>: View {
         maxTiltAngle: CGFloat = 12,
         cornerRadius: CGFloat = 34,
         hapticsEnabled: Bool = true,
-        @ViewBuilder content: @escaping () -> Content
+        @ViewBuilder content: @escaping (_ rotateX: CGFloat, _ rotateY: CGFloat) -> Content
     ) {
         self.width = width
         self.height = height
@@ -37,7 +37,7 @@ struct LiveInteractiveCardView<Content: View>: View {
             let size = geometry.size
 
             ZStack {
-                content()
+                content(rotateX, rotateY)
                     .frame(width: size.width, height: size.height)
 
                 if !reduceMotion {
@@ -214,7 +214,7 @@ enum LiveInteractiveCardMath {
     ZStack {
         CatLocalBackground()
 
-        LiveInteractiveCardView {
+        LiveInteractiveCardView { _, _ in
             RoundedRectangle(cornerRadius: 34, style: .continuous)
                 .fill(CatLocalTheme.elevatedSurface)
                 .overlay {

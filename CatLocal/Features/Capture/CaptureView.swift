@@ -20,6 +20,7 @@ struct CaptureView: View {
     @State private var note = ""
     @State private var placeName = ""
     @State private var placeDetail = ""
+    @State private var selectedStyle: CardStyle = .archive
     @State private var errorMessage: String?
     @State private var canUseForegroundFallback = false
     @State private var isSaving = false
@@ -355,7 +356,8 @@ struct CaptureView: View {
                             name: nickname,
                             note: note,
                             placeName: placeName,
-                            placeDetail: placeDetail
+                            placeDetail: placeDetail,
+                            cardStyle: selectedStyle
                         )
                         .frame(maxWidth: 350)
                         .transition(.scale(scale: 0.9).combined(with: .opacity))
@@ -371,6 +373,21 @@ struct CaptureView: View {
                             .font(.subheadline)
                             .foregroundStyle(CatLocalTheme.secondaryText)
                             .lineLimit(nil)
+
+                        if let cutoutImage {
+                            CardStyleCarousel(selectedStyle: $selectedStyle) { style in
+                                DraftCatCardView(
+                                    image: cutoutImage,
+                                    sequence: nextSequence,
+                                    name: nickname,
+                                    note: note,
+                                    placeName: placeName,
+                                    placeDetail: placeDetail,
+                                    cardStyle: style,
+                                    presentation: .stylePreview
+                                )
+                            }
+                        }
 
                         TextField("Nickname (optional)", text: $nickname)
                             .textInputAutocapitalization(.words)
@@ -643,7 +660,7 @@ struct CaptureView: View {
                 placeName: trimmedMemoryText(placeName),
                 placeDetail: trimmedMemoryText(placeDetail),
                 source: source,
-                cardStyle: .archive,
+                cardStyle: selectedStyle,
                 styleSeed: 0,
                 originalImagePath: stored.originalPath,
                 cutoutImagePath: stored.cutoutPath,
@@ -683,6 +700,7 @@ struct CaptureView: View {
         note = ""
         placeName = ""
         placeDetail = ""
+        selectedStyle = .archive
         photoItem = nil
         errorMessage = nil
         canUseForegroundFallback = false
