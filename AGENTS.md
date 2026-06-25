@@ -23,7 +23,7 @@ and implementation decisions before adding secondary settings or metrics.
 
 - `CatLocal/App/CatLocalApp.swift`: app entry point and SwiftData container setup.
 - `CatLocal/App/RootView.swift`: native tab shell, camera sheet routing, and iOS 26 sidebar-adaptable tab behavior.
-- `CatLocal/Core/Models/CatRecord.swift`: SwiftData source of truth for card metadata, local image filenames, capture source, sequence, notes, and deterministic card styles (`Archive`, `Sunstamp`, `Clear`).
+- `CatLocal/Core/Models/CatRecord.swift`: SwiftData source of truth for card metadata, local image filenames, capture source, sequence, notes, optional Vision bounding box, and card styles (`Archive`, `Sunstamp`, `Clear`, `Garden`, `Midnight`, `Apricot`, `Midnight Prism`, `Gold Leaf`, `Topographic`).
 - `CatLocal/Core/Services/CameraController.swift`: camera permission, preview, capture session, and camera error copy.
 - `CatLocal/Core/Services/CatImageStore.swift`: Application Support storage, EXIF/GPS stripping, downsampling, HEIC/PNG encoding, thumbnails, storage size, and deletion cleanup.
 - `CatLocal/Core/Services/CatVisionProcessor.swift`: on-device Apple Vision cat recognition, foreground mask generation, cutout creation, and Vision error copy.
@@ -42,7 +42,7 @@ and implementation decisions before adding secondary settings or metrics.
 ## Product Goals
 
 - Make the first-use path feel like a camera-first private field journal: `Camera`, `Choose private photo`, `Looking for cats`, `Lifting the subject`, `Make it yours`, and `Add to Collection`.
-- Keep the collection organized around real saved cards: `CatRecord.displayName`, three-digit sequence numbers, capture dates, optional notes, and card styles are the product's native data shape.
+- Keep the collection organized around real saved cards: `CatRecord.displayName`, plain sequence numbers, capture dates, optional notes, and card styles are the product's native data shape.
 - Treat privacy as visible product behavior, not a generic claim: use existing copy such as `On-device only`, `On this iPhone, by design`, `No Account`, `No Public Map`, and `No Model Training`.
 - Preserve local data safety: originals, cutouts, and thumbnails stay in Application Support; SwiftData stores metadata and filenames only.
 - Keep v1 focused on tactile card collecting rather than discovery, maps, sharing, feeds, accounts, or remote processing.
@@ -68,14 +68,19 @@ Do not reintroduce a custom floating tab bar unless a native API cannot express 
 
 - `CatImageStore` owns Application Support paths, metadata stripping, downsampling, compression, thumbnails, and deletion cleanup.
 - `CatVisionProcessor` owns on-device animal detection and foreground mask/cutout generation.
-- `CatRecord` stores SwiftData metadata and references local image filenames, not remote URLs.
+- `CatRecord` stores SwiftData metadata, optional normalized Vision bounding boxes, and references local image filenames, not remote URLs.
 
 ## UI Notes
 
 - `CatLocalTheme` should remain semantic and dynamic for light/dark mode.
 - Cards should be polished editorial surfaces, not Liquid Glass blobs.
+- Card text is display-only on the card surface. Keep name, note, and Catlas editing in capture/editor fields unless the editing model is intentionally redesigned.
+- Home grid thumbnails are deliberately muted with blur/material and wrapped in explicit aspect-ratio hit boxes so they do not steal touches from the `Catlas` segmented control.
+- Focused foil and spotlight effects should be calm at rest and fade in while touched. Thumbnail rendering must stay static and cheap.
+- The Topographic style is procedural and asset-free: use seeded gradients plus visible contour strokes, not a flat rainbow wash or a heavy per-frame Canvas in scrolling views.
+- The card style carousel repeats style cycles to feel infinite and fires a small selection haptic as the centered style changes.
 - Liquid Glass belongs on native navigation and compact actions.
-- `LiveInteractiveCardView` preserves one-shot boundary haptics. Do not alter the haptic gate or spring constants casually.
+- `LiveInteractiveCardView` passes `rotateX`, `rotateY`, and `isInteracting` into card content. It preserves one-shot boundary haptics and thresholded tilt haptics; do not alter the haptic gate or spring constants casually.
 
 ## Verification
 

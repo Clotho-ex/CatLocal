@@ -13,6 +13,11 @@ final class CatRecord {
     var sourceRawValue: String
     var cardStyleRawValue: String
     var styleSeed: Int
+    var hasCatBoundingBox: Bool = false
+    var catBoundingBoxX: Double = 0
+    var catBoundingBoxY: Double = 0
+    var catBoundingBoxWidth: Double = 0
+    var catBoundingBoxHeight: Double = 0
     var originalImagePath: String
     var cutoutImagePath: String
     var thumbnailImagePath: String
@@ -28,6 +33,7 @@ final class CatRecord {
         source: CaptureSource,
         cardStyle: CardStyle,
         styleSeed: Int,
+        catBoundingBox: CGRect? = nil,
         originalImagePath: String,
         cutoutImagePath: String,
         thumbnailImagePath: String
@@ -42,6 +48,13 @@ final class CatRecord {
         sourceRawValue = source.rawValue
         cardStyleRawValue = cardStyle.rawValue
         self.styleSeed = styleSeed
+        if let catBoundingBox {
+            hasCatBoundingBox = true
+            catBoundingBoxX = catBoundingBox.origin.x
+            catBoundingBoxY = catBoundingBox.origin.y
+            catBoundingBoxWidth = catBoundingBox.size.width
+            catBoundingBoxHeight = catBoundingBox.size.height
+        }
         self.originalImagePath = originalImagePath
         self.cutoutImagePath = cutoutImagePath
         self.thumbnailImagePath = thumbnailImagePath
@@ -81,6 +94,16 @@ final class CatRecord {
 
     var atlasGroupTitle: String {
         memoryPlaceName ?? "Unplaced"
+    }
+
+    var catBoundingBox: CGRect? {
+        guard hasCatBoundingBox else { return nil }
+        return CGRect(
+            x: catBoundingBoxX,
+            y: catBoundingBoxY,
+            width: catBoundingBoxWidth,
+            height: catBoundingBoxHeight
+        )
     }
 }
 

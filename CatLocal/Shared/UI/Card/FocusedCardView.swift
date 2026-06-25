@@ -26,12 +26,13 @@ struct FocusedCardView: View {
 
                 Spacer(minLength: 0)
 
-                LiveInteractiveCardView(width: nil, height: nil, cornerRadius: 34) { rotateX, rotateY in
+                LiveInteractiveCardView(width: nil, height: nil, cornerRadius: 34) { rotateX, rotateY, isInteracting in
                     CatCardView(
                         record: record,
                         presentation: .focused,
                         rotateX: rotateX,
-                        rotateY: rotateY
+                        rotateY: rotateY,
+                        isLightActive: isInteracting
                     )
                 }
                     .frame(maxWidth: dynamicTypeSize.isAccessibilitySize ? 350 : 390)
