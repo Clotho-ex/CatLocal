@@ -8,6 +8,7 @@ struct CatCardView: View {
     var rotateX: CGFloat = 0
     var rotateY: CGFloat = 0
     var isLightActive: Bool = false
+    var showsFooter: Bool = true
 
     private var usesCutoutImage: Bool { presentation == .focused || presentation == .stylePreview }
     private var resolvedCardStyle: CardStyle { cardStyle ?? record.cardStyle }
@@ -25,6 +26,7 @@ struct CatCardView: View {
             rotateX: rotateX,
             rotateY: rotateY,
             isLightActive: isLightActive,
+            showsFooter: showsFooter,
             catBoundingBox: record.catBoundingBox,
             topoSeed: record.id.hashValue
         ) {
@@ -66,6 +68,7 @@ struct DraftCatCardView: View {
     var rotateX: CGFloat = 0
     var rotateY: CGFloat = 0
     var isLightActive: Bool = false
+    var showsFooter: Bool = true
     var catBoundingBox: CGRect?
     var topoSeed: Int = 0
 
@@ -84,6 +87,7 @@ struct DraftCatCardView: View {
             rotateX: rotateX,
             rotateY: rotateY,
             isLightActive: isLightActive,
+            showsFooter: showsFooter,
             catBoundingBox: catBoundingBox,
             topoSeed: topoSeed
         ) {
@@ -125,6 +129,7 @@ private struct CatCardSurface<CatImage: View>: View {
     let rotateX: CGFloat
     let rotateY: CGFloat
     let isLightActive: Bool
+    let showsFooter: Bool
     let catBoundingBox: CGRect?
     let topoSeed: Int
     @ViewBuilder let catImage: () -> CatImage
@@ -216,7 +221,9 @@ private struct CatCardSurface<CatImage: View>: View {
                         .frame(maxWidth: .infinity)
                         .frame(height: imageStageHeight)
 
-                        footer
+                        if showsFooter {
+                            footer
+                        }
                     }
                 }
             }
@@ -242,7 +249,7 @@ private struct CatCardSurface<CatImage: View>: View {
             return 1
         }
 
-        if focused, hasFocusedTextContent {
+        if focused, showsFooter, hasFocusedTextContent {
             return dynamicTypeSize.isAccessibilitySize ? 0.32 : 0.42
         }
 
@@ -289,7 +296,7 @@ private struct CatCardSurface<CatImage: View>: View {
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(secondaryContentColor)
 
-                Text(note.isEmpty ? "No note yet." : note)
+                Text(note.isEmpty ? "No Note Yet." : note)
                     .font(.body)
                     .lineLimit(dynamicTypeSize.isAccessibilitySize ? 5 : 3)
                     .foregroundStyle(note.isEmpty ? secondaryContentColor : primaryContentColor)
@@ -341,7 +348,7 @@ private struct CatCardSurface<CatImage: View>: View {
 
             if let placeDetail {
                 placeDetailRow(
-                    title: "Place detail",
+                    title: "Place Detail",
                     icon: "text.alignleft",
                     value: placeDetail
                 )

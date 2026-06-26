@@ -150,9 +150,17 @@ struct CatRecordEditSheet: View {
 
                 Form {
                     Section("Cat") {
+                        Text("Name the Cat")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(CatLocalTheme.secondaryText)
+
                         TextField("Nickname", text: $nickname)
                             .textInputAutocapitalization(.words)
                             .focused($focusedField, equals: .name)
+
+                        Text("Encounter Note")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(CatLocalTheme.secondaryText)
 
                         TextField("A note about this encounter", text: $note, axis: .vertical)
                             .lineLimit(3...7)
@@ -164,7 +172,7 @@ struct CatRecordEditSheet: View {
                             .textInputAutocapitalization(.words)
                             .focused($focusedField, equals: .location)
 
-                        TextField("Place detail", text: $placeDetail, axis: .vertical)
+                        TextField("Place Detail", text: $placeDetail, axis: .vertical)
                             .lineLimit(1...4)
                             .textInputAutocapitalization(.sentences)
                             .focused($focusedField, equals: .location)

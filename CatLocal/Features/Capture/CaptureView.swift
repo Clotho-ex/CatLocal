@@ -22,6 +22,7 @@ struct CaptureView: View {
     @State private var placeName = ""
     @State private var placeDetail = ""
     @State private var selectedStyle: CardStyle = .archive
+    @State private var draftGreeting = ""
     @State private var errorMessage: String?
     @State private var canUseForegroundFallback = false
     @State private var isSaving = false
@@ -354,11 +355,12 @@ struct CaptureView: View {
                         DraftCatCardView(
                             image: cutoutImage,
                             sequence: nextSequence,
-                            name: nickname,
+                            name: editorPreviewName,
                             note: note,
                             placeName: placeName,
                             placeDetail: placeDetail,
                             cardStyle: selectedStyle,
+                            showsFooter: false,
                             catBoundingBox: selectedBoundingBox,
                             topoSeed: nextSequence
                         )
@@ -367,9 +369,19 @@ struct CaptureView: View {
                     }
 
                     VStack(alignment: .leading, spacing: 14) {
-                        Text("Make it yours")
-                            .font(.title3.weight(.semibold))
-                            .foregroundStyle(CatLocalTheme.primaryText)
+                        Text("Make it Yours")
+                            .font(.title2.weight(.semibold))
+                            .foregroundStyle(
+                                LinearGradient(
+                                    colors: [
+                                        CatLocalTheme.warning,
+                                        CatLocalTheme.blueAction,
+                                        CatLocalTheme.primaryText
+                                    ],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            )
                             .lineLimit(nil)
 
                         Text("Add the details you want to remember. Everything stays local.")
@@ -377,31 +389,27 @@ struct CaptureView: View {
                             .foregroundStyle(CatLocalTheme.secondaryText)
                             .lineLimit(nil)
 
-                        if let cutoutImage {
-                            CardStyleCarousel(selectedStyle: $selectedStyle) { style in
-                                DraftCatCardView(
-                                    image: cutoutImage,
-                                    sequence: nextSequence,
-                                    name: nickname,
-                                    note: note,
-                                    placeName: placeName,
-                                    placeDetail: placeDetail,
-                                    cardStyle: style,
-                                    presentation: .stylePreview,
-                                    catBoundingBox: selectedBoundingBox,
-                                    topoSeed: nextSequence
-                                )
-                            }
+                        CardStyleCarousel(
+                            selectedStyle: $selectedStyle,
+                            showsTitle: false,
+                            itemWidth: 132,
+                            previewAspectRatio: 1.32,
+                            itemPadding: 7,
+                            itemCornerRadius: 20,
+                            itemSpacing: 10,
+                            titleMinHeight: 30
+                        ) { style in
+                            CardStyleSwatch(style: style)
                         }
+                        .accessibilityLabel("Card design")
+
+                        Text("Name the Cat")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(CatLocalTheme.secondaryText)
 
                         TextField("Nickname (optional)", text: $nickname)
                             .textInputAutocapitalization(.words)
                             .focused($focusedEditorField, equals: .nickname)
-                            .catInputSurface()
-
-                        TextField("A note about this encounter", text: $note, axis: .vertical)
-                            .lineLimit(2...5)
-                            .focused($focusedEditorField, equals: .note)
                             .catInputSurface()
 
                         Text("CATLAS")
@@ -415,7 +423,7 @@ struct CaptureView: View {
                             .catInputSurface()
                             .accessibilityHint("Adds a manual place label to the private Catlas")
 
-                        TextField("Place detail (optional)", text: $placeDetail, axis: .vertical)
+                        TextField("Place Detail (optional)", text: $placeDetail, axis: .vertical)
                             .lineLimit(1...3)
                             .textInputAutocapitalization(.sentences)
                             .focused($focusedEditorField, equals: .placeDetail)
@@ -425,6 +433,15 @@ struct CaptureView: View {
                             .font(.footnote)
                             .foregroundStyle(CatLocalTheme.secondaryText)
                             .lineLimit(nil)
+
+                        Text("Encounter Note")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(CatLocalTheme.secondaryText)
+
+                        TextField("A note about this encounter", text: $note, axis: .vertical)
+                            .lineLimit(2...5)
+                            .focused($focusedEditorField, equals: .note)
+                            .catInputSurface()
                     }
                     .padding(18)
                     .catPanelSurface(fillOpacity: 0.86, shadowOpacity: 0.18)
@@ -448,21 +465,26 @@ struct CaptureView: View {
     private var editorTopBar: some View {
         ViewThatFits(in: .horizontal) {
             HStack {
-                Button("Retake") { reset() }
+                Button("Cancel") { cancelCapture() }
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(CatLocalTheme.primaryText)
                 Spacer()
                 editorStageTitle
                 Spacer()
-                Color.clear.frame(width: 48, height: 1)
+                Button("Retake") { reset() }
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(CatLocalTheme.primaryText)
             }
 
             VStack(spacing: 10) {
                 HStack {
-                    Button("Retake") { reset() }
+                    Button("Cancel") { cancelCapture() }
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(CatLocalTheme.primaryText)
                     Spacer()
+                    Button("Retake") { reset() }
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(CatLocalTheme.primaryText)
                 }
                 editorStageTitle
             }
@@ -471,12 +493,9 @@ struct CaptureView: View {
 
     private var editorStageTitle: some View {
         VStack(spacing: 2) {
-            Text("A new cat")
+            Text("A New Cat")
                 .font(.headline)
                 .foregroundStyle(CatLocalTheme.primaryText)
-            Text("Number \(nextSequence.formatted())")
-                .font(.caption)
-                .foregroundStyle(CatLocalTheme.secondaryText)
         }
         .multilineTextAlignment(.center)
         .accessibilityElement(children: .combine)
@@ -637,6 +656,7 @@ struct CaptureView: View {
                 detection: detection
             )
             cutoutImage = result.value
+            draftGreeting = Self.randomDraftGreeting()
             errorMessage = nil
             stage = .editing
         } catch {
@@ -693,6 +713,11 @@ struct CaptureView: View {
         dismiss()
     }
 
+    private func cancelCapture() {
+        camera.stop()
+        dismiss()
+    }
+
     private func optimizedWorkingImage(from image: UIImage) -> UIImage {
         CatImageStore.downsampledOpaqueImage(
             from: image,
@@ -710,6 +735,7 @@ struct CaptureView: View {
         placeName = ""
         placeDetail = ""
         selectedStyle = .archive
+        draftGreeting = ""
         photoItem = nil
         errorMessage = nil
         canUseForegroundFallback = false
@@ -731,6 +757,25 @@ struct CaptureView: View {
         let existingNames = Set(existingRecords.map(\.displayName))
         return CatNamePool.randomName(excluding: existingNames)
     }
+
+    private var editorPreviewName: String {
+        let trimmedName = trimmedMemoryText(nickname)
+        guard trimmedName.isEmpty else { return trimmedName }
+        return draftGreeting.isEmpty ? Self.randomDraftGreeting() : draftGreeting
+    }
+
+    private static func randomDraftGreeting() -> String {
+        draftGreetings.randomElement() ?? "A New Feline."
+    }
+
+    private static let draftGreetings = [
+        "A New Feline.",
+        "Who Is This Cat?",
+        "Tiny Local Legend",
+        "Fresh Pawprint",
+        "Mystery Whiskers",
+        "Hello, Fur Ball"
+    ]
 }
 
 private enum CaptureStage: Equatable {
