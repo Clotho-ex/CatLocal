@@ -60,6 +60,7 @@ struct FocusedCardView: View {
                 closeFocusedCat()
             }
                 .presentationDetents([.medium, .large])
+                .presentationBackground(CatLocalTheme.background)
                 .presentationDragIndicator(.visible)
                 .presentationContentInteraction(.resizes)
         }
@@ -109,6 +110,12 @@ struct CatRecordEditSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
 
+    enum FocusedField {
+        case name
+        case location
+        case notes
+    }
+
     let record: CatRecord
     let onDeleted: (() -> Void)?
 
@@ -119,6 +126,7 @@ struct CatRecordEditSheet: View {
     @State private var selectedStyle: CardStyle
     @State private var showingDeleteConfirmation = false
     @State private var errorMessage: String?
+    @FocusState private var focusedField: FocusedField?
 
     init(record: CatRecord, onDeleted: (() -> Void)? = nil) {
         self.record = record
@@ -134,23 +142,32 @@ struct CatRecordEditSheet: View {
         NavigationStack {
             ZStack {
                 CatLocalBackground()
+                    .onTapGesture {
+                        if focusedField != nil {
+                            focusedField = nil
+                        }
+                    }
 
                 Form {
                     Section("Cat") {
                         TextField("Nickname", text: $nickname)
                             .textInputAutocapitalization(.words)
+                            .focused($focusedField, equals: .name)
 
                         TextField("A note about this encounter", text: $note, axis: .vertical)
                             .lineLimit(3...7)
+                            .focused($focusedField, equals: .notes)
                     }
 
                     Section("Catlas") {
                         TextField("Memory Place", text: $placeName)
                             .textInputAutocapitalization(.words)
+                            .focused($focusedField, equals: .location)
 
                         TextField("Place detail", text: $placeDetail, axis: .vertical)
                             .lineLimit(1...4)
                             .textInputAutocapitalization(.sentences)
+                            .focused($focusedField, equals: .location)
 
                         Text("Manual label only. CatLocal does not request GPS or save coordinates.")
                             .font(.footnote)
@@ -158,19 +175,27 @@ struct CatRecordEditSheet: View {
                     }
 
                     Section("Card Design") {
-                        CardStyleCarousel(selectedStyle: $selectedStyle, showsTitle: false) { style in
-                            CatCardView(
-                                record: record,
-                                presentation: .stylePreview,
-                                cardStyle: style
-                            )
+                        CardStyleCarousel(
+                            selectedStyle: $selectedStyle,
+                            showsTitle: false,
+                            itemWidth: 132,
+                            previewAspectRatio: 1.32,
+                            itemPadding: 7,
+                            itemCornerRadius: 20,
+                            itemSpacing: 10,
+                            titleMinHeight: 30
+                        ) { style in
+                            CardStyleSwatch(style: style)
                         }
-                        .listRowInsets(EdgeInsets(top: 12, leading: 0, bottom: 12, trailing: 0))
+                        .listRowInsets(EdgeInsets(top: 10, leading: 0, bottom: 8, trailing: 0))
                     }
 
                     Section {
-                        Button("Delete Cat", role: .destructive) {
+                        Button(role: .destructive) {
                             showingDeleteConfirmation = true
+                        } label: {
+                            Text("Delete Cat")
+                                .frame(maxWidth: .infinity, alignment: .center)
                         }
                     }
                 }

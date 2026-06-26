@@ -2,11 +2,14 @@ import SwiftData
 import SwiftUI
 
 struct CollectionView: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.modelContext) private var modelContext
 
     @Query(sort: \CatRecord.sequence, order: .forward)
     private var records: [CatRecord]
+
+    @Namespace private var cardTransitionNamespace
 
     @State private var selectedRecord: CatRecord?
     @State private var editingRecord: CatRecord?
@@ -41,7 +44,7 @@ struct CollectionView: View {
     }
 
     var body: some View {
-        ZStack {
+        NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
                     header
@@ -65,20 +68,18 @@ struct CollectionView: View {
                 .padding(.bottom, 140)
             }
             .scrollIndicators(.hidden)
-
-            if let selectedRecord {
-                FocusedCardView(record: selectedRecord) {
-                    withAnimation(focusTransitionAnimation) {
-                        self.selectedRecord = nil
-                    }
+            .navigationDestination(item: $selectedRecord) { record in
+                FocusedCardView(record: record) {
+                    closeFocusedRecord()
                 }
-                .transition(.scale(scale: 0.86, anchor: .center).combined(with: .opacity))
-                .zIndex(10)
+                .navigationTransition(.zoom(sourceID: record.id, in: cardTransitionNamespace))
+                .navigationBarBackButtonHidden(true)
+                .toolbar(.hidden, for: .navigationBar)
             }
         }
-        .animation(focusTransitionAnimation, value: selectedRecord?.id)
         .sheet(item: $editingRecord) { record in
             CatRecordEditSheet(record: record)
+                .presentationBackground(CatLocalTheme.background)
         }
         .confirmationDialog(
             "Remove this cat?",
@@ -102,19 +103,21 @@ struct CollectionView: View {
         }
         .onChange(of: homeReselectionID) {
             guard selectedRecord != nil else { return }
-            withAnimation(focusTransitionAnimation) {
-                selectedRecord = nil
-            }
+            closeFocusedRecord()
         }
         .onChange(of: selectedTab) { _, tab in
             guard tab != .home, selectedRecord != nil else { return }
-            selectedRecord = nil
+            closeFocusedRecord()
         }
         .accessibilityIdentifier("collection-screen")
     }
 
     private var focusTransitionAnimation: Animation {
         .spring(response: 0.34, dampingFraction: 0.84)
+    }
+
+    private var sortAnimation: Animation? {
+        reduceMotion ? nil : .smooth(duration: 0.28)
     }
 
     private var header: some View {
@@ -188,6 +191,7 @@ struct CollectionView: View {
                     catGridCard(record)
                 }
             }
+            .animation(sortAnimation, value: sortedRecords.map(\.id))
         }
     }
 
@@ -200,15 +204,17 @@ struct CollectionView: View {
             CatCardView(record: record)
                 .frame(maxWidth: .infinity)
                 .aspectRatio(0.72, contentMode: .fit)
-                .blur(radius: 3.4)
                 .overlay {
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .fill(.regularMaterial)
-                        .opacity(0.56)
-                        .allowsHitTesting(false)
+                    homeCardQuietingOverlay
                 }
                 .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
                 .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                .matchedTransitionSource(id: record.id, in: cardTransitionNamespace) { configuration in
+                    configuration
+                        .background(.clear)
+                        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                        .shadow(color: CatLocalTheme.shadow.opacity(0.18), radius: 14, y: 7)
+                }
         }
         .buttonStyle(.plain)
         .frame(maxWidth: .infinity)
@@ -238,6 +244,7 @@ struct CollectionView: View {
                 atlasGroup(group)
             }
         }
+        .animation(sortAnimation, value: atlasGroups.map(\.id))
         .accessibilityIdentifier("catlas")
     }
 
@@ -403,7 +410,7 @@ struct CollectionView: View {
 
     private var sortMenu: some View {
         Menu {
-            Picker("Sort cats", selection: $sortOption) {
+            Picker("Sort cats", selection: sortSelection) {
                 ForEach(CatSortOption.allCases) { option in
                     Label(option.title, systemImage: option.systemImage).tag(option)
                 }
@@ -416,6 +423,17 @@ struct CollectionView: View {
         }
         .accessibilityLabel("Sort cats")
         .accessibilityValue(sortOption.title)
+    }
+
+    private var sortSelection: Binding<CatSortOption> {
+        Binding(
+            get: { sortOption },
+            set: { option in
+                withAnimation(sortAnimation) {
+                    sortOption = option
+                }
+            }
+        )
     }
 
     private var sortedRecords: [CatRecord] {
@@ -451,6 +469,36 @@ struct CollectionView: View {
                 }
             }
         )
+    }
+
+    private var homeCardQuietingOverlay: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .stroke(CatLocalTheme.background.opacity(0.34), lineWidth: 5)
+                .blur(radius: 2.2)
+                .padding(2)
+
+            LinearGradient(
+                colors: [
+                    CatLocalTheme.background.opacity(0.16),
+                    .clear,
+                    CatLocalTheme.background.opacity(0.12)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .blendMode(.softLight)
+
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .stroke(CatLocalTheme.imageOutline.opacity(0.8), lineWidth: 1)
+        }
+        .allowsHitTesting(false)
+    }
+
+    private func closeFocusedRecord() {
+        withAnimation(focusTransitionAnimation) {
+            selectedRecord = nil
+        }
     }
 
     private func remove(record: CatRecord) async {

@@ -730,6 +730,12 @@ private struct TopoContourShape: Shape {
 struct CardStyleCarousel<Preview: View>: View {
     @Binding var selectedStyle: CardStyle
     let showsTitle: Bool
+    let itemWidth: CGFloat
+    let previewAspectRatio: CGFloat
+    let itemPadding: CGFloat
+    let itemCornerRadius: CGFloat
+    let itemSpacing: CGFloat
+    let titleMinHeight: CGFloat
     @State private var centeredItemID: Int?
     @State private var hapticStyle: CardStyle?
 
@@ -738,10 +744,22 @@ struct CardStyleCarousel<Preview: View>: View {
     init(
         selectedStyle: Binding<CardStyle>,
         showsTitle: Bool = true,
+        itemWidth: CGFloat = 184,
+        previewAspectRatio: CGFloat = 0.64,
+        itemPadding: CGFloat = 8,
+        itemCornerRadius: CGFloat = 28,
+        itemSpacing: CGFloat = 14,
+        titleMinHeight: CGFloat = 34,
         @ViewBuilder preview: @escaping (_ style: CardStyle) -> Preview
     ) {
         _selectedStyle = selectedStyle
         self.showsTitle = showsTitle
+        self.itemWidth = itemWidth
+        self.previewAspectRatio = previewAspectRatio
+        self.itemPadding = itemPadding
+        self.itemCornerRadius = itemCornerRadius
+        self.itemSpacing = itemSpacing
+        self.titleMinHeight = titleMinHeight
         self.preview = preview
     }
 
@@ -754,7 +772,7 @@ struct CardStyleCarousel<Preview: View>: View {
             }
 
             ScrollView(.horizontal) {
-                LazyHStack(spacing: 14) {
+                LazyHStack(spacing: itemSpacing) {
                     ForEach(carouselItems) { item in
                         styleOption(item.style)
                             .id(item.id)
@@ -834,7 +852,7 @@ struct CardStyleCarousel<Preview: View>: View {
 
         return VStack(spacing: 9) {
             preview(style)
-                .aspectRatio(0.64, contentMode: .fit)
+                .aspectRatio(previewAspectRatio, contentMode: .fit)
                 .allowsHitTesting(false)
 
             Text(style.title)
@@ -842,13 +860,13 @@ struct CardStyleCarousel<Preview: View>: View {
                 .foregroundStyle(isSelected ? CatLocalTheme.primaryText : CatLocalTheme.secondaryText)
                 .lineLimit(2)
                 .multilineTextAlignment(.center)
-                .frame(minHeight: 34, alignment: .top)
+                .frame(minHeight: titleMinHeight, alignment: .top)
         }
-        .frame(width: 184)
-        .padding(8)
+        .frame(width: itemWidth)
+        .padding(itemPadding)
         .background(
             CatLocalTheme.cardSurface.opacity(isSelected ? 0.86 : 0.36),
-            in: RoundedRectangle(cornerRadius: 28, style: .continuous)
+            in: RoundedRectangle(cornerRadius: itemCornerRadius, style: .continuous)
         )
         .scaleEffect(isSelected ? 1 : 0.96)
         .shadow(
@@ -856,7 +874,7 @@ struct CardStyleCarousel<Preview: View>: View {
             radius: isSelected ? 14 : 5,
             y: isSelected ? 7 : 2
         )
-        .contentShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .contentShape(RoundedRectangle(cornerRadius: itemCornerRadius, style: .continuous))
         .onTapGesture {
             withAnimation(.snappy(duration: 0.24)) {
                 selectedStyle = style
@@ -873,6 +891,169 @@ struct CardStyleCarousel<Preview: View>: View {
         guard hapticStyle != style else { return }
         hapticStyle = style
         UISelectionFeedbackGenerator().selectionChanged()
+    }
+}
+
+struct CardStyleSwatch: View {
+    let style: CardStyle
+
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(CatLocalTheme.paperSurface(for: style))
+
+            swatchOverlay
+
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    Circle()
+                        .fill(contentColor.opacity(0.16))
+                        .frame(width: 20, height: 20)
+                        .overlay {
+                            Text("1")
+                                .font(.caption2.weight(.bold))
+                                .foregroundStyle(contentColor)
+                        }
+
+                    Spacer()
+
+                    RoundedRectangle(cornerRadius: 3, style: .continuous)
+                        .fill(contentColor.opacity(0.22))
+                        .frame(width: 28, height: 5)
+                }
+
+                Spacer()
+
+                VStack(alignment: .leading, spacing: 4) {
+                    RoundedRectangle(cornerRadius: 3, style: .continuous)
+                        .fill(contentColor.opacity(0.72))
+                        .frame(width: 58, height: 6)
+
+                    RoundedRectangle(cornerRadius: 3, style: .continuous)
+                        .fill(contentColor.opacity(0.26))
+                        .frame(width: 42, height: 5)
+                }
+            }
+            .padding(13)
+        }
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(CatLocalTheme.imageOutline, lineWidth: 1)
+        )
+    }
+
+    @ViewBuilder
+    private var swatchOverlay: some View {
+        switch style {
+        case .archive:
+            LinearGradient(
+                colors: [
+                    CatLocalTheme.accent(for: style).opacity(0.22),
+                    .clear
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        case .sunstamp:
+            RadialGradient(
+                colors: [
+                    CatLocalTheme.warning.opacity(0.48),
+                    CatLocalTheme.warning.opacity(0.10),
+                    .clear
+                ],
+                center: .topTrailing,
+                startRadius: 4,
+                endRadius: 92
+            )
+        case .clear:
+            LinearGradient(
+                colors: [
+                    CatLocalTheme.blueAction.opacity(0.20),
+                    Color.white.opacity(0.22),
+                    .clear
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        case .garden:
+            LinearGradient(
+                colors: [
+                    CatLocalTheme.positive.opacity(0.24),
+                    CatLocalTheme.sage.opacity(0.12)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        case .midnight:
+            LinearGradient(
+                colors: [
+                    Color.white.opacity(0.12),
+                    CatLocalTheme.blueAction.opacity(0.16)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        case .apricot:
+            LinearGradient(
+                colors: [
+                    CatLocalTheme.warning.opacity(0.26),
+                    CatLocalTheme.cardSurface.opacity(0.12)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        case .prism:
+            AngularGradient(
+                colors: [.cyan, .pink, .yellow, .blue, .purple, .cyan],
+                center: .center
+            )
+            .opacity(0.78)
+            .blendMode(.hardLight)
+        case .gold:
+            LinearGradient(
+                colors: [
+                    Color(red: 0.45, green: 0.26, blue: 0.08),
+                    Color(red: 1.0, green: 0.74, blue: 0.23),
+                    Color.white.opacity(0.86),
+                    Color(red: 0.49, green: 0.28, blue: 0.09)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .opacity(0.82)
+            .blendMode(.hardLight)
+        case .topo:
+            ZStack {
+                AngularGradient(
+                    colors: [.orange, .teal, .yellow, .pink, .orange],
+                    center: .center
+                )
+                .opacity(0.35)
+                .blendMode(.plusLighter)
+
+                TopoContourLayer(
+                    seed: 17,
+                    lineCount: 8,
+                    lineWidth: 0.8,
+                    gradient: LinearGradient(
+                        colors: [.white.opacity(0.72), .yellow.opacity(0.62)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .opacity(0.72)
+                .blendMode(.plusLighter)
+            }
+        }
+    }
+
+    private var contentColor: Color {
+        switch style {
+        case .midnight, .prism, .gold, .topo:
+            .white
+        default:
+            CatLocalTheme.primaryText
+        }
     }
 }
 
