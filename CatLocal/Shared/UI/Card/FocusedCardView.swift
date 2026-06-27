@@ -149,22 +149,26 @@ struct CatRecordEditSheet: View {
                     }
 
                 Form {
-                    Section("Cat") {
-                        Text("Name the Cat")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(CatLocalTheme.secondaryText)
+                    Section("Card Design") {
+                        CardStyleCarousel(
+                            selectedStyle: $selectedStyle,
+                            showsTitle: false,
+                            itemWidth: 154,
+                            previewAspectRatio: 1.28,
+                            itemPadding: 6,
+                            itemCornerRadius: 22,
+                            itemSpacing: 12,
+                            titleMinHeight: 20
+                        ) { style in
+                            CardStyleSwatch(style: style)
+                        }
+                        .listRowInsets(EdgeInsets(top: 14, leading: 12, bottom: 16, trailing: 12))
+                    }
 
+                    Section("Name the Cat") {
                         TextField("Nickname", text: $nickname)
                             .textInputAutocapitalization(.words)
                             .focused($focusedField, equals: .name)
-
-                        Text("Encounter Note")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(CatLocalTheme.secondaryText)
-
-                        TextField("A note about this encounter", text: $note, axis: .vertical)
-                            .lineLimit(3...7)
-                            .focused($focusedField, equals: .notes)
                     }
 
                     Section("Catlas") {
@@ -176,36 +180,42 @@ struct CatRecordEditSheet: View {
                             .lineLimit(1...4)
                             .textInputAutocapitalization(.sentences)
                             .focused($focusedField, equals: .location)
-
-                        Text("Manual label only. CatLocal does not request GPS or save coordinates.")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
                     }
 
-                    Section("Card Design") {
-                        CardStyleCarousel(
-                            selectedStyle: $selectedStyle,
-                            showsTitle: false,
-                            itemWidth: 132,
-                            previewAspectRatio: 1.32,
-                            itemPadding: 7,
-                            itemCornerRadius: 20,
-                            itemSpacing: 10,
-                            titleMinHeight: 30
-                        ) { style in
-                            CardStyleSwatch(style: style)
-                        }
-                        .listRowInsets(EdgeInsets(top: 10, leading: 0, bottom: 8, trailing: 0))
+                    Section {
+                        TextField("A note about this encounter", text: $note, axis: .vertical)
+                            .lineLimit(3...7)
+                            .focused($focusedField, equals: .notes)
+                    } header: {
+                        Text("Encounter Note")
                     }
+
+                    Section {
+                        catlasPrivacyNote
+                    }
+                    .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
+                    .listRowBackground(Color.clear)
 
                     Section {
                         Button(role: .destructive) {
                             showingDeleteConfirmation = true
                         } label: {
                             Text("Delete Cat")
+                                .font(.headline.weight(.semibold))
+                                .foregroundStyle(.white)
                                 .frame(maxWidth: .infinity, alignment: .center)
+                                .padding(.vertical, 13)
+                                .background(
+                                    Capsule(style: .continuous)
+                                        .fill(Color.red)
+                                )
+                                .shadow(color: Color.red.opacity(0.24), radius: 10, y: 4)
                         }
+                        .buttonStyle(.plain)
+                        .accessibilityHint("Deletes this cat and its local images from this iPhone")
                     }
+                    .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 20, trailing: 16))
+                    .listRowBackground(Color.clear)
                 }
                 .scrollContentBackground(.hidden)
             }
@@ -240,6 +250,40 @@ struct CatRecordEditSheet: View {
         } message: {
             Text(errorMessage ?? "")
         }
+    }
+
+    private var catlasPrivacyNote: some View {
+        HStack(alignment: .center, spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(CatLocalTheme.warning.opacity(0.28))
+
+                Image(systemName: "shield.lefthalf.filled")
+                    .font(.system(size: 19, weight: .semibold))
+                    .foregroundStyle(CatLocalTheme.primaryText)
+            }
+            .frame(width: 34, height: 34)
+            .accessibilityHidden(true)
+
+            Text("Manual label only. CatLocal does not request GPS or save coordinates.")
+                .font(.footnote.weight(.medium))
+                .foregroundStyle(CatLocalTheme.primaryText)
+                .lineLimit(nil)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.leading, 10)
+        .padding(.trailing, 14)
+        .padding(.vertical, 9)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .textCase(nil)
+        .background(
+            Capsule(style: .continuous)
+                .fill(CatLocalTheme.warning.opacity(0.22))
+        )
+        .overlay(
+            Capsule(style: .continuous)
+                .stroke(CatLocalTheme.warning.opacity(0.55), lineWidth: 1)
+        )
     }
 
     private func saveChanges() {

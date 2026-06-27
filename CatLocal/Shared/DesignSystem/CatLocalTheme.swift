@@ -2,52 +2,52 @@ import SwiftUI
 
 enum CatLocalTheme {
     static let background = Color(
-        light: UIColor(red: 0.99, green: 0.99, blue: 0.98, alpha: 1),
-        dark: UIColor(red: 0.04, green: 0.05, blue: 0.06, alpha: 1)
+        light: UIColor(red: 0.957, green: 0.969, blue: 0.957, alpha: 1),
+        dark: UIColor(red: 0.043, green: 0.047, blue: 0.063, alpha: 1)
     )
     static let backgroundGlow = Color(
-        light: UIColor(red: 1.0, green: 1.0, blue: 1.0, alpha: 1),
-        dark: UIColor(red: 0.12, green: 0.13, blue: 0.17, alpha: 1)
+        light: UIColor.white,
+        dark: UIColor(red: 0.122, green: 0.157, blue: 0.200, alpha: 1)
     )
     static let elevatedSurface = Color(
-        light: UIColor(red: 0.96, green: 0.96, blue: 0.97, alpha: 1),
-        dark: UIColor(red: 0.09, green: 0.09, blue: 0.12, alpha: 1)
+        light: UIColor(red: 0.910, green: 0.937, blue: 0.914, alpha: 1),
+        dark: UIColor(red: 0.122, green: 0.157, blue: 0.200, alpha: 1)
     )
     static let cardSurface = Color(
-        light: UIColor(red: 1.0, green: 1.0, blue: 1.0, alpha: 1),
-        dark: UIColor(red: 0.11, green: 0.12, blue: 0.15, alpha: 1)
+        light: UIColor.white,
+        dark: UIColor(red: 0.122, green: 0.157, blue: 0.200, alpha: 1)
     )
     static let primaryText = Color(
-        light: UIColor(red: 0.05, green: 0.07, blue: 0.09, alpha: 1),
-        dark: UIColor(red: 0.94, green: 0.95, blue: 0.96, alpha: 1)
+        light: UIColor(red: 0.102, green: 0.184, blue: 0.145, alpha: 1),
+        dark: UIColor.white
     )
     static let secondaryText = Color(
-        light: UIColor(red: 0.36, green: 0.40, blue: 0.45, alpha: 1),
-        dark: UIColor(red: 0.55, green: 0.58, blue: 0.65, alpha: 1)
+        light: UIColor(red: 0.439, green: 0.518, blue: 0.478, alpha: 1),
+        dark: UIColor(red: 0.600, green: 0.651, blue: 0.710, alpha: 1)
     )
     static let separator = Color(
-        light: UIColor(red: 0.05, green: 0.07, blue: 0.09, alpha: 0.08),
-        dark: UIColor(red: 0.94, green: 0.95, blue: 0.96, alpha: 0.12)
+        light: UIColor(red: 0.102, green: 0.184, blue: 0.145, alpha: 0.08),
+        dark: UIColor.white.withAlphaComponent(0.12)
     )
     static let imageOutline = Color(
-        light: UIColor.black.withAlphaComponent(0.08),
+        light: UIColor(red: 0.102, green: 0.184, blue: 0.145, alpha: 0.10),
         dark: UIColor.white.withAlphaComponent(0.12)
     )
     static let shadow = Color(
-        light: UIColor(red: 0.05, green: 0.07, blue: 0.12, alpha: 0.12),
-        dark: UIColor.black.withAlphaComponent(0.55)
+        light: UIColor(red: 0.102, green: 0.184, blue: 0.145, alpha: 0.12),
+        dark: UIColor.black.withAlphaComponent(0.60)
     )
     static let blueAction = Color(
-        light: UIColor(red: 0.0, green: 0.37, blue: 0.93, alpha: 1),
-        dark: UIColor(red: 0.29, green: 0.56, blue: 0.89, alpha: 1)
+        light: UIColor(red: 0.173, green: 0.333, blue: 0.271, alpha: 1),
+        dark: UIColor(red: 0.271, green: 0.635, blue: 0.620, alpha: 1)
     )
     static let warning = Color(
-        light: UIColor(red: 1.0, green: 0.64, blue: 0.0, alpha: 1),
-        dark: UIColor(red: 1.0, green: 0.74, blue: 0.24, alpha: 1)
+        light: UIColor(red: 0.898, green: 0.451, blue: 0.333, alpha: 1),
+        dark: UIColor(red: 1.0, green: 0.533, blue: 0.400, alpha: 1)
     )
     static let sage = Color(
-        light: UIColor(red: 0.13, green: 0.30, blue: 0.23, alpha: 1),
-        dark: UIColor(red: 0.34, green: 0.57, blue: 0.46, alpha: 1)
+        light: UIColor(red: 0.855, green: 0.890, blue: 0.855, alpha: 1),
+        dark: UIColor(red: 0.071, green: 0.090, blue: 0.110, alpha: 1)
     )
     static let information = Color(
         light: UIColor(hex: 0x2F6F5E),
@@ -138,25 +138,47 @@ extension Color {
 }
 
 struct CatLocalBackground: View {
+    @Environment(\.colorScheme) private var colorScheme
+
     var body: some View {
         ZStack {
             CatLocalTheme.background
 
             RadialGradient(
                 colors: [
-                    CatLocalTheme.backgroundGlow.opacity(0.82),
+                    CatLocalTheme.backgroundGlow.opacity(colorScheme == .dark ? 0.72 : 0.54),
                     CatLocalTheme.background.opacity(0)
                 ],
                 center: .topLeading,
-                startRadius: 30,
+                startRadius: 20,
+                endRadius: 460
+            )
+
+            RadialGradient(
+                colors: [
+                    CatLocalTheme.warning.opacity(colorScheme == .dark ? 0.16 : 0.11),
+                    .clear
+                ],
+                center: .topTrailing,
+                startRadius: 24,
+                endRadius: 420
+            )
+
+            RadialGradient(
+                colors: [
+                    CatLocalTheme.blueAction.opacity(colorScheme == .dark ? 0.22 : 0.14),
+                    .clear
+                ],
+                center: .bottomTrailing,
+                startRadius: 40,
                 endRadius: 520
             )
 
             LinearGradient(
                 colors: [
-                    CatLocalTheme.sage.opacity(0.10),
+                    CatLocalTheme.sage.opacity(colorScheme == .dark ? 0.20 : 0.26),
                     .clear,
-                    CatLocalTheme.warning.opacity(0.055)
+                    CatLocalTheme.elevatedSurface.opacity(colorScheme == .dark ? 0.18 : 0.30)
                 ],
                 startPoint: .topTrailing,
                 endPoint: .bottomLeading

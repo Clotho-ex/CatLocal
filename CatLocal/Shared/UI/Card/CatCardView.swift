@@ -34,7 +34,7 @@ struct CatCardView: View {
                 if presentation == .stylePreview {
                     Image(systemName: "cat.fill")
                         .font(.system(size: 32, weight: .semibold))
-                        .foregroundStyle(CatLocalTheme.accent(for: resolvedCardStyle).opacity(0.38))
+                        .foregroundStyle(CardStylePalette(style: resolvedCardStyle).accent.opacity(0.48))
                 } else {
                     ProgressView()
                         .tint(CatLocalTheme.primaryText)
@@ -115,7 +115,6 @@ enum CatCardPresentation {
 }
 
 private struct CatCardSurface<CatImage: View>: View {
-    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     let sequence: Int
@@ -139,39 +138,31 @@ private struct CatCardSurface<CatImage: View>: View {
     private var effectiveRotateX: CGFloat { focused ? rotateX : 0 }
     private var effectiveRotateY: CGFloat { focused ? rotateY : 0 }
     private var foilLightOpacity: Double { focused ? (isLightActive ? 1 : 0) : 1 }
-    private var needsFoilContrast: Bool {
-        cardStyle == .midnight || cardStyle == .prism || cardStyle == .gold || cardStyle == .topo
-    }
-    private var usesPermanentDarkFoilSurface: Bool {
-        cardStyle == .prism || cardStyle == .gold || cardStyle == .topo
-    }
+    private var premiumFoilOpacity: Double { focused ? (isLightActive ? 1 : 0.42) : 0.92 }
+    private var palette: CardStylePalette { CardStylePalette(style: cardStyle) }
 
     private var primaryContentColor: Color {
-        guard needsFoilContrast else { return CatLocalTheme.primaryText }
-        if usesPermanentDarkFoilSurface {
-            return .white
-        }
-        return colorScheme == .dark ? CatLocalTheme.background : CatLocalTheme.cardSurface
+        palette.primaryContent
     }
 
     private var secondaryContentColor: Color {
-        needsFoilContrast ? primaryContentColor.opacity(0.72) : CatLocalTheme.secondaryText
+        palette.secondaryContent
     }
 
     private var separatorColor: Color {
-        needsFoilContrast ? primaryContentColor.opacity(0.26) : CatLocalTheme.separator
+        palette.separator
     }
 
     private var medallionFill: Color {
-        needsFoilContrast ? primaryContentColor.opacity(0.14) : CatLocalTheme.elevatedSurface.opacity(0.74)
+        palette.medallionFill
     }
 
     private var pillFill: Color {
-        needsFoilContrast ? primaryContentColor.opacity(0.14) : CatLocalTheme.memoryPlaceFill
+        palette.pillFill
     }
 
     private var pillStroke: Color {
-        needsFoilContrast ? primaryContentColor.opacity(0.24) : CatLocalTheme.memoryPlaceStroke
+        palette.pillStroke
     }
 
     var body: some View {
@@ -183,8 +174,6 @@ private struct CatCardSurface<CatImage: View>: View {
             let imageStageHeight = max(cardHeight * imageStageRatio, 1)
             let imageMaxWidth = max(cardWidth - outerPadding * 2, 1)
             let previewImageHeight = max(cardHeight - outerPadding * 2, 1)
-            let previewCatOffset = catImageOffset(cardWidth: imageMaxWidth, cardHeight: previewImageHeight)
-            let focusedCatOffset = catImageOffset(cardWidth: imageMaxWidth, cardHeight: imageStageHeight)
 
             Group {
                 if stylePreview {
@@ -198,7 +187,6 @@ private struct CatCardSurface<CatImage: View>: View {
                                 maxHeight: previewImageHeight,
                                 alignment: .center
                             )
-                            .offset(x: previewCatOffset.width, y: previewCatOffset.height)
                             .accessibilityHidden(true)
                     }
                 } else {
@@ -215,7 +203,6 @@ private struct CatCardSurface<CatImage: View>: View {
                                     maxHeight: imageStageHeight * 0.96,
                                     alignment: .center
                                 )
-                                .offset(x: focusedCatOffset.width, y: focusedCatOffset.height)
                                 .accessibilityHidden(true)
                         }
                         .frame(maxWidth: .infinity)
@@ -396,10 +383,10 @@ private struct CatCardSurface<CatImage: View>: View {
 
     private var imageStage: some View {
         RoundedRectangle(cornerRadius: focused ? 26 : (stylePreview ? 18 : 16), style: .continuous)
-            .fill(CatLocalTheme.elevatedSurface.opacity(focused ? 0.62 : (stylePreview ? 0.3 : 0.48)))
+            .fill(palette.imageStageFill.opacity(focused ? 0.72 : (stylePreview ? 0.42 : 0.56)))
             .overlay(
                 RoundedRectangle(cornerRadius: focused ? 26 : (stylePreview ? 18 : 16), style: .continuous)
-                    .stroke(CatLocalTheme.imageOutline, lineWidth: 1)
+                    .stroke(palette.imageStageStroke, lineWidth: 1)
             )
     }
 
@@ -419,12 +406,27 @@ private struct CatCardSurface<CatImage: View>: View {
 
     private var standardSurface: some View {
         ZStack {
-            CatLocalTheme.paperSurface(for: cardStyle)
+            LinearGradient(
+                colors: palette.surfaceColors,
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+
+            RadialGradient(
+                colors: [
+                    palette.accent.opacity(focused ? 0.34 : 0.25),
+                    palette.secondaryAccent.opacity(focused ? 0.16 : 0.10),
+                    .clear
+                ],
+                center: .topTrailing,
+                startRadius: 8,
+                endRadius: focused ? 260 : 150
+            )
 
             LinearGradient(
                 colors: [
-                    Color.white.opacity(focused ? 0.22 : 0.18),
-                    CatLocalTheme.accent(for: cardStyle).opacity(focused ? 0.16 : 0.08)
+                    palette.sheen.opacity(focused ? 0.28 : 0.20),
+                    palette.secondaryAccent.opacity(focused ? 0.18 : 0.12)
                 ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
@@ -434,56 +436,82 @@ private struct CatCardSurface<CatImage: View>: View {
 
     private var prismSurface: some View {
         ZStack {
-            CatLocalTheme.paperSurface(for: .prism)
+            LinearGradient(
+                colors: palette.surfaceColors,
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
 
             AngularGradient(
                 colors: prismColors,
                 center: prismCenter,
                 angle: .degrees(Double(effectiveRotateY - effectiveRotateX) * 2.4)
             )
-            .opacity(0.8 * foilLightOpacity)
+            .opacity(0.74 * premiumFoilOpacity)
             .blendMode(.hardLight)
-            .animation(.easeInOut(duration: 0.18), value: foilLightOpacity)
+            .animation(.easeInOut(duration: 0.18), value: premiumFoilOpacity)
+
+            RadialGradient(
+                colors: [
+                    Color.cyan.opacity(0.42),
+                    Color.purple.opacity(0.16),
+                    .clear
+                ],
+                center: foilHotspot,
+                startRadius: 0,
+                endRadius: 210
+            )
+            .opacity(0.72 * premiumFoilOpacity)
+            .blendMode(.screen)
+            .animation(.easeInOut(duration: 0.18), value: premiumFoilOpacity)
         }
     }
 
     private var goldSurface: some View {
         ZStack {
-            CatLocalTheme.paperSurface(for: .gold)
+            LinearGradient(
+                colors: palette.surfaceColors,
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
 
             LinearGradient(
                 colors: [
-                    Color(red: 0.42, green: 0.24, blue: 0.08).opacity(0.78),
-                    Color(red: 0.98, green: 0.70, blue: 0.18),
-                    Color.white.opacity(0.9),
-                    Color(red: 0.75, green: 0.45, blue: 0.14),
-                    Color(red: 0.34, green: 0.20, blue: 0.08).opacity(0.74)
+                    Color(red: 0.34, green: 0.18, blue: 0.05).opacity(0.86),
+                    Color(red: 1.0, green: 0.76, blue: 0.22),
+                    Color(red: 1.0, green: 0.94, blue: 0.58),
+                    Color(red: 0.74, green: 0.42, blue: 0.08),
+                    Color(red: 0.24, green: 0.13, blue: 0.04).opacity(0.82)
                 ],
                 startPoint: goldStartPoint,
                 endPoint: goldEndPoint
             )
-            .opacity(0.86 * foilLightOpacity)
+            .opacity(0.82 * premiumFoilOpacity)
             .blendMode(.hardLight)
-            .animation(.easeInOut(duration: 0.18), value: foilLightOpacity)
+            .animation(.easeInOut(duration: 0.18), value: premiumFoilOpacity)
 
             RadialGradient(
                 colors: [
-                    Color.white,
+                    Color(red: 1.0, green: 0.92, blue: 0.50),
                     .clear
                 ],
                 center: foilHotspot,
                 startRadius: 0,
                 endRadius: 170
             )
-            .opacity(0.4 * foilLightOpacity)
+            .opacity(0.46 * premiumFoilOpacity)
             .blendMode(.screen)
-            .animation(.easeInOut(duration: 0.18), value: foilLightOpacity)
+            .animation(.easeInOut(duration: 0.18), value: premiumFoilOpacity)
         }
     }
 
     private var topoSurface: some View {
         ZStack {
-            CatLocalTheme.paperSurface(for: .topo)
+            LinearGradient(
+                colors: palette.surfaceColors,
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
 
             if presentation == .thumbnail {
                 topoFoilLayer
@@ -650,16 +678,126 @@ private struct CatCardSurface<CatImage: View>: View {
         abs(topoSeed == Int.min ? 0 : topoSeed)
     }
 
-    private func catImageOffset(cardWidth: CGFloat, cardHeight: CGFloat) -> CGSize {
-        guard let catBoundingBox else { return .zero }
-        return CGSize(
-            width: (0.5 - catBoundingBox.midX) * cardWidth,
-            height: (0.5 - catBoundingBox.midY) * cardHeight
-        )
-    }
-
     private func clampedUnit(_ value: CGFloat) -> CGFloat {
         min(max(value, 0), 1)
+    }
+}
+
+private struct CardStylePalette {
+    let surfaceColors: [Color]
+    let accent: Color
+    let secondaryAccent: Color
+    let sheen: Color
+    let primaryContent: Color
+    let secondaryContent: Color
+    let separator: Color
+    let medallionFill: Color
+    let pillFill: Color
+    let pillStroke: Color
+    let imageStageFill: Color
+    let imageStageStroke: Color
+
+    init(style: CardStyle) {
+        switch style {
+        case .archive:
+            surfaceColors = [
+                Color(red: 0.96, green: 0.90, blue: 0.78),
+                Color(red: 0.86, green: 0.76, blue: 0.58),
+                Color(red: 0.98, green: 0.94, blue: 0.84)
+            ]
+            accent = Color(red: 0.55, green: 0.34, blue: 0.17)
+            secondaryAccent = Color(red: 0.36, green: 0.24, blue: 0.13)
+            sheen = Color(red: 1.0, green: 0.96, blue: 0.86)
+            primaryContent = Color(red: 0.24, green: 0.16, blue: 0.08)
+        case .sunstamp:
+            surfaceColors = [
+                Color(red: 1.0, green: 0.94, blue: 0.62),
+                Color(red: 1.0, green: 0.77, blue: 0.25),
+                Color(red: 1.0, green: 0.96, blue: 0.78)
+            ]
+            accent = Color(red: 1.0, green: 0.63, blue: 0.10)
+            secondaryAccent = Color(red: 0.96, green: 0.32, blue: 0.18)
+            sheen = Color(red: 1.0, green: 0.98, blue: 0.78)
+            primaryContent = Color(red: 0.34, green: 0.19, blue: 0.03)
+        case .clear:
+            surfaceColors = [
+                Color(red: 0.98, green: 1.0, blue: 1.0),
+                Color(red: 0.80, green: 0.95, blue: 1.0),
+                Color(red: 0.93, green: 0.99, blue: 1.0)
+            ]
+            accent = Color(red: 0.18, green: 0.68, blue: 0.92)
+            secondaryAccent = Color(red: 0.52, green: 0.88, blue: 1.0)
+            sheen = Color.white
+            primaryContent = Color(red: 0.05, green: 0.23, blue: 0.34)
+        case .garden:
+            surfaceColors = [
+                Color(red: 0.61, green: 0.78, blue: 0.49),
+                Color(red: 0.23, green: 0.47, blue: 0.27),
+                Color(red: 0.80, green: 0.89, blue: 0.65)
+            ]
+            accent = Color(red: 0.94, green: 0.82, blue: 0.30)
+            secondaryAccent = Color(red: 0.14, green: 0.34, blue: 0.19)
+            sheen = Color(red: 0.90, green: 1.0, blue: 0.70)
+            primaryContent = Color(red: 0.06, green: 0.20, blue: 0.11)
+        case .midnight:
+            surfaceColors = [
+                Color(red: 0.05, green: 0.09, blue: 0.20),
+                Color(red: 0.02, green: 0.04, blue: 0.12),
+                Color(red: 0.08, green: 0.18, blue: 0.36)
+            ]
+            accent = Color(red: 0.24, green: 0.54, blue: 1.0)
+            secondaryAccent = Color(red: 0.48, green: 0.76, blue: 1.0)
+            sheen = Color(red: 0.72, green: 0.88, blue: 1.0)
+            primaryContent = .white
+        case .apricot:
+            surfaceColors = [
+                Color(red: 1.0, green: 0.72, blue: 0.52),
+                Color(red: 0.96, green: 0.42, blue: 0.31),
+                Color(red: 1.0, green: 0.86, blue: 0.68)
+            ]
+            accent = Color(red: 0.88, green: 0.28, blue: 0.18)
+            secondaryAccent = Color(red: 1.0, green: 0.58, blue: 0.40)
+            sheen = Color(red: 1.0, green: 0.92, blue: 0.78)
+            primaryContent = Color(red: 0.35, green: 0.12, blue: 0.07)
+        case .prism:
+            surfaceColors = [
+                Color(red: 0.05, green: 0.04, blue: 0.18),
+                Color(red: 0.10, green: 0.08, blue: 0.30),
+                Color(red: 0.02, green: 0.03, blue: 0.12)
+            ]
+            accent = Color(red: 0.40, green: 0.95, blue: 1.0)
+            secondaryAccent = Color(red: 1.0, green: 0.16, blue: 0.84)
+            sheen = Color(red: 0.70, green: 0.82, blue: 1.0)
+            primaryContent = .white
+        case .gold:
+            surfaceColors = [
+                Color(red: 0.24, green: 0.13, blue: 0.04),
+                Color(red: 0.55, green: 0.34, blue: 0.08),
+                Color(red: 0.16, green: 0.08, blue: 0.03)
+            ]
+            accent = Color(red: 1.0, green: 0.77, blue: 0.23)
+            secondaryAccent = Color(red: 0.77, green: 0.45, blue: 0.10)
+            sheen = Color(red: 1.0, green: 0.94, blue: 0.60)
+            primaryContent = .white
+        case .topo:
+            surfaceColors = [
+                Color(red: 0.05, green: 0.07, blue: 0.12),
+                Color(red: 0.08, green: 0.13, blue: 0.17),
+                Color(red: 0.03, green: 0.05, blue: 0.08)
+            ]
+            accent = Color(red: 0.98, green: 0.64, blue: 0.16)
+            secondaryAccent = Color(red: 0.28, green: 0.82, blue: 0.76)
+            sheen = Color(red: 1.0, green: 0.84, blue: 0.36)
+            primaryContent = .white
+        }
+
+        secondaryContent = primaryContent.opacity(0.72)
+        separator = primaryContent.opacity(0.24)
+        medallionFill = primaryContent.opacity(0.14)
+        pillFill = primaryContent.opacity(0.13)
+        pillStroke = primaryContent.opacity(0.24)
+        imageStageFill = sheen.opacity(0.42)
+        imageStageStroke = primaryContent.opacity(0.14)
     }
 }
 
@@ -745,6 +883,7 @@ struct CardStyleCarousel<Preview: View>: View {
     let titleMinHeight: CGFloat
     @State private var centeredItemID: Int?
     @State private var hapticStyle: CardStyle?
+    @State private var hapticGenerator = UISelectionFeedbackGenerator()
 
     @ViewBuilder let preview: (_ style: CardStyle) -> Preview
 
@@ -786,13 +925,15 @@ struct CardStyleCarousel<Preview: View>: View {
                     }
                 }
                 .scrollTargetLayout()
-                .padding(.horizontal, 2)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
             }
             .scrollIndicators(.hidden)
             .scrollTargetBehavior(.viewAligned)
             .scrollPosition(id: $centeredItemID)
             .onAppear {
                 centeredItemID = centeredItemID(for: selectedStyle)
+                hapticGenerator.prepare()
             }
             .onChange(of: centeredItemID) { _, itemID in
                 guard let itemID, let item = carouselItems.first(where: { $0.id == itemID }) else { return }
@@ -856,6 +997,7 @@ struct CardStyleCarousel<Preview: View>: View {
 
     private func styleOption(_ style: CardStyle) -> some View {
         let isSelected = style == selectedStyle
+        let shape = RoundedRectangle(cornerRadius: itemCornerRadius, style: .continuous)
 
         return VStack(spacing: 9) {
             preview(style)
@@ -867,20 +1009,25 @@ struct CardStyleCarousel<Preview: View>: View {
                 .foregroundStyle(isSelected ? CatLocalTheme.primaryText : CatLocalTheme.secondaryText)
                 .lineLimit(2)
                 .multilineTextAlignment(.center)
-                .frame(minHeight: titleMinHeight, alignment: .top)
+                .frame(minHeight: titleMinHeight, alignment: .center)
         }
         .frame(width: itemWidth)
         .padding(itemPadding)
-        .background(
-            CatLocalTheme.cardSurface.opacity(isSelected ? 0.86 : 0.36),
-            in: RoundedRectangle(cornerRadius: itemCornerRadius, style: .continuous)
-        )
+        .background {
+            shape
+                .fill(CatLocalTheme.cardSurface.opacity(isSelected ? 0.88 : 0.36))
+                .shadow(
+                    color: CatLocalTheme.blueAction.opacity(isSelected ? 0.10 : 0),
+                    radius: isSelected ? 7 : 0,
+                    y: isSelected ? 3 : 0
+                )
+                .shadow(
+                    color: CatLocalTheme.shadow.opacity(isSelected ? 0.16 : 0),
+                    radius: isSelected ? 8 : 0,
+                    y: isSelected ? 4 : 0
+                )
+        }
         .scaleEffect(isSelected ? 1 : 0.96)
-        .shadow(
-            color: CatLocalTheme.shadow.opacity(isSelected ? 0.22 : 0.06),
-            radius: isSelected ? 14 : 5,
-            y: isSelected ? 7 : 2
-        )
         .contentShape(RoundedRectangle(cornerRadius: itemCornerRadius, style: .continuous))
         .onTapGesture {
             withAnimation(.snappy(duration: 0.24)) {
@@ -897,22 +1044,35 @@ struct CardStyleCarousel<Preview: View>: View {
     private func playSelectionHaptic(for style: CardStyle) {
         guard hapticStyle != style else { return }
         hapticStyle = style
-        UISelectionFeedbackGenerator().selectionChanged()
+        hapticGenerator.selectionChanged()
+        hapticGenerator.prepare()
     }
 }
 
 struct CardStyleSwatch: View {
     let style: CardStyle
+    private var palette: CardStylePalette { CardStylePalette(style: style) }
 
     var body: some View {
+        let shape = RoundedRectangle(cornerRadius: 16, style: .continuous)
+
         ZStack {
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(CatLocalTheme.paperSurface(for: style))
+            LinearGradient(
+                colors: palette.surfaceColors,
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
 
             swatchOverlay
 
             VStack(alignment: .leading, spacing: 6) {
                 HStack {
+                    RoundedRectangle(cornerRadius: 3, style: .continuous)
+                        .fill(contentColor.opacity(0.72))
+                        .frame(width: 52, height: 6)
+
+                    Spacer()
+
                     Circle()
                         .fill(contentColor.opacity(0.16))
                         .frame(width: 20, height: 20)
@@ -921,12 +1081,6 @@ struct CardStyleSwatch: View {
                                 .font(.caption2.weight(.bold))
                                 .foregroundStyle(contentColor)
                         }
-
-                    Spacer()
-
-                    RoundedRectangle(cornerRadius: 3, style: .continuous)
-                        .fill(contentColor.opacity(0.22))
-                        .frame(width: 28, height: 5)
                 }
 
                 Spacer()
@@ -943,10 +1097,8 @@ struct CardStyleSwatch: View {
             }
             .padding(13)
         }
-        .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(CatLocalTheme.imageOutline, lineWidth: 1)
-        )
+        .clipShape(shape)
+        .overlay(shape.stroke(palette.imageStageStroke, lineWidth: 1))
     }
 
     @ViewBuilder
@@ -955,7 +1107,8 @@ struct CardStyleSwatch: View {
         case .archive:
             LinearGradient(
                 colors: [
-                    CatLocalTheme.accent(for: style).opacity(0.22),
+                    palette.accent.opacity(0.26),
+                    palette.secondaryAccent.opacity(0.10),
                     .clear
                 ],
                 startPoint: .topLeading,
@@ -964,8 +1117,8 @@ struct CardStyleSwatch: View {
         case .sunstamp:
             RadialGradient(
                 colors: [
-                    CatLocalTheme.warning.opacity(0.48),
-                    CatLocalTheme.warning.opacity(0.10),
+                    palette.accent.opacity(0.58),
+                    palette.secondaryAccent.opacity(0.26),
                     .clear
                 ],
                 center: .topTrailing,
@@ -975,7 +1128,7 @@ struct CardStyleSwatch: View {
         case .clear:
             LinearGradient(
                 colors: [
-                    CatLocalTheme.blueAction.opacity(0.20),
+                    palette.accent.opacity(0.24),
                     Color.white.opacity(0.22),
                     .clear
                 ],
@@ -985,8 +1138,8 @@ struct CardStyleSwatch: View {
         case .garden:
             LinearGradient(
                 colors: [
-                    CatLocalTheme.positive.opacity(0.24),
-                    CatLocalTheme.sage.opacity(0.12)
+                    palette.accent.opacity(0.24),
+                    palette.secondaryAccent.opacity(0.28)
                 ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
@@ -994,8 +1147,8 @@ struct CardStyleSwatch: View {
         case .midnight:
             LinearGradient(
                 colors: [
-                    Color.white.opacity(0.12),
-                    CatLocalTheme.blueAction.opacity(0.16)
+                    palette.sheen.opacity(0.18),
+                    palette.accent.opacity(0.26)
                 ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
@@ -1003,8 +1156,8 @@ struct CardStyleSwatch: View {
         case .apricot:
             LinearGradient(
                 colors: [
-                    CatLocalTheme.warning.opacity(0.26),
-                    CatLocalTheme.cardSurface.opacity(0.12)
+                    palette.accent.opacity(0.30),
+                    palette.sheen.opacity(0.20)
                 ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
@@ -1014,7 +1167,7 @@ struct CardStyleSwatch: View {
                 colors: [.cyan, .pink, .yellow, .blue, .purple, .cyan],
                 center: .center
             )
-            .opacity(0.78)
+            .opacity(0.88)
             .blendMode(.hardLight)
         case .gold:
             LinearGradient(
@@ -1055,12 +1208,7 @@ struct CardStyleSwatch: View {
     }
 
     private var contentColor: Color {
-        switch style {
-        case .midnight, .prism, .gold, .topo:
-            .white
-        default:
-            CatLocalTheme.primaryText
-        }
+        palette.primaryContent
     }
 }
 

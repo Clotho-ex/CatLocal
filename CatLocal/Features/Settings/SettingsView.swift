@@ -11,20 +11,24 @@ struct SettingsView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
-                    privacyCard
-                    storageCard
-                    aboutCard
+            ZStack {
+                CatLocalBackground()
+
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 18) {
+                        privacyCard
+                        storageCard
+                        aboutCard
+                    }
+                    .padding(.horizontal, CatLocalTheme.screenHorizontalPadding)
+                    .padding(.top, 18)
+                    .padding(.bottom, 140)
                 }
-                .padding(.horizontal, CatLocalTheme.screenHorizontalPadding)
-                .padding(.top, 18)
-                .padding(.bottom, 140)
+                .scrollIndicators(.hidden)
             }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.large)
-            .scrollIndicators(.hidden)
-            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarBackground(.hidden, for: .navigationBar)
         }
         .task {
             await refreshStorage()

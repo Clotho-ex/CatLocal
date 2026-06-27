@@ -392,30 +392,25 @@ struct CaptureView: View {
                         CardStyleCarousel(
                             selectedStyle: $selectedStyle,
                             showsTitle: false,
-                            itemWidth: 132,
-                            previewAspectRatio: 1.32,
-                            itemPadding: 7,
-                            itemCornerRadius: 20,
-                            itemSpacing: 10,
-                            titleMinHeight: 30
+                            itemWidth: 154,
+                            previewAspectRatio: 1.28,
+                            itemPadding: 6,
+                            itemCornerRadius: 22,
+                            itemSpacing: 12,
+                            titleMinHeight: 20
                         ) { style in
                             CardStyleSwatch(style: style)
                         }
                         .accessibilityLabel("Card design")
 
-                        Text("Name the Cat")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(CatLocalTheme.secondaryText)
+                        editorFieldHeading("Name the Cat")
 
                         TextField("Nickname (optional)", text: $nickname)
                             .textInputAutocapitalization(.words)
                             .focused($focusedEditorField, equals: .nickname)
                             .catInputSurface()
 
-                        Text("CATLAS")
-                            .font(.caption2.weight(.bold))
-                            .tracking(1.8)
-                            .foregroundStyle(CatLocalTheme.secondaryText)
+                        editorFieldHeading("Catlas")
 
                         TextField("Memory Place (optional)", text: $placeName)
                             .textInputAutocapitalization(.words)
@@ -429,19 +424,14 @@ struct CaptureView: View {
                             .focused($focusedEditorField, equals: .placeDetail)
                             .catInputSurface()
 
-                        Text("Manual label only. CatLocal does not request GPS or save coordinates.")
-                            .font(.footnote)
-                            .foregroundStyle(CatLocalTheme.secondaryText)
-                            .lineLimit(nil)
-
-                        Text("Encounter Note")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(CatLocalTheme.secondaryText)
+                        editorFieldHeading("Encounter Note")
 
                         TextField("A note about this encounter", text: $note, axis: .vertical)
                             .lineLimit(2...5)
                             .focused($focusedEditorField, equals: .note)
                             .catInputSurface()
+
+                        catlasPrivacyNote
                     }
                     .padding(18)
                     .catPanelSurface(fillOpacity: 0.86, shadowOpacity: 0.18)
@@ -521,6 +511,47 @@ struct CaptureView: View {
         .buttonStyle(.plain)
         .disabled(isSaving)
         .accessibilityHint("Saves the cat and image variants on this iPhone")
+    }
+
+    private var catlasPrivacyNote: some View {
+        HStack(alignment: .center, spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(CatLocalTheme.warning.opacity(0.28))
+
+                Image(systemName: "shield.lefthalf.filled")
+                    .font(.system(size: 19, weight: .semibold))
+                    .foregroundStyle(CatLocalTheme.primaryText)
+            }
+            .frame(width: 34, height: 34)
+            .accessibilityHidden(true)
+
+            Text("Manual label only. CatLocal does not request GPS or save coordinates.")
+                .font(.footnote.weight(.medium))
+                .foregroundStyle(CatLocalTheme.primaryText)
+                .lineLimit(nil)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.leading, 10)
+        .padding(.trailing, 14)
+        .padding(.vertical, 9)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            Capsule(style: .continuous)
+                .fill(CatLocalTheme.warning.opacity(0.22))
+        )
+        .overlay(
+            Capsule(style: .continuous)
+                .stroke(CatLocalTheme.warning.opacity(0.55), lineWidth: 1)
+        )
+    }
+
+    private func editorFieldHeading(_ title: String) -> some View {
+        Text(title)
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(CatLocalTheme.primaryText)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.top, 2)
     }
 
     private var failureScreen: some View {

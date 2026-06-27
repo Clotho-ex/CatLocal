@@ -45,29 +45,33 @@ struct CollectionView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 24) {
-                    header
-                    collectionSummary
+            ZStack {
+                CatLocalBackground()
 
-                    if records.isEmpty {
-                        emptyState
-                    } else {
-                        modePicker
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 24) {
+                        header
+                        collectionSummary
 
-                        switch collectionMode {
-                        case .cards:
-                            catGridSection
-                        case .atlas:
-                            catlas
+                        if records.isEmpty {
+                            emptyState
+                        } else {
+                            modePicker
+
+                            switch collectionMode {
+                            case .cards:
+                                catGridSection
+                            case .atlas:
+                                catlas
+                            }
                         }
                     }
+                    .padding(.horizontal, CatLocalTheme.screenHorizontalPadding)
+                    .padding(.top, 18)
+                    .padding(.bottom, 140)
                 }
-                .padding(.horizontal, CatLocalTheme.screenHorizontalPadding)
-                .padding(.top, 18)
-                .padding(.bottom, 140)
+                .scrollIndicators(.hidden)
             }
-            .scrollIndicators(.hidden)
             .navigationDestination(item: $selectedRecord) { record in
                 FocusedCardView(record: record) {
                     closeFocusedRecord()
