@@ -14,6 +14,7 @@ struct CollectionView: View {
     @State private var selectedRecord: CatRecord?
     @State private var editingRecord: CatRecord?
     @State private var removalRecord: CatRecord?
+    @State private var selectedAtlasRoute: AtlasRoute?
     @State private var collectionMode: CollectionMode = .cards
     @State private var sortOption: CatSortOption = .number
     @State private var errorMessage: String?
@@ -80,6 +81,9 @@ struct CollectionView: View {
                 .navigationBarBackButtonHidden(true)
                 .toolbar(.hidden, for: .navigationBar)
             }
+            .navigationDestination(item: $selectedAtlasRoute) { route in
+                atlasFilteredGrid(route)
+            }
         }
         .sheet(item: $editingRecord) { record in
             CatRecordEditSheet(record: record)
@@ -106,12 +110,14 @@ struct CollectionView: View {
             Text(errorMessage ?? "")
         }
         .onChange(of: homeReselectionID) {
-            guard selectedRecord != nil else { return }
+            guard selectedRecord != nil || selectedAtlasRoute != nil else { return }
             closeFocusedRecord()
+            selectedAtlasRoute = nil
         }
         .onChange(of: selectedTab) { _, tab in
-            guard tab != .home, selectedRecord != nil else { return }
+            guard tab != .home, selectedRecord != nil || selectedAtlasRoute != nil else { return }
             closeFocusedRecord()
+            selectedAtlasRoute = nil
         }
         .accessibilityIdentifier("collection-screen")
     }
@@ -252,6 +258,56 @@ struct CollectionView: View {
         .accessibilityIdentifier("catlas")
     }
 
+    private func atlasFilteredGrid(_ route: AtlasRoute) -> some View {
+        ZStack {
+            CatLocalBackground()
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(route.title.uppercased())
+                            .font(.subheadline.weight(.black))
+                            .tracking(2.2)
+                            .foregroundStyle(CatLocalTheme.ink)
+                            .lineLimit(2)
+                            .minimumScaleFactor(0.76)
+
+                        Text(catCountText(route.records.count))
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(CatLocalTheme.secondaryText)
+
+                        if route.isUnplaced {
+                            Text("\(unplacedCountText(route.records.count)). Add a memory place while saving a new cat or from Edit Cat.")
+                                .font(.footnote)
+                                .foregroundStyle(CatLocalTheme.secondaryText)
+                                .lineLimit(nil)
+                                .padding(.top, 2)
+                        }
+                    }
+                    .padding(18)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(
+                        CatLocalTheme.chalk.opacity(0.84),
+                        in: RoundedRectangle(cornerRadius: CatLocalTheme.panelRadius, style: .continuous)
+                    )
+                    .shadow(color: CatLocalTheme.shadow.opacity(0.10), radius: 12, y: 6)
+
+                    LazyVGrid(columns: columns, spacing: 18) {
+                        ForEach(route.records) { record in
+                            catGridCard(record)
+                        }
+                    }
+                }
+                .padding(.horizontal, CatLocalTheme.screenHorizontalPadding)
+                .padding(.top, 18)
+                .padding(.bottom, 120)
+            }
+            .scrollIndicators(.hidden)
+        }
+        .navigationTitle("Catlas")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
     private var atlasIntro: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .firstTextBaseline) {
@@ -310,96 +366,23 @@ struct CollectionView: View {
     }
 
     private func atlasGroup(_ group: MemoryAtlasGroup) -> some View {
-        VStack(alignment: .leading, spacing: 13) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(group.displayTitle)
-                    .font(.headline.weight(.semibold))
-                    .foregroundStyle(CatLocalTheme.primaryText)
-                    .lineLimit(2)
-                Spacer()
-                Text(catCountText(group.records.count))
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(CatLocalTheme.secondaryText)
-            }
-
-            if group.isUnplaced {
-                Text("\(unplacedCountText(group.records.count)). Add a memory place while saving a new cat or from Edit Cat.")
-                    .font(.footnote)
-                    .foregroundStyle(CatLocalTheme.secondaryText)
-                    .lineLimit(nil)
-            }
-
-            VStack(spacing: 0) {
-                ForEach(Array(group.records.enumerated()), id: \.element.id) { index, record in
-                    atlasRow(record)
-
-                    if index < group.records.count - 1 {
-                        Rectangle()
-                            .fill(CatLocalTheme.separator)
-                            .frame(height: 1)
-                    }
-                }
-            }
-        }
-        .padding(18)
-        .catPanelSurface(fillOpacity: 0.82, shadowOpacity: 0.10)
-        .accessibilityElement(children: .contain)
-    }
-
-    private func atlasRow(_ record: CatRecord) -> some View {
         Button {
             withAnimation(focusTransitionAnimation) {
-                selectedRecord = record
+                selectedAtlasRoute = AtlasRoute(group: group)
             }
         } label: {
-            HStack(alignment: .top, spacing: 13) {
-                Image(systemName: "book.closed.fill")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(CatLocalTheme.infoSymbol)
-                    .frame(width: 28, height: 28)
-                    .background(
-                        CatLocalTheme.elevatedSurface.opacity(0.72),
-                        in: Circle()
-                    )
-                    .accessibilityHidden(true)
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(record.displayName)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(CatLocalTheme.primaryText)
-                        .lineLimit(2)
-
-                    Text("Cat \(record.sequence.formatted()) - \(record.capturedAt.formatted(date: .abbreviated, time: .omitted))")
-                        .font(.caption)
-                        .foregroundStyle(CatLocalTheme.secondaryText)
-                        .lineLimit(2)
-
-                    if let detail = record.memoryPlaceDetail {
-                        Text(detail)
-                            .font(.footnote)
-                            .foregroundStyle(CatLocalTheme.secondaryText)
-                            .lineLimit(3)
-                    }
-                }
-
-                Spacer(minLength: 8)
-
-                Image(systemName: "chevron.right")
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(CatLocalTheme.secondaryText)
-                    .accessibilityHidden(true)
-            }
-            .padding(.vertical, 12)
-            .contentShape(Rectangle())
+            AtlasFolderButton(
+                group: group,
+                countText: catCountText(group.records.count),
+                unplacedText: group.isUnplaced
+                    ? "\(unplacedCountText(group.records.count)). Add a memory place while saving a new cat or from Edit Cat."
+                    : nil
+            )
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(atlasAccessibilityLabel(for: record))
-        .accessibilityHint("Opens this saved cat")
-    }
-
-    private func atlasAccessibilityLabel(for record: CatRecord) -> String {
-        let place = record.memoryPlaceLabel ?? "Unplaced"
-        return "\(record.displayName), \(place), cat \(record.sequence.formatted())."
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(group.displayTitle), \(catCountText(group.records.count))")
+        .accessibilityHint("Opens a filtered Catlas grid")
     }
 
     private func sectionHeader(title: String) -> some View {
@@ -616,6 +599,162 @@ struct CollectionView: View {
     }
 }
 
+private struct AtlasFolderButton: View {
+    let group: MemoryAtlasGroup
+    let countText: String
+    let unplacedText: String?
+
+    var body: some View {
+        let bodyShape = RoundedRectangle(cornerRadius: 24, style: .continuous)
+        let tabShape = UnevenRoundedRectangle(
+            topLeadingRadius: 15,
+            bottomLeadingRadius: 0,
+            bottomTrailingRadius: 0,
+            topTrailingRadius: 15,
+            style: .continuous
+        )
+
+        VStack(alignment: .leading, spacing: 0) {
+            Text("CATLAS")
+                .font(.caption2.weight(.black))
+                .tracking(1.8)
+                .foregroundStyle(CatLocalTheme.ink.opacity(0.62))
+                .padding(.horizontal, 18)
+                .padding(.top, 8)
+                .padding(.bottom, 7)
+                .background(CatLocalTheme.chalk.opacity(0.96), in: tabShape)
+                .overlay {
+                    tabShape
+                        .stroke(CatLocalTheme.ink.opacity(0.16), lineWidth: 1.15)
+                }
+                .padding(.leading, 18)
+
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(alignment: .top, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 7) {
+                        Text(group.displayTitle.uppercased())
+                            .font(.subheadline.weight(.black))
+                            .tracking(2.2)
+                            .foregroundStyle(CatLocalTheme.ink)
+                            .lineLimit(2)
+                            .minimumScaleFactor(0.76)
+
+                        Text(countText)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(CatLocalTheme.secondaryText)
+                            .lineLimit(1)
+                    }
+
+                    Spacer(minLength: 10)
+
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(CatLocalTheme.secondaryText)
+                        .frame(width: 28, height: 28)
+                        .background(CatLocalTheme.cardSurface.opacity(0.58), in: Circle())
+                        .accessibilityHidden(true)
+                }
+
+                AtlasPolaroidStrip(records: group.records)
+
+                if let unplacedText {
+                    Text(unplacedText)
+                        .font(.footnote.weight(.medium))
+                        .foregroundStyle(CatLocalTheme.secondaryText)
+                        .lineLimit(nil)
+                        .padding(.top, 1)
+                }
+            }
+            .padding(18)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(CatLocalTheme.chalk.opacity(0.88), in: bodyShape)
+            .overlay {
+                bodyShape
+                    .stroke(CatLocalTheme.ink.opacity(0.20), lineWidth: 1.15)
+            }
+            .overlay(alignment: .top) {
+                Rectangle()
+                    .fill(CatLocalTheme.cardSurface.opacity(0.46))
+                    .frame(height: 1)
+                    .padding(.horizontal, 18)
+                    .accessibilityHidden(true)
+            }
+            .shadow(color: CatLocalTheme.shadow.opacity(0.16), radius: 13, y: 7)
+        }
+        .contentShape(Rectangle())
+    }
+}
+
+private struct AtlasPolaroidStrip: View {
+    let records: [CatRecord]
+
+    var body: some View {
+        ScrollView(.horizontal) {
+            HStack(spacing: -10) {
+                ForEach(Array(records.enumerated()), id: \.element.id) { index, record in
+                    AtlasPolaroidThumbnail(record: record, index: index)
+                        .zIndex(Double(records.count - index))
+                }
+            }
+            .padding(.horizontal, 2)
+            .padding(.vertical, 8)
+        }
+        .scrollIndicators(.hidden)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(thumbnailSummary)
+    }
+
+    private var thumbnailSummary: String {
+        records.count == 1 ? "1 cat thumbnail" : "\(records.count) cat thumbnails"
+    }
+}
+
+private struct AtlasPolaroidThumbnail: View {
+    let record: CatRecord
+    let index: Int
+
+    private var rotation: Double {
+        [-5.0, 3.5, -2.5, 4.0, -3.0][index % 5]
+    }
+
+    private var verticalOffset: CGFloat {
+        [2, -3, 1, -2, 3][index % 5]
+    }
+
+    var body: some View {
+        VStack(spacing: 5) {
+            StoredImageView(path: record.thumbnailImagePath, contentMode: .fill) {
+                Image(systemName: "cat.fill")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(CatLocalTheme.secondaryText)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(CatLocalTheme.elevatedSurface.opacity(0.72))
+            }
+            .frame(width: 54, height: 54)
+            .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 7, style: .continuous)
+                    .stroke(CatLocalTheme.imageOutline, lineWidth: 1)
+            }
+
+            RoundedRectangle(cornerRadius: 2, style: .continuous)
+                .fill(CatLocalTheme.secondaryText.opacity(0.32))
+                .frame(width: 30, height: 3)
+        }
+        .padding(.top, 5)
+        .padding(.horizontal, 5)
+        .padding(.bottom, 7)
+        .background(
+            CatLocalTheme.cardSurface.opacity(0.96),
+            in: RoundedRectangle(cornerRadius: 10, style: .continuous)
+        )
+        .shadow(color: CatLocalTheme.shadow.opacity(0.14), radius: 6, y: 3)
+        .rotationEffect(.degrees(rotation))
+        .offset(y: verticalOffset)
+        .accessibilityHidden(true)
+    }
+}
+
 private enum CollectionMode: String, CaseIterable, Identifiable {
     case cards
     case atlas
@@ -659,6 +798,28 @@ private enum CatSortOption: String, CaseIterable, Identifiable {
         case .place: "mappin.and.ellipse"
         case .alphabetical: "textformat.abc"
         }
+    }
+}
+
+private struct AtlasRoute: Identifiable, Hashable {
+    let id: String
+    let title: String
+    let records: [CatRecord]
+    let isUnplaced: Bool
+
+    init(group: MemoryAtlasGroup) {
+        id = group.id
+        title = group.displayTitle
+        records = group.records
+        isUnplaced = group.isUnplaced
+    }
+
+    static func == (lhs: AtlasRoute, rhs: AtlasRoute) -> Bool {
+        lhs.id == rhs.id
+    }
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
     }
 }
 

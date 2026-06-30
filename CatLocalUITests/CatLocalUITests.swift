@@ -54,8 +54,10 @@ final class CatLocalUITests: XCTestCase {
         atlasButton.tap()
 
         XCTAssertTrue(app.staticTexts["A private index of the places you type yourself. No GPS, coordinates, or public map."].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Ferry Steps"].exists)
-        XCTAssertTrue(app.staticTexts["Garden Wall"].exists)
-        XCTAssertTrue(app.staticTexts["Unplaced cats"].exists)
+        XCTAssertTrue(app.buttons["Ferry Steps, 1 cat"].exists)
+        XCTAssertTrue(app.buttons["Garden Wall, 1 cat"].exists)
+
+        app.swipeUp()
+        XCTAssertTrue(app.buttons["Unplaced cats, 1 cat"].waitForExistence(timeout: 5))
     }
 }

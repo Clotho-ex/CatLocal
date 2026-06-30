@@ -1,6 +1,11 @@
 import SwiftUI
 import UIKit
 
+/// Areas for Polish: While the custom procedural effects (like the Topographic
+/// card's TopoContourLayer) are impressive, they are computationally heavy.
+/// The developer correctly mitigates this by restricting complex renders to
+/// focused states and utilizing drawingGroup(), but rendering performance on
+/// older devices should be continuously monitored.
 struct LiveInteractiveCardView<Content: View>: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
