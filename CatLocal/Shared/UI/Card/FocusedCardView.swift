@@ -1,5 +1,7 @@
 import SwiftData
 import SwiftUI
+import UniformTypeIdentifiers
+import UIKit
 
 struct FocusedCardView: View {
     @Environment(\.dismiss) private var dismiss
@@ -8,12 +10,19 @@ struct FocusedCardView: View {
 
     let record: CatRecord
     let onClose: (() -> Void)?
+    let onDeleted: (() -> Void)?
 
     @State private var isEditing = false
+    @State private var isCardInteracting = false
 
-    init(record: CatRecord, onClose: (() -> Void)? = nil) {
+    init(
+        record: CatRecord,
+        onClose: (() -> Void)? = nil,
+        onDeleted: (() -> Void)? = nil
+    ) {
         self.record = record
         self.onClose = onClose
+        self.onDeleted = onDeleted
     }
 
     var body: some View {
@@ -22,11 +31,16 @@ struct FocusedCardView: View {
                 .overlay(CatLocalTheme.primaryText.opacity(0.05))
 
             VStack(spacing: 12) {
-                topBar
-
                 Spacer(minLength: 0)
 
-                LiveInteractiveCardView(width: nil, height: nil, cornerRadius: 34) { rotateX, rotateY, isInteracting in
+                LiveInteractiveCardView(
+                    width: nil,
+                    height: nil,
+                    cornerRadius: 34,
+                    onInteractionChanged: { isInteracting in
+                        isCardInteracting = isInteracting
+                    }
+                ) { rotateX, rotateY, isInteracting in
                     CatCardView(
                         record: record,
                         presentation: .focused,
@@ -38,26 +52,35 @@ struct FocusedCardView: View {
                     .frame(maxWidth: dynamicTypeSize.isAccessibilitySize ? 350 : 390)
                     .aspectRatio(0.64, contentMode: .fit)
 
-                Label(
-                    reduceMotion ? "Lighting motion is reduced" : "Drag to catch the light",
-                    systemImage: reduceMotion ? "figure.stand" : "gyroscope"
-                )
-                .font(.subheadline.weight(.medium))
-                .foregroundStyle(CatLocalTheme.primaryText)
-                .padding(.horizontal, 18)
-                .padding(.vertical, 11)
-                .catGlass(cornerRadius: 22)
-                .lineLimit(2)
-                .multilineTextAlignment(.center)
-
-                Spacer(minLength: dynamicTypeSize.isAccessibilitySize ? 24 : 48)
+                Spacer(minLength: 0)
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .padding(.horizontal, dynamicTypeSize.isAccessibilitySize ? 8 : 10)
-            .padding(.top, 12)
+            .padding(.vertical, dynamicTypeSize.isAccessibilitySize ? 6 : 16)
+        }
+        .navigationTitle(record.displayName)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar(.hidden, for: .tabBar)
+        .toolbar {
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                shareToolbarAction
+
+                Button {
+                    isEditing = true
+                } label: {
+                    Image(systemName: "pencil")
+                }
+                .accessibilityLabel("Edit")
+            }
+        }
+        .safeAreaInset(edge: .bottom) {
+            lightHintPill
+                .padding(.horizontal, CatLocalTheme.screenHorizontalPadding)
+                .padding(.bottom, dynamicTypeSize.isAccessibilitySize ? 12 : 18)
         }
         .sheet(isPresented: $isEditing) {
             CatRecordEditSheet(record: record) {
-                closeFocusedCat()
+                closeDeletedFocusedCat()
             }
                 .presentationDetents([.medium, .large])
                 .presentationBackground(CatLocalTheme.background)
@@ -67,34 +90,35 @@ struct FocusedCardView: View {
         .accessibilityAction(.escape) { closeFocusedCat() }
     }
 
-    private var topBar: some View {
-        CatGlassGroup(spacing: 18) {
-            HStack {
-                Button {
-                    closeFocusedCat()
-                } label: {
-                    Image(systemName: "xmark")
-                        .frame(width: 46, height: 46)
-                        .catGlass(cornerRadius: 23, interactive: true)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Close cat")
-
-                Spacer()
-
-                Button {
-                    isEditing = true
-                } label: {
-                    Label("Edit", systemImage: "pencil")
-                        .font(.subheadline.weight(.semibold))
-                        .padding(.horizontal, 16)
-                        .frame(minHeight: 46)
-                        .catGlass(cornerRadius: 23, interactive: true)
-                }
-                .buttonStyle(.plain)
-            }
+    @ViewBuilder
+    private var shareToolbarAction: some View {
+        ShareLink(
+            item: CatCardShareItem(record: record),
+            preview: SharePreview(record.displayName, image: Image(systemName: "cat.fill"))
+        ) {
+            Image(systemName: "square.and.arrow.up")
         }
+        .accessibilityLabel("Share")
+    }
+
+    private var lightHintPill: some View {
+        Label(
+            reduceMotion ? "Lighting motion is reduced" : "Drag to catch the light",
+            systemImage: reduceMotion ? "figure.stand" : "gyroscope"
+        )
+        .font(.subheadline.weight(.medium))
         .foregroundStyle(CatLocalTheme.primaryText)
+        .padding(.horizontal, 18)
+        .padding(.vertical, 11)
+        .frame(maxWidth: dynamicTypeSize.isAccessibilitySize ? .infinity : nil)
+        .catGlass(cornerRadius: 22)
+        .lineLimit(dynamicTypeSize.isAccessibilitySize ? 3 : 2)
+        .multilineTextAlignment(.center)
+        .opacity(isCardInteracting && !reduceMotion ? 0 : 1)
+        .offset(y: isCardInteracting && !reduceMotion ? 8 : 0)
+        .animation(.easeInOut(duration: 0.16), value: isCardInteracting)
+        .allowsHitTesting(false)
+        .accessibilityHidden(isCardInteracting && !reduceMotion)
     }
 
     private func closeFocusedCat() {
@@ -104,11 +128,124 @@ struct FocusedCardView: View {
             dismiss()
         }
     }
+
+    private func closeDeletedFocusedCat() {
+        if let onDeleted {
+            onDeleted()
+        } else {
+            closeFocusedCat()
+        }
+    }
+}
+
+private struct CatCardShareItem: Transferable, Sendable {
+    let displayName: String
+    let sequence: Int
+    let capturedAt: Date
+    let note: String
+    let placeName: String
+    let placeDetail: String
+    let cardStyle: CardStyle
+    let cutoutImagePath: String
+    let thumbnailImagePath: String
+    let catBoundingBox: CGRect?
+    let topoSeed: Int
+
+    init(record: CatRecord) {
+        displayName = record.displayName
+        sequence = record.sequence
+        capturedAt = record.capturedAt
+        note = record.note
+        placeName = record.memoryPlaceName ?? ""
+        placeDetail = record.memoryPlaceDetail ?? ""
+        cardStyle = record.cardStyle
+        cutoutImagePath = record.cutoutImagePath
+        thumbnailImagePath = record.thumbnailImagePath
+        catBoundingBox = record.catBoundingBox
+        topoSeed = record.id.hashValue
+    }
+
+    static var transferRepresentation: some TransferRepresentation {
+        DataRepresentation(exportedContentType: .png) { item in
+            try await item.pngData()
+        }
+    }
+
+    @MainActor
+    private func pngData() async throws -> Data {
+        let cutoutImage = await resolvedShareImage()
+        let renderer = ImageRenderer(
+            content: shareCard(cutoutImage: cutoutImage)
+        )
+        renderer.scale = 3
+        renderer.proposedSize = ProposedViewSize(width: 350, height: 547)
+
+        guard let renderedImage = renderer.uiImage,
+              let pngData = renderedImage.pngData()
+        else {
+            throw CatCardShareError.renderFailed
+        }
+
+        return pngData
+    }
+
+    @MainActor
+    private func resolvedShareImage() async -> UIImage {
+        for path in [cutoutImagePath, thumbnailImagePath] where !path.isEmpty {
+            if let data = try? await CatImageStore.shared.data(at: path),
+               let image = UIImage(data: data) {
+                return image
+            }
+        }
+
+        return Self.placeholderShareImage()
+    }
+
+    @MainActor
+    private func shareCard(cutoutImage: UIImage) -> some View {
+        DraftCatCardView(
+            image: cutoutImage,
+            sequence: sequence,
+            name: displayName,
+            date: capturedAt,
+            note: note,
+            placeName: placeName,
+            placeDetail: placeDetail,
+            cardStyle: cardStyle,
+            presentation: .focused,
+            showsFooter: true,
+            catBoundingBox: catBoundingBox,
+            topoSeed: topoSeed
+        )
+        .frame(width: 350, height: 547)
+    }
+
+    @MainActor
+    private static func placeholderShareImage() -> UIImage {
+        let size = CGSize(width: 900, height: 900)
+        let format = UIGraphicsImageRendererFormat()
+        format.opaque = false
+        format.scale = UIScreen.main.scale
+
+        return UIGraphicsImageRenderer(size: size, format: format).image { _ in
+            let configuration = UIImage.SymbolConfiguration(pointSize: 420, weight: .regular)
+            let image = UIImage(systemName: "cat.fill", withConfiguration: configuration)?
+                .withTintColor(.label, renderingMode: .alwaysOriginal)
+            let rect = CGRect(x: 210, y: 210, width: 480, height: 480)
+            image?.draw(in: rect)
+        }
+    }
+}
+
+private enum CatCardShareError: Error {
+    case renderFailed
 }
 
 struct CatRecordEditSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
+    @Query(sort: \CatRecord.sequence, order: .forward)
+    private var records: [CatRecord]
 
     enum FocusedField {
         case name
@@ -140,12 +277,10 @@ struct CatRecordEditSheet: View {
 
     var body: some View {
         NavigationStack {
-            ZStack {
+            ZStack(alignment: .topTrailing) {
                 CatLocalBackground()
                     .onTapGesture {
-                        if focusedField != nil {
-                            focusedField = nil
-                        }
+                        dismissEditKeyboard()
                     }
 
                 Form {
@@ -163,6 +298,11 @@ struct CatRecordEditSheet: View {
                             CardStyleSwatch(style: style)
                         }
                         .listRowInsets(EdgeInsets(top: 14, leading: 12, bottom: 16, trailing: 12))
+                        .simultaneousGesture(
+                            TapGesture().onEnded {
+                                dismissEditKeyboard()
+                            }
+                        )
                     }
 
                     Section("Name the Cat") {
@@ -217,39 +357,55 @@ struct CatRecordEditSheet: View {
                     .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 20, trailing: 16))
                     .listRowBackground(Color.clear)
                 }
+                .safeAreaInset(edge: .top) {
+                    Color.clear
+                        .frame(height: 46)
+                }
                 .scrollContentBackground(.hidden)
+                .scrollDismissesKeyboard(.interactively)
+
+                editSheetActionButton
+                    .padding(.top, 14)
+                    .padding(.trailing, CatLocalTheme.screenHorizontalPadding)
             }
-            .navigationTitle("Edit Cat")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
-                        dismiss()
-                    }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") { saveChanges() }
-                        .fontWeight(.semibold)
-                }
-            }
-        }
-        .confirmationDialog(
-            "Delete this cat?",
-            isPresented: $showingDeleteConfirmation,
-            titleVisibility: .visible
-        ) {
-            Button("Delete Cat", role: .destructive) {
-                Task { await deleteRecord() }
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("The original photo, cutout, notes, and cat will be removed from this iPhone.")
+            .toolbar(.hidden, for: .navigationBar)
         }
         .alert("Could not update cat", isPresented: .constant(errorMessage != nil)) {
             Button("OK") { errorMessage = nil }
         } message: {
             Text(errorMessage ?? "")
         }
+        .sheet(isPresented: $showingDeleteConfirmation) {
+            CatDeletionConfirmationSheet(
+                title: "Delete this cat?",
+                message: "The original photo, cutout, notes, and cat will be removed from this iPhone.",
+                deleteTitle: "Delete"
+            ) {
+                showingDeleteConfirmation = false
+                Task { await deleteRecord() }
+            } onCancel: {
+                showingDeleteConfirmation = false
+            }
+        }
+    }
+
+    private var editSheetActionButton: some View {
+        CatSheetActionButton(mode: editSheetActionMode) {
+            performEditSheetAction()
+        }
+        .accessibilityIdentifier("cat-edit-sheet-action")
+    }
+
+    private var editSheetActionMode: CatSheetActionButton.Mode {
+        hasDraftChanges ? .confirm : .close
+    }
+
+    private var hasDraftChanges: Bool {
+        trimmedMemoryText(nickname) != record.nickname
+            || note != record.note
+            || trimmedMemoryText(placeName) != record.placeName
+            || trimmedMemoryText(placeDetail) != record.placeDetail
+            || selectedStyle != record.cardStyle
     }
 
     private var catlasPrivacyNote: some View {
@@ -286,7 +442,24 @@ struct CatRecordEditSheet: View {
         )
     }
 
+    private func dismissEditKeyboard() {
+        if focusedField != nil {
+            focusedField = nil
+        }
+    }
+
+    private func performEditSheetAction() {
+        dismissEditKeyboard()
+        guard editSheetActionMode == .confirm else {
+            dismiss()
+            return
+        }
+
+        saveChanges()
+    }
+
     private func saveChanges() {
+        dismissEditKeyboard()
         record.nickname = trimmedMemoryText(nickname)
         record.note = note
         record.placeName = trimmedMemoryText(placeName)
@@ -301,9 +474,11 @@ struct CatRecordEditSheet: View {
     }
 
     private func deleteRecord() async {
+        let remainingRecords = records.filter { $0.id != record.id }
         do {
             try await CatImageStore.shared.deleteRecord(id: record.id)
             modelContext.delete(record)
+            CatRecord.compactSequences(remainingRecords)
             try modelContext.save()
             dismiss()
             onDeleted?()

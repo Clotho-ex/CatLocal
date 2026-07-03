@@ -60,4 +60,86 @@ final class CatLocalUITests: XCTestCase {
         app.swipeUp()
         XCTAssertTrue(app.buttons["Unplaced cats, 1 cat"].waitForExistence(timeout: 5))
     }
+
+    func testValidationImportReachesStickerEditor() {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "-ui-testing-reset",
+            "-ui-testing-seed-atlas",
+            "-catlocal-ui-import-fixture",
+            "-catlocal-ui-synthetic-photo",
+            "-catlocal-ui-synthetic-cutout",
+            "-catlocal-ui-skip-sticker-reveal",
+            "-catlocal-ui-prefill-editor-fields"
+        ]
+        app.launch()
+
+        XCTAssertTrue(app.staticTexts["CatLocal"].waitForExistence(timeout: 8))
+        let cameraButton = app.tabBars.buttons["Camera"]
+        XCTAssertTrue(cameraButton.waitForExistence(timeout: 5))
+        cameraButton.tap()
+
+        let validationButton = app.buttons["Use validation photo"]
+        if !validationButton.waitForExistence(timeout: 5) {
+            cameraButton.tap()
+        }
+        XCTAssertTrue(validationButton.waitForExistence(timeout: 8))
+        validationButton.tap()
+
+        let customizeButton = app.buttons["tap-to-customize"]
+        XCTAssertTrue(customizeButton.waitForExistence(timeout: 15))
+        customizeButton.tap()
+
+        XCTAssertTrue(app.staticTexts["Make it Yours"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Pick a card for this sticker, then add the details you want to remember."].exists)
+        XCTAssertTrue(app.scrollViews["Card design"].exists || app.staticTexts["Archive"].exists)
+        XCTAssertTrue(app.buttons["Save Cat"].waitForExistence(timeout: 5))
+
+        app.buttons["Save Cat"].tap()
+        let celebrationHomeButton = app.buttons["card-minting-home"]
+        let celebrationEditButton = app.buttons["card-minting-edit"]
+        XCTAssertTrue(celebrationHomeButton.waitForExistence(timeout: 15))
+        XCTAssertTrue(celebrationEditButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Pixel"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Warm orange hello."].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Rooftop"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["South ledge"].waitForExistence(timeout: 5))
+
+        celebrationEditButton.tap()
+        XCTAssertTrue(app.buttons["Save Cat"].waitForExistence(timeout: 5))
+        app.buttons["Save Cat"].tap()
+        XCTAssertTrue(celebrationHomeButton.waitForExistence(timeout: 8))
+
+        celebrationHomeButton.tap()
+        XCTAssertTrue(app.staticTexts["CatLocal"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["4 cats"].waitForExistence(timeout: 5))
+    }
+
+    func testValidationImportFallbackExplainsUnconfirmedCutout() {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "-ui-testing-reset",
+            "-catlocal-ui-import-fixture",
+            "-catlocal-ui-synthetic-photo",
+            "-catlocal-ui-force-foreground-fallback"
+        ]
+        app.launch()
+
+        XCTAssertTrue(app.staticTexts["CatLocal"].waitForExistence(timeout: 8))
+        let cameraButton = app.tabBars.buttons["Camera"]
+        XCTAssertTrue(cameraButton.waitForExistence(timeout: 5))
+        cameraButton.tap()
+
+        let validationButton = app.buttons["Use validation photo"]
+        if !validationButton.waitForExistence(timeout: 5) {
+            cameraButton.tap()
+        }
+        XCTAssertTrue(validationButton.waitForExistence(timeout: 8))
+        validationButton.tap()
+
+        XCTAssertTrue(app.staticTexts["That one was tricky"].waitForExistence(timeout: 8))
+        XCTAssertTrue(app.buttons["Use Cutout Anyway"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["CatLocal could not confirm a cat in this photo."].exists)
+        XCTAssertTrue(app.staticTexts["You can still use the foreground cutout and edit the card before saving."].exists)
+    }
 }

@@ -5,7 +5,9 @@ import SwiftUI
 import UIKit
 
 struct CaptureView: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.modelContext) private var modelContext
     @Query private var existingRecords: [CatRecord]
 
@@ -23,9 +25,18 @@ struct CaptureView: View {
     @State private var placeDetail = ""
     @State private var selectedStyle: CardStyle = .archive
     @State private var draftGreeting = ""
+    @State private var draftSequence: Int?
+    @State private var persistedRecord: CatRecord?
     @State private var errorMessage: String?
     @State private var canUseForegroundFallback = false
+    @State private var isProcessingCapture = false
     @State private var isSaving = false
+    @State private var isEditorSheetPresented = false
+    @State private var stickerBaseOffset: CGSize = .zero
+    @GestureState private var stickerDragTranslation: CGSize = .zero
+    @State private var isCardMintingDone = false
+    @State private var captureSelectionFeedbackTrigger = 0
+    @State private var captureWarningFeedbackTrigger = 0
     @FocusState private var focusedEditorField: EditorField?
 
     private let processor = CatVisionProcessor()
@@ -39,13 +50,16 @@ struct CaptureView: View {
                 processingScreen
             case .choosingCat:
                 catSelectionScreen
-            case .editing:
-                editorScreen
+            case .stickerReveal:
+                stickerRevealScreen
+            case .stickerInspecting:
+                stickerInspectionScreen
+            case .cardCelebrating:
+                cardCelebrationScreen
             case .failure:
                 failureScreen
             }
         }
-        .animation(.easeInOut(duration: 0.22), value: stage)
         .task {
             await camera.requestAccessAndConfigure()
             if camera.authorizationStatus == .authorized {
@@ -56,8 +70,19 @@ struct CaptureView: View {
             guard let item else { return }
             Task { await loadPhoto(item) }
         }
+        .sheet(isPresented: $isEditorSheetPresented) {
+            editorSheet
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
+                .presentationBackground(CatLocalTheme.background)
+                .presentationContentInteraction(.resizes)
+                .presentationBackgroundInteraction(.disabled)
+                .interactiveDismissDisabled(true)
+        }
         .onDisappear { camera.stop() }
         .interactiveDismissDisabled(stage != .camera)
+        .sensoryFeedback(.selection, trigger: captureSelectionFeedbackTrigger)
+        .sensoryFeedback(.warning, trigger: captureWarningFeedbackTrigger)
     }
 
     private var cameraScreen: some View {
@@ -96,26 +121,23 @@ struct CaptureView: View {
     private var cameraTopBar: some View {
         CatGlassGroup(spacing: 18) {
             HStack {
+                Label("On-device only", systemImage: "lock.fill")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.white)
+                    .catSingleActionPillSurface()
+
+                Spacer()
+
                 Button {
                     closeCamera()
                 } label: {
                     Image(systemName: "xmark")
-                        .font(.headline)
+                        .font(.system(size: 22, weight: .semibold))
                         .foregroundStyle(.white)
-                        .frame(width: 46, height: 46)
-                        .catGlass(cornerRadius: 23, interactive: true)
+                        .catSingleActionIconSurface()
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Close camera")
-
-                Spacer()
-
-                Label("On-device only", systemImage: "lock.fill")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 14)
-                    .frame(minHeight: 40)
-                    .catGlass(cornerRadius: 20)
             }
         }
     }
@@ -141,31 +163,20 @@ struct CaptureView: View {
                 HStack {
                     PhotosPicker(selection: $photoItem, matching: .images) {
                         Image(systemName: "photo.on.rectangle")
-                            .font(.system(size: 23, weight: .semibold))
+                            .font(.system(size: 22, weight: .semibold))
                             .foregroundStyle(.white)
-                            .frame(width: 64, height: 64)
-                            .catGlass(cornerRadius: 32, interactive: true)
+                            .catSingleActionIconSurface()
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel("Choose private photo")
+                    .disabled(isProcessingCapture)
+                    .opacity(isProcessingCapture ? 0.45 : 1)
+                    .accessibilityLabel("Add Photo")
                     .accessibilityHint("The selected photo stays on this iPhone")
 
-                    Spacer()
+                    Spacer(minLength: 12)
 
                     Button {
-                        camera.capture { result in
-                            switch result {
-                            case .success(let image):
-                                Task {
-                                    await accept(
-                                        image: optimizedWorkingImage(from: image),
-                                        source: .camera
-                                    )
-                                }
-                            case .failure(let error):
-                                fail(with: error.localizedDescription)
-                            }
-                        }
+                        captureCameraPhoto()
                     } label: {
                         Circle()
                             .stroke(.white, lineWidth: 4)
@@ -177,14 +188,14 @@ struct CaptureView: View {
                             }
                     }
                     .buttonStyle(.plain)
-                    .disabled(!camera.isConfigured)
-                    .opacity(camera.isConfigured ? 1 : 0.45)
+                    .disabled(!canTakePhoto)
+                    .opacity(canTakePhoto ? 1 : 0.45)
                     .accessibilityLabel("Take photo")
 
-                    Spacer()
+                    Spacer(minLength: 12)
 
                     Color.clear
-                        .frame(width: 64, height: 64)
+                        .frame(width: 56, height: 56)
                         .accessibilityHidden(true)
                 }
 
@@ -201,6 +212,8 @@ struct CaptureView: View {
                             .catGlass(cornerRadius: 20, interactive: true)
                     }
                     .buttonStyle(.plain)
+                    .disabled(isProcessingCapture)
+                    .opacity(isProcessingCapture ? 0.45 : 1)
                 }
                 #endif
             }
@@ -274,6 +287,19 @@ struct CaptureView: View {
         .accessibilityLabel(stage == .analyzing ? "Looking for cats" : "Creating cat cutout")
     }
 
+    private var stickerRevealScreen: some View {
+        Group {
+            if let cutoutImage {
+                DustingRevealView(image: cutoutImage) {
+                    guard stage == .stickerReveal else { return }
+                    stage = .stickerInspecting
+                }
+            } else {
+                processingScreen
+            }
+        }
+    }
+
     private var catSelectionScreen: some View {
         ZStack {
             CatLocalBackground()
@@ -343,142 +369,378 @@ struct CaptureView: View {
         }
     }
 
-    private var editorScreen: some View {
+    private var stickerInspectionScreen: some View {
         ZStack {
             CatLocalBackground()
 
-            ScrollView {
-                VStack(spacing: 20) {
-                    editorTopBar
-
-                    if let cutoutImage {
-                        DraftCatCardView(
-                            image: cutoutImage,
-                            sequence: nextSequence,
-                            name: editorPreviewName,
-                            note: note,
-                            placeName: placeName,
-                            placeDetail: placeDetail,
-                            cardStyle: selectedStyle,
-                            showsFooter: false,
-                            catBoundingBox: selectedBoundingBox,
-                            topoSeed: nextSequence
-                        )
-                        .frame(maxWidth: 350)
-                        .transition(.scale(scale: 0.9).combined(with: .opacity))
-                    }
-
-                    VStack(alignment: .leading, spacing: 14) {
-                        Text("Make it Yours")
-                            .font(.title2.weight(.semibold))
-                            .foregroundStyle(
-                                LinearGradient(
-                                    colors: [
-                                        CatLocalTheme.warning,
-                                        CatLocalTheme.blueAction,
-                                        CatLocalTheme.primaryText
-                                    ],
-                                    startPoint: .leading,
-                                    endPoint: .trailing
-                                )
-                            )
-                            .lineLimit(nil)
-
-                        Text("Add the details you want to remember. Everything stays local.")
-                            .font(.subheadline)
-                            .foregroundStyle(CatLocalTheme.secondaryText)
-                            .lineLimit(nil)
-
-                        CardStyleCarousel(
-                            selectedStyle: $selectedStyle,
-                            showsTitle: false,
-                            itemWidth: 154,
-                            previewAspectRatio: 1.28,
-                            itemPadding: 6,
-                            itemCornerRadius: 22,
-                            itemSpacing: 12,
-                            titleMinHeight: 20
-                        ) { style in
-                            CardStyleSwatch(style: style)
-                        }
-                        .accessibilityLabel("Card design")
-
-                        editorFieldHeading("Name the Cat")
-
-                        TextField("Nickname (optional)", text: $nickname)
-                            .textInputAutocapitalization(.words)
-                            .focused($focusedEditorField, equals: .nickname)
-                            .catInputSurface()
-
-                        editorFieldHeading("Catlas")
-
-                        TextField("Memory Place (optional)", text: $placeName)
-                            .textInputAutocapitalization(.words)
-                            .focused($focusedEditorField, equals: .placeName)
-                            .catInputSurface()
-                            .accessibilityHint("Adds a manual place label to the private Catlas")
-
-                        TextField("Place Detail (optional)", text: $placeDetail, axis: .vertical)
-                            .lineLimit(1...3)
-                            .textInputAutocapitalization(.sentences)
-                            .focused($focusedEditorField, equals: .placeDetail)
-                            .catInputSurface()
-
-                        editorFieldHeading("Encounter Note")
-
-                        TextField("A note about this encounter", text: $note, axis: .vertical)
-                            .lineLimit(2...5)
-                            .focused($focusedEditorField, equals: .note)
-                            .catInputSurface()
-
-                        catlasPrivacyNote
-                    }
-                    .padding(18)
-                    .catPanelSurface(fillOpacity: 0.86, shadowOpacity: 0.18)
-                }
-                .padding(.horizontal, CatLocalTheme.screenHorizontalPadding)
-                .padding(.top, 12)
-                .padding(.bottom, 112)
-            }
-            .scrollIndicators(.hidden)
-            .scrollDismissesKeyboard(.interactively)
-            .safeAreaInset(edge: .bottom) {
-                saveCardButton
+            VStack(spacing: 14) {
+                editorTopBar
                     .padding(.horizontal, CatLocalTheme.screenHorizontalPadding)
                     .padding(.top, 12)
-                    .padding(.bottom, 12)
-                    .background(.regularMaterial)
+
+                Spacer(minLength: 0)
+
+                if let cutoutImage {
+                    draggableSticker(cutoutImage)
+                }
+
+                Spacer(minLength: 0)
+
+                customizeButton
+                    .padding(.bottom, 18)
+            }
+        }
+    }
+
+    private var customizeButton: some View {
+        Button {
+            expandEditor()
+        } label: {
+            Label("Tap to Customize", systemImage: "slider.horizontal.3")
+                .font(.headline.weight(.semibold))
+                .foregroundStyle(CatLocalTheme.primaryText)
+                .padding(.horizontal, 18)
+                .frame(minHeight: 48)
+                .catGlass(cornerRadius: 24, interactive: true)
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("tap-to-customize")
+    }
+
+    private func draggableSticker(_ image: UIImage) -> some View {
+        GeometryReader { proxy in
+            let activeOffset = CGSize(
+                width: stickerBaseOffset.width + stickerDragTranslation.width,
+                height: stickerBaseOffset.height + stickerDragTranslation.height
+            )
+
+            StickerCutoutView(
+                image: image,
+                appliesMotion: !reduceMotion
+            )
+            .frame(maxWidth: 270, maxHeight: 330)
+            .position(x: proxy.size.width / 2, y: proxy.size.height / 2)
+            .offset(activeOffset)
+            .gesture(
+                DragGesture(minimumDistance: 1)
+                    .updating($stickerDragTranslation) { value, state, _ in
+                        state = value.translation
+                    }
+                    .onEnded { value in
+                        stickerBaseOffset = clampedStickerOffset(
+                            CGSize(
+                                width: stickerBaseOffset.width + value.translation.width,
+                                height: stickerBaseOffset.height + value.translation.height
+                            )
+                        )
+                    }
+            )
+            .accessibilityLabel("Cat sticker preview")
+        }
+        .frame(height: 390)
+    }
+
+    private func clampedStickerOffset(_ offset: CGSize) -> CGSize {
+        CGSize(
+            width: min(max(offset.width, -120), 120),
+            height: min(max(offset.height, -170), 150)
+        )
+    }
+
+    private var editorSheet: some View {
+        NavigationStack {
+            ZStack(alignment: .topTrailing) {
+                CatLocalBackground()
+                    .onTapGesture {
+                        dismissEditorKeyboard()
+                    }
+
+                editorForm
+
+                editorSheetActionButton
+                    .padding(.top, 14)
+                    .padding(.trailing, CatLocalTheme.screenHorizontalPadding)
+            }
+            .toolbar(.hidden, for: .navigationBar)
+            .safeAreaInset(edge: .bottom) {
+                editorSheetSaveButton
+            }
+        }
+        .accessibilityIdentifier("sticker-editor-sheet")
+    }
+
+    private var editorSheetActionButton: some View {
+        CatSheetActionButton(mode: .close) {
+            collapseEditor()
+        }
+        .accessibilityIdentifier("sticker-editor-sheet-action")
+    }
+
+    private var editorSheetSaveButton: some View {
+        let shape = RoundedRectangle(cornerRadius: 28, style: .continuous)
+
+        return Button {
+            dismissEditorKeyboard()
+            Task { await finishCustomization() }
+        } label: {
+            HStack(spacing: 9) {
+                if isSaving {
+                    ProgressView()
+                        .controlSize(.small)
+                        .tint(CatLocalTheme.primaryText)
+                        .accessibilityHidden(true)
+                } else {
+                    Image(systemName: "checkmark")
+                        .font(.headline.weight(.semibold))
+                        .accessibilityHidden(true)
+                }
+
+                Text(isSaving ? "Saving" : "Save Cat")
+            }
+            .font(.headline.weight(.semibold))
+            .foregroundStyle(CatLocalTheme.primaryText)
+            .frame(maxWidth: .infinity)
+            .contentShape(shape)
+            .catSingleActionPillSurface()
+        }
+        .buttonStyle(.plain)
+        .contentShape(shape)
+        .disabled(isSaving)
+        .accessibilityLabel(isSaving ? "Saving Cat" : "Save Cat")
+        .padding(.horizontal, CatLocalTheme.screenHorizontalPadding)
+        .padding(.top, 10)
+        .padding(.bottom, 10)
+        .background(.regularMaterial)
+    }
+
+    private var editorForm: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 14) {
+                makeItYoursHeading
+
+                Text("Pick a card for this sticker, then add the details you want to remember.")
+                    .font(.callout)
+                    .foregroundStyle(CatLocalTheme.secondaryText)
+                    .lineLimit(nil)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                editorCardPreview
+
+                CardStyleCarousel(
+                    selectedStyle: $selectedStyle,
+                    showsTitle: false,
+                    itemWidth: 154,
+                    previewAspectRatio: 1.28,
+                    itemPadding: 6,
+                    itemCornerRadius: 22,
+                    itemSpacing: 12,
+                    titleMinHeight: 20
+                ) { style in
+                    CardStyleSwatch(style: style)
+                }
+                .accessibilityLabel("Card design")
+                .simultaneousGesture(
+                    TapGesture().onEnded {
+                        dismissEditorKeyboard()
+                    }
+                )
+
+                editorFieldHeading("Name the Cat")
+
+                TextField("Nickname (optional)", text: $nickname)
+                    .textInputAutocapitalization(.words)
+                    .focused($focusedEditorField, equals: .nickname)
+                    .catInputSurface()
+
+                editorFieldHeading("Catlas")
+
+                TextField("Memory Place (optional)", text: $placeName)
+                    .textInputAutocapitalization(.words)
+                    .focused($focusedEditorField, equals: .placeName)
+                    .catInputSurface()
+                    .accessibilityHint("Adds a manual place label to the private Catlas")
+
+                TextField("Place Detail (optional)", text: $placeDetail, axis: .vertical)
+                    .lineLimit(1...3)
+                    .textInputAutocapitalization(.sentences)
+                    .focused($focusedEditorField, equals: .placeDetail)
+                    .catInputSurface()
+
+                editorFieldHeading("Encounter Note")
+
+                TextField("A note about this encounter", text: $note, axis: .vertical)
+                    .lineLimit(2...5)
+                    .focused($focusedEditorField, equals: .note)
+                    .catInputSurface()
+
+                catlasPrivacyNote
+            }
+            .padding(18)
+            .padding(.top, 52)
+            .padding(.bottom, 108)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background {
+                Color.clear
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        dismissEditorKeyboard()
+                    }
+            }
+        }
+        .scrollIndicators(.hidden)
+        .scrollDismissesKeyboard(.interactively)
+    }
+
+    @ViewBuilder
+    private var editorCardPreview: some View {
+        if let cutoutImage {
+            DraftCatCardView(
+                image: cutoutImage,
+                sequence: activeSequence,
+                name: editorPreviewName,
+                note: note,
+                placeName: placeName,
+                placeDetail: placeDetail,
+                cardStyle: selectedStyle,
+                presentation: .focused,
+                showsFooter: true,
+                catBoundingBox: selectedBoundingBox,
+                topoSeed: activeSequence,
+                appliesStickerEffect: true,
+                stickerMotionIntensity: nil
+            )
+            .frame(maxWidth: 280)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 8)
+            .animation(.smooth(duration: 0.22, extraBounce: 0), value: selectedStyle)
+            .accessibilityLabel("Live card preview")
+        }
+    }
+
+    private var makeItYoursHeading: some View {
+        (
+            Text("Make it ")
+                .foregroundStyle(CatLocalTheme.primaryText)
+            + Text("Yours")
+                .foregroundStyle(CatLocalTheme.warning)
+        )
+        .font(.title2.weight(.semibold))
+        .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
+        .fixedSize(horizontal: false, vertical: true)
+        .accessibilityLabel("Make it Yours")
+    }
+
+    private var celebrationPreviewNote: String {
+        persistedRecord?.note ?? note
+    }
+
+    private var celebrationPreviewPlaceName: String {
+        persistedRecord?.placeName ?? placeName
+    }
+
+    private var celebrationPreviewPlaceDetail: String {
+        persistedRecord?.placeDetail ?? placeDetail
+    }
+
+    private var celebrationPreviewStyle: CardStyle {
+        persistedRecord?.cardStyle ?? selectedStyle
+    }
+
+    private var celebrationPreviewBoundingBox: CGRect? {
+        persistedRecord?.catBoundingBox ?? selectedBoundingBox
+    }
+
+    private var celebrationPreviewTopoSeed: Int {
+        persistedRecord?.sequence ?? activeSequence
+    }
+
+    private var cardCelebrationScreen: some View {
+        Group {
+            if let cutoutImage {
+                CardMintingSuccessView(
+                    isCustomizationDone: $isCardMintingDone,
+                    showsCustomizationPanel: false,
+                    onHome: {
+                        dismiss()
+                    },
+                    onKeepEditing: {
+                        expandEditor()
+                    }
+                ) { mintingSheen in
+                    LiveInteractiveCardView(
+                        width: nil,
+                        height: nil,
+                        cornerRadius: 34
+                    ) { rotateX, rotateY, isInteracting in
+                        DraftCatCardView(
+                            image: cutoutImage,
+                            sequence: activeSequence,
+                            name: celebrationPreviewName,
+                            note: celebrationPreviewNote,
+                            placeName: celebrationPreviewPlaceName,
+                            placeDetail: celebrationPreviewPlaceDetail,
+                            cardStyle: celebrationPreviewStyle,
+                            presentation: .focused,
+                            rotateX: rotateX,
+                            rotateY: rotateY,
+                            isLightActive: isInteracting,
+                            showsFooter: true,
+                            catBoundingBox: celebrationPreviewBoundingBox,
+                            topoSeed: celebrationPreviewTopoSeed,
+                            appliesStickerEffect: true,
+                            stickerMotionIntensity: nil
+                        )
+                        .overlay {
+                            if mintingSheen.isVisible {
+                                mintingSheen
+                                    .clipShape(RoundedRectangle(cornerRadius: 34, style: .continuous))
+                            }
+                        }
+                    }
+                    .aspectRatio(0.64, contentMode: .fit)
+                }
+            } else {
+                processingScreen
             }
         }
     }
 
     private var editorTopBar: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack {
-                Button("Cancel") { cancelCapture() }
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(CatLocalTheme.primaryText)
-                Spacer()
-                editorStageTitle
-                Spacer()
-                Button("Retake") { reset() }
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(CatLocalTheme.primaryText)
-            }
-
-            VStack(spacing: 10) {
+        CatGlassGroup(spacing: 12) {
+            ViewThatFits(in: .horizontal) {
                 HStack {
-                    Button("Cancel") { cancelCapture() }
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(CatLocalTheme.primaryText)
+                    editorTopBarButton(accessibilityLabel: "Cancel", systemImage: "xmark", action: cancelCapture)
                     Spacer()
-                    Button("Retake") { reset() }
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(CatLocalTheme.primaryText)
+                    editorStageTitle
+                    Spacer()
+                    editorTopBarButton(accessibilityLabel: "Retake", systemImage: "arrow.counterclockwise", action: reset)
                 }
-                editorStageTitle
+
+                VStack(spacing: 10) {
+                    HStack {
+                        editorTopBarButton(accessibilityLabel: "Cancel", systemImage: "xmark", action: cancelCapture)
+                        Spacer()
+                        editorTopBarButton(accessibilityLabel: "Retake", systemImage: "arrow.counterclockwise", action: reset)
+                    }
+                    editorStageTitle
+                }
             }
         }
+    }
+
+    private func editorTopBarButton(
+        accessibilityLabel: String,
+        systemImage: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Image(systemName: systemImage)
+                .font(.system(size: 22, weight: .semibold))
+                .foregroundStyle(CatLocalTheme.primaryText)
+                .catSingleActionIconSurface()
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(accessibilityLabel)
     }
 
     private var editorStageTitle: some View {
@@ -489,28 +751,6 @@ struct CaptureView: View {
         }
         .multilineTextAlignment(.center)
         .accessibilityElement(children: .combine)
-    }
-
-    private var saveCardButton: some View {
-        Button {
-            focusedEditorField = nil
-            Task { await saveCard() }
-        } label: {
-            HStack {
-                if isSaving {
-                    ProgressView()
-                        .tint(.white)
-                }
-                Image(systemName: isSaving ? "hourglass" : "cat.fill")
-                Text(isSaving ? "Saving privately" : "Add Cat")
-                    .lineLimit(2)
-            }
-            .font(.headline)
-            .catPrimaryActionSurface(isDisabled: isSaving)
-        }
-        .buttonStyle(.plain)
-        .disabled(isSaving)
-        .accessibilityHint("Saves the cat and image variants on this iPhone")
     }
 
     private var catlasPrivacyNote: some View {
@@ -527,7 +767,7 @@ struct CaptureView: View {
             .accessibilityHidden(true)
 
             Text("Manual label only. CatLocal does not request GPS or save coordinates.")
-                .font(.footnote.weight(.medium))
+                .font(.callout.weight(.medium))
                 .foregroundStyle(CatLocalTheme.primaryText)
                 .lineLimit(nil)
                 .fixedSize(horizontal: false, vertical: true)
@@ -548,8 +788,8 @@ struct CaptureView: View {
 
     private func editorFieldHeading(_ title: String) -> some View {
         Text(title)
-            .font(.subheadline.weight(.semibold))
-            .foregroundStyle(CatLocalTheme.primaryText)
+            .font(.footnote.weight(.semibold))
+            .foregroundStyle(CatLocalTheme.secondaryText)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.top, 2)
     }
@@ -558,39 +798,116 @@ struct CaptureView: View {
         ZStack {
             CatLocalBackground()
 
-            VStack(spacing: 20) {
-                Image(systemName: "viewfinder.circle")
-                    .font(.system(size: 64, weight: .ultraLight))
-                    .foregroundStyle(CatLocalTheme.warning)
+            VStack(spacing: 0) {
+                failureTopBar
+                    .padding(.top, 10)
 
-                VStack(spacing: 8) {
-                    Text("That one was tricky")
-                        .font(.system(size: 31, weight: .semibold))
-                        .foregroundStyle(CatLocalTheme.primaryText)
-                    Text(errorMessage ?? "CatLocal could not create a clean cat cutout from this photo.")
-                        .multilineTextAlignment(.center)
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: 320)
-                }
+                Spacer(minLength: 32)
 
-                if originalImage != nil, canUseForegroundFallback {
-                    Button("Use the foreground anyway") {
-                        Task { await createCutout(for: nil) }
+                VStack(spacing: 22) {
+                    Image(systemName: "viewfinder.circle")
+                        .font(.system(size: 64, weight: .ultraLight))
+                        .foregroundStyle(CatLocalTheme.warning)
+
+                    VStack(spacing: 8) {
+                        Text("That one was tricky")
+                            .font(.title2.weight(.semibold))
+                            .foregroundStyle(CatLocalTheme.primaryText)
+                            .multilineTextAlignment(.center)
+                            .lineLimit(nil)
+                        Text(errorMessage ?? "CatLocal could not create a clean cat cutout from this photo.")
+                            .font(.body)
+                            .multilineTextAlignment(.center)
+                            .foregroundStyle(CatLocalTheme.secondaryText)
+                            .frame(maxWidth: 320)
+                            .lineLimit(nil)
                     }
-                    .font(.headline)
-                    .padding(.horizontal, 20)
-                    .catPrimaryActionSurface(cornerRadius: 26)
-                    .frame(maxWidth: 320)
+
+                    if originalImage != nil, canUseForegroundFallback {
+                        foregroundFallbackControls
+                    }
                 }
 
-                Button("Try Another Photo") { reset() }
-                    .font(.headline)
-                    .foregroundStyle(CatLocalTheme.primaryText)
-
-                Button("Close") { dismiss() }
-                    .foregroundStyle(.secondary)
+                Spacer(minLength: 48)
             }
-            .padding(24)
+            .padding(.horizontal, CatLocalTheme.screenHorizontalPadding)
+            .padding(.bottom, 24)
+        }
+    }
+
+    private var failureTopBar: some View {
+        CatGlassGroup(spacing: 18) {
+            HStack {
+                Button {
+                    reset()
+                } label: {
+                    Image(systemName: "arrow.counterclockwise")
+                        .font(.system(size: 22, weight: .semibold))
+                        .foregroundStyle(CatLocalTheme.primaryText)
+                        .catSingleActionIconSurface()
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Try another photo")
+
+                Spacer()
+
+                Button {
+                    dismiss()
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 22, weight: .semibold))
+                        .foregroundStyle(CatLocalTheme.primaryText)
+                        .catSingleActionIconSurface()
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Close")
+            }
+        }
+    }
+
+    private var foregroundFallbackControls: some View {
+        VStack(spacing: 12) {
+            Button {
+                Task { await createCutout(for: nil) }
+            } label: {
+                Label("Use Cutout Anyway", systemImage: "sparkles")
+                    .font(.headline.weight(.semibold))
+                    .frame(maxWidth: .infinity)
+                    .contentShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
+            }
+            .buttonStyle(.plain)
+            .catPrimaryActionSurface(cornerRadius: 26)
+            .frame(maxWidth: 320)
+            .accessibilityHint("Uses the foreground cutout even though CatLocal could not confirm a cat")
+
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: "info.circle.fill")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(CatLocalTheme.information)
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("CatLocal could not confirm a cat in this photo.")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(CatLocalTheme.primaryText)
+
+                    Text("You can still use the foreground cutout and edit the card before saving.")
+                        .font(.footnote.weight(.medium))
+                        .foregroundStyle(CatLocalTheme.secondaryText)
+                }
+                .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 11)
+            .frame(maxWidth: 320, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .fill(CatLocalTheme.cardSurface.opacity(0.78))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .stroke(CatLocalTheme.imageOutline, lineWidth: 1)
+            )
+            .accessibilityElement(children: .combine)
         }
     }
 
@@ -598,20 +915,60 @@ struct CaptureView: View {
         (existingRecords.map(\.sequence).max() ?? 0) + 1
     }
 
+    private var canTakePhoto: Bool {
+        camera.isConfigured && !isProcessingCapture && stage == .camera
+    }
+
+    private var activeSequence: Int {
+        persistedRecord?.sequence ?? draftSequence ?? nextSequence
+    }
+
     #if DEBUG
     private var showsValidationImport: Bool {
         ProcessInfo.processInfo.arguments.contains("-catlocal-ui-import-fixture")
     }
 
+    private var usesSyntheticValidationPhoto: Bool {
+        ProcessInfo.processInfo.arguments.contains("-catlocal-ui-synthetic-photo")
+    }
+
+    private var bypassesVisionForValidation: Bool {
+        ProcessInfo.processInfo.arguments.contains("-catlocal-ui-synthetic-cutout")
+    }
+
+    private var forcesForegroundFallbackForValidation: Bool {
+        ProcessInfo.processInfo.arguments.contains("-catlocal-ui-force-foreground-fallback")
+    }
+
+    private var skipsStickerRevealForValidation: Bool {
+        ProcessInfo.processInfo.arguments.contains("-catlocal-ui-skip-sticker-reveal")
+    }
+
+    private var prefillsValidationEditorFields: Bool {
+        ProcessInfo.processInfo.arguments.contains("-catlocal-ui-prefill-editor-fields")
+    }
+
+    private func prefillValidationEditorFields() {
+        nickname = "Pixel"
+        placeName = "Rooftop"
+        placeDetail = "South ledge"
+        note = "Warm orange hello."
+    }
+
     private func loadValidationPhoto() async {
+        guard beginCaptureInput() else { return }
         do {
+            if usesSyntheticValidationPhoto {
+                await accept(image: Self.validationFixtureImage(), source: .photoLibrary)
+                return
+            }
+
             let url = try validationPhotoURL()
             let data = try Data(contentsOf: url)
-            guard let image = UIImage(data: data) else {
-                throw CatVisionError.unreadableImage
-            }
-            await accept(image: optimizedWorkingImage(from: image), source: .photoLibrary)
+            let image = try await optimizedWorkingImage(from: data)
+            await accept(image: image, source: .photoLibrary)
         } catch {
+            finishCaptureInput()
             fail(with: "The validation photo could not be opened. Copy it into Documents/CatLocalValidation/cat.png and try again.")
         }
     }
@@ -627,32 +984,104 @@ struct CaptureView: View {
             .appendingPathComponent("CatLocalValidation", isDirectory: true)
             .appendingPathComponent("cat.png")
     }
+
+    private static func validationFixtureImage() -> UIImage {
+        let format = UIGraphicsImageRendererFormat()
+        format.opaque = true
+        format.scale = 1
+        return UIGraphicsImageRenderer(size: CGSize(width: 900, height: 900), format: format).image { context in
+            UIColor(red: 0.93, green: 0.88, blue: 0.78, alpha: 1).setFill()
+            context.fill(CGRect(x: 0, y: 0, width: 900, height: 900))
+            UIColor(red: 0.16, green: 0.11, blue: 0.08, alpha: 1).setFill()
+            context.cgContext.fillEllipse(in: CGRect(x: 260, y: 250, width: 380, height: 420))
+            context.cgContext.fillEllipse(in: CGRect(x: 310, y: 145, width: 280, height: 250))
+        }
+    }
+
+    private static func validationCutoutImage() -> UIImage {
+        let format = UIGraphicsImageRendererFormat()
+        format.opaque = false
+        format.scale = 1
+        return UIGraphicsImageRenderer(size: CGSize(width: 720, height: 720), format: format).image { context in
+            UIColor.clear.setFill()
+            context.fill(CGRect(x: 0, y: 0, width: 720, height: 720))
+            UIColor(red: 0.18, green: 0.13, blue: 0.09, alpha: 1).setFill()
+            context.cgContext.fillEllipse(in: CGRect(x: 210, y: 220, width: 300, height: 330))
+            context.cgContext.fillEllipse(in: CGRect(x: 250, y: 120, width: 220, height: 210))
+            context.cgContext.move(to: CGPoint(x: 276, y: 160))
+            context.cgContext.addLine(to: CGPoint(x: 322, y: 64))
+            context.cgContext.addLine(to: CGPoint(x: 360, y: 164))
+            context.cgContext.closePath()
+            context.cgContext.fillPath()
+            context.cgContext.move(to: CGPoint(x: 400, y: 164))
+            context.cgContext.addLine(to: CGPoint(x: 444, y: 64))
+            context.cgContext.addLine(to: CGPoint(x: 476, y: 160))
+            context.cgContext.closePath()
+            context.cgContext.fillPath()
+        }
+    }
     #endif
 
     private func loadPhoto(_ item: PhotosPickerItem) async {
+        guard beginCaptureInput() else {
+            photoItem = nil
+            return
+        }
+
         do {
             guard
-                let data = try await item.loadTransferable(type: Data.self),
-                let image = UIImage(data: data)
+                let data = try await item.loadTransferable(type: Data.self)
             else {
                 throw CatVisionError.unreadableImage
             }
-            await accept(image: optimizedWorkingImage(from: image), source: .photoLibrary)
+            let image = try await optimizedWorkingImage(from: data)
+            await accept(image: image, source: .photoLibrary)
         } catch {
+            finishCaptureInput()
             fail(with: "This photo could not be opened. Try another image.")
         }
     }
 
     private func accept(image: UIImage, source: CaptureSource) async {
+        if !isProcessingCapture {
+            isProcessingCapture = true
+        }
+        defer { finishCaptureInput() }
+
         camera.stop()
         originalImage = image
         self.source = source
+        draftSequence = nextSequence
+        persistedRecord = nil
         detections = []
         selectedBoundingBox = nil
         errorMessage = nil
+        canUseForegroundFallback = false
+        resetStickerTransform()
         stage = .analyzing
 
         do {
+            #if DEBUG
+            if forcesForegroundFallbackForValidation {
+                canUseForegroundFallback = true
+                fail(with: CatVisionError.noCat.localizedDescription)
+                return
+            }
+
+            if bypassesVisionForValidation {
+                let detection = CatDetection(
+                    boundingBox: CGRect(x: 0.24, y: 0.18, width: 0.52, height: 0.66),
+                    confidence: 0.99
+                )
+                detections = [detection]
+                beginStickerReveal(
+                    cutout: Self.validationCutoutImage(),
+                    detection: detection
+                )
+                return
+            }
+            #endif
+
             let found = try await processor.detectCats(in: SendableImage(value: image))
             switch CatDetectionSelector.resolve(found) {
             case .none:
@@ -661,7 +1090,15 @@ struct CaptureView: View {
                 fail(with: CatVisionError.noCat.localizedDescription)
             case .single(let detection):
                 detections = [detection]
-                await createCutout(for: detection)
+                stage = .creatingCutout
+                let result = try await processor.cutout(
+                    from: SendableImage(value: image),
+                    detection: detection
+                )
+                beginStickerReveal(
+                    cutout: result.value,
+                    detection: detection
+                )
             case .multiple(let detections):
                 self.detections = detections
                 canUseForegroundFallback = false
@@ -673,6 +1110,50 @@ struct CaptureView: View {
         }
     }
 
+    private func beginStickerReveal(cutout: UIImage, detection: CatDetection?) {
+        selectedBoundingBox = detection?.boundingBox
+        cutoutImage = cutout
+        draftGreeting = Self.randomDraftGreeting()
+        #if DEBUG
+        if prefillsValidationEditorFields {
+            prefillValidationEditorFields()
+        }
+        #endif
+        errorMessage = nil
+        isEditorSheetPresented = false
+        resetStickerTransform()
+        isCardMintingDone = false
+        persistedRecord = nil
+        captureSelectionFeedbackTrigger += 1
+        #if DEBUG
+        if skipsStickerRevealForValidation {
+            stage = .stickerInspecting
+            return
+        }
+        #endif
+        stage = .stickerReveal
+    }
+
+    private func resetStickerTransform() {
+        stickerBaseOffset = .zero
+    }
+
+    private func expandEditor() {
+        captureSelectionFeedbackTrigger += 1
+        isEditorSheetPresented = true
+    }
+
+    private func collapseEditor() {
+        dismissEditorKeyboard()
+        isEditorSheetPresented = false
+    }
+
+    private func dismissEditorKeyboard() {
+        if focusedEditorField != nil {
+            focusedEditorField = nil
+        }
+    }
+
     private func createCutout(for detection: CatDetection?) async {
         guard let originalImage else {
             fail(with: CatVisionError.unreadableImage.localizedDescription)
@@ -680,80 +1161,177 @@ struct CaptureView: View {
         }
 
         stage = .creatingCutout
-        selectedBoundingBox = detection?.boundingBox
         do {
             let result = try await processor.cutout(
                 from: SendableImage(value: originalImage),
                 detection: detection
             )
-            cutoutImage = result.value
-            draftGreeting = Self.randomDraftGreeting()
-            errorMessage = nil
-            stage = .editing
+            beginStickerReveal(
+                cutout: result.value,
+                detection: detection
+            )
         } catch {
             canUseForegroundFallback = false
             fail(with: error.localizedDescription)
         }
     }
 
-    private func saveCard() async {
-        guard let originalImage, let cutoutImage else {
-            fail(with: "The cat images are missing. Please try the capture again.")
-            return
-        }
-
+    private func finishCustomization() async {
+        guard !isSaving else { return }
+        let shouldCelebrateSave = isInitialCardDesignSave || stage == .cardCelebrating
         isSaving = true
         do {
-            let id = UUID()
-            let stored = try await CatImageStore.shared.save(
-                id: id,
-                original: SendableImage(value: originalImage),
-                cutout: SendableImage(value: cutoutImage)
-            )
-            let record = CatRecord(
-                id: id,
-                sequence: nextSequence,
-                nickname: savedNickname,
-                note: note,
-                placeName: trimmedMemoryText(placeName),
-                placeDetail: trimmedMemoryText(placeDetail),
-                source: source,
-                cardStyle: selectedStyle,
-                styleSeed: 0,
-                catBoundingBox: selectedBoundingBox,
-                originalImagePath: stored.originalPath,
-                cutoutImagePath: stored.cutoutPath,
-                thumbnailImagePath: stored.thumbnailPath
-            )
-            modelContext.insert(record)
-            try modelContext.save()
-            dismiss()
+            persistedRecord = try await persistCard()
+            isSaving = false
+            focusedEditorField = nil
+            isEditorSheetPresented = false
+            if shouldCelebrateSave {
+                isCardMintingDone = true
+                stage = .cardCelebrating
+            } else {
+                dismiss()
+            }
         } catch {
             isSaving = false
             fail(with: error.localizedDescription)
         }
     }
 
+    private var isInitialCardDesignSave: Bool {
+        persistedRecord == nil
+    }
+
+    @discardableResult
+    private func persistCard() async throws -> CatRecord {
+        if let persistedRecord {
+            applyDraft(to: persistedRecord)
+            try modelContext.save()
+            return persistedRecord
+        }
+
+        guard let originalImage, let cutoutImage else {
+            throw CatVisionError.unreadableImage
+        }
+
+        let id = UUID()
+        let stored = try await CatImageStore.shared.save(
+            id: id,
+            original: SendableImage(value: originalImage),
+            cutout: SendableImage(value: cutoutImage)
+        )
+        let record = CatRecord(
+            id: id,
+            sequence: activeSequence,
+            nickname: savedNickname,
+            note: note,
+            placeName: trimmedMemoryText(placeName),
+            placeDetail: trimmedMemoryText(placeDetail),
+            source: source,
+            cardStyle: selectedStyle,
+            styleSeed: 0,
+            catBoundingBox: selectedBoundingBox,
+            originalImagePath: stored.originalPath,
+            cutoutImagePath: stored.cutoutPath,
+            thumbnailImagePath: stored.thumbnailPath
+        )
+        do {
+            modelContext.insert(record)
+            try modelContext.save()
+        } catch {
+            modelContext.delete(record)
+            try? await CatImageStore.shared.deleteRecord(id: id)
+            throw error
+        }
+        return record
+    }
+
+    private func applyDraft(to record: CatRecord) {
+        let trimmedName = trimmedMemoryText(nickname)
+        if !trimmedName.isEmpty {
+            record.nickname = trimmedName
+        }
+        record.note = note
+        record.placeName = trimmedMemoryText(placeName)
+        record.placeDetail = trimmedMemoryText(placeDetail)
+        record.cardStyle = selectedStyle
+    }
+
     private func fail(with message: String) {
+        isProcessingCapture = false
         errorMessage = message
+        captureWarningFeedbackTrigger += 1
         stage = .failure
     }
 
     private func closeCamera() {
+        isProcessingCapture = false
         camera.stop()
         dismiss()
     }
 
     private func cancelCapture() {
+        isProcessingCapture = false
         camera.stop()
         dismiss()
     }
 
-    private func optimizedWorkingImage(from image: UIImage) -> UIImage {
-        CatImageStore.downsampledOpaqueImage(
-            from: image,
-            maximumDimension: CatImageStore.originalMaximumDimension
-        )
+    private func captureCameraPhoto() {
+        guard beginCaptureInput() else { return }
+
+        camera.capture { result in
+            switch result {
+            case .success(let image):
+                Task {
+                    let optimizedImage = await optimizedWorkingImage(
+                        from: SendableImage(value: image)
+                    )
+                    await accept(
+                        image: optimizedImage,
+                        source: .camera
+                    )
+                }
+            case .failure(let error):
+                finishCaptureInput()
+                fail(with: error.localizedDescription)
+            }
+        }
+    }
+
+    private func beginCaptureInput() -> Bool {
+        guard !isProcessingCapture, stage == .camera else { return false }
+        isProcessingCapture = true
+        return true
+    }
+
+    private func finishCaptureInput() {
+        isProcessingCapture = false
+    }
+
+    private func optimizedWorkingImage(from data: Data) async throws -> UIImage {
+        let result = try await Task.detached(priority: .userInitiated) { () throws -> SendableImage in
+            guard let image = UIImage(data: data) else {
+                throw CatVisionError.unreadableImage
+            }
+            return SendableImage(
+                value: CatImageStore.downsampledOpaqueImage(
+                    from: image,
+                    maximumDimension: CatImageStore.originalMaximumDimension
+                )
+            )
+        }.value
+        return result.value
+    }
+
+    private func optimizedWorkingImage(from image: SendableImage) async -> UIImage {
+        let result = await Task.detached(priority: .userInitiated) {
+            SendableImage(
+                value: CatImageStore.downsampledOpaqueImage(
+                    from: image.value,
+                    maximumDimension: CatImageStore.originalMaximumDimension
+                )
+            )
+        }.value
+        return result.value
     }
 
     private func reset() {
@@ -767,10 +1345,16 @@ struct CaptureView: View {
         placeDetail = ""
         selectedStyle = .archive
         draftGreeting = ""
+        draftSequence = nil
+        persistedRecord = nil
         photoItem = nil
         errorMessage = nil
         canUseForegroundFallback = false
+        isProcessingCapture = false
         isSaving = false
+        isEditorSheetPresented = false
+        resetStickerTransform()
+        isCardMintingDone = false
         stage = .camera
         if camera.authorizationStatus == .authorized {
             camera.start()
@@ -795,6 +1379,10 @@ struct CaptureView: View {
         return draftGreeting.isEmpty ? Self.randomDraftGreeting() : draftGreeting
     }
 
+    private var celebrationPreviewName: String {
+        persistedRecord?.displayName ?? editorPreviewName
+    }
+
     private static func randomDraftGreeting() -> String {
         draftGreetings.randomElement() ?? "A New Feline."
     }
@@ -814,7 +1402,9 @@ private enum CaptureStage: Equatable {
     case analyzing
     case choosingCat
     case creatingCutout
-    case editing
+    case stickerReveal
+    case stickerInspecting
+    case cardCelebrating
     case failure
 }
 

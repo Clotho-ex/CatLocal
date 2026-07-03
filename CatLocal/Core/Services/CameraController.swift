@@ -80,6 +80,11 @@ final class CameraController: NSObject, ObservableObject {
             errorMessage = error.localizedDescription
         }
     }
+
+    private func completeCapture(with result: Result<UIImage, Error>) {
+        captureCompletion?(result)
+        captureCompletion = nil
+    }
 }
 
 private final class CameraSessionCoordinator: @unchecked Sendable {
@@ -155,22 +160,35 @@ extension CameraController: AVCapturePhotoCaptureDelegate {
         didFinishProcessingPhoto photo: AVCapturePhoto,
         error: Error?
     ) {
-        Task { @MainActor in
-            if let error {
-                captureCompletion?(.failure(error))
-                captureCompletion = nil
-                return
+        if let error {
+            Task { @MainActor [weak self] in
+                self?.completeCapture(with: .failure(error))
             }
-            guard
-                let data = photo.fileDataRepresentation(),
-                let image = UIImage(data: data)
-            else {
-                captureCompletion?(.failure(CameraError.imageCreationFailed))
-                captureCompletion = nil
-                return
+            return
+        }
+
+        guard let data = photo.fileDataRepresentation() else {
+            Task { @MainActor [weak self] in
+                self?.completeCapture(with: .failure(CameraError.imageCreationFailed))
             }
-            captureCompletion?(.success(image))
-            captureCompletion = nil
+            return
+        }
+
+        let decodeTask = Task.detached(priority: .userInitiated) { () -> Result<SendableImage, Error> in
+            guard let image = UIImage(data: data) else {
+                return .failure(CameraError.imageCreationFailed)
+            }
+            return .success(SendableImage(value: image))
+        }
+
+        Task { @MainActor [weak self] in
+            let result = await decodeTask.value
+            switch result {
+            case .success(let image):
+                self?.completeCapture(with: .success(image.value))
+            case .failure(let error):
+                self?.completeCapture(with: .failure(error))
+            }
         }
     }
 }

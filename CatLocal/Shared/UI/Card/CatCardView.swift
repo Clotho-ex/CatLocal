@@ -9,8 +9,11 @@ struct CatCardView: View {
     var rotateY: CGFloat = 0
     var isLightActive: Bool = false
     var showsFooter: Bool = true
+    var showsThumbnailPlaceFooter: Bool = true
 
-    private var usesCutoutImage: Bool { presentation == .focused || presentation == .stylePreview }
+    private var usesCutoutImage: Bool {
+        presentation == .focused || presentation == .stylePreview
+    }
     private var resolvedCardStyle: CardStyle { cardStyle ?? record.cardStyle }
 
     var body: some View {
@@ -27,6 +30,7 @@ struct CatCardView: View {
             rotateY: rotateY,
             isLightActive: isLightActive,
             showsFooter: showsFooter,
+            showsThumbnailPlaceFooter: showsThumbnailPlaceFooter,
             catBoundingBox: record.catBoundingBox,
             topoSeed: record.id.hashValue
         ) {
@@ -51,7 +55,7 @@ struct CatCardView: View {
     }
 
     private var accessibilityLabel: String {
-        let place = record.memoryPlaceLabel.map { " Memory Place, \($0)." } ?? ""
+        let place = showsThumbnailPlaceFooter ? record.memoryPlaceLabel.map { " Memory Place, \($0)." } ?? "" : ""
         return "Cat, \(record.displayName). Cat number \(record.sequence.formatted()). Captured \(record.capturedAt.formatted(date: .abbreviated, time: .omitted)).\(place)"
     }
 }
@@ -60,6 +64,7 @@ struct DraftCatCardView: View {
     let image: UIImage
     let sequence: Int
     let name: String
+    var date: Date = Date()
     let note: String
     let placeName: String
     let placeDetail: String
@@ -69,8 +74,11 @@ struct DraftCatCardView: View {
     var rotateY: CGFloat = 0
     var isLightActive: Bool = false
     var showsFooter: Bool = true
+    var showsThumbnailPlaceFooter: Bool = true
     var catBoundingBox: CGRect?
     var topoSeed: Int = 0
+    var appliesStickerEffect = false
+    var stickerMotionIntensity: CGFloat?
 
     var body: some View {
         CatCardSurface(
@@ -78,7 +86,7 @@ struct DraftCatCardView: View {
             name: name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                 ? "New Cat"
                 : name,
-            date: Date(),
+            date: date,
             note: note,
             placeName: trimmedPlaceName,
             placeDetail: trimmedPlaceDetail,
@@ -88,9 +96,27 @@ struct DraftCatCardView: View {
             rotateY: rotateY,
             isLightActive: isLightActive,
             showsFooter: showsFooter,
+            showsThumbnailPlaceFooter: showsThumbnailPlaceFooter,
             catBoundingBox: catBoundingBox,
             topoSeed: topoSeed
         ) {
+            draftCatImage
+        }
+    }
+
+    @ViewBuilder
+    private var draftCatImage: some View {
+        if appliesStickerEffect, stickerMotionIntensity != nil {
+            StickerCutoutView(
+                image: image,
+                appliesMotion: true
+            )
+        } else if appliesStickerEffect {
+            StickerCutoutView(
+                image: image,
+                appliesMotion: false
+            )
+        } else {
             Image(uiImage: image)
                 .resizable()
                 .scaledToFit()
@@ -129,16 +155,28 @@ private struct CatCardSurface<CatImage: View>: View {
     let rotateY: CGFloat
     let isLightActive: Bool
     let showsFooter: Bool
+    let showsThumbnailPlaceFooter: Bool
     let catBoundingBox: CGRect?
     let topoSeed: Int
     @ViewBuilder let catImage: () -> CatImage
 
     private var focused: Bool { presentation == .focused }
+    private var thumbnail: Bool { presentation == .thumbnail }
     private var stylePreview: Bool { presentation == .stylePreview }
     private var effectiveRotateX: CGFloat { focused ? rotateX : 0 }
     private var effectiveRotateY: CGFloat { focused ? rotateY : 0 }
-    private var foilLightOpacity: Double { focused ? (isLightActive ? 1 : 0) : 1 }
-    private var premiumFoilOpacity: Double { focused ? (isLightActive ? 1 : 0.42) : 0.92 }
+    private var foilLightOpacity: Double {
+        if focused {
+            return isLightActive ? 1 : 0
+        }
+        return thumbnail ? 0.14 : 1
+    }
+    private var premiumFoilOpacity: Double {
+        if focused {
+            return isLightActive ? 1 : 0.42
+        }
+        return thumbnail ? 0.16 : 0.92
+    }
     private var palette: CardStylePalette { CardStylePalette(style: cardStyle) }
 
     private var primaryContentColor: Color {
@@ -147,6 +185,10 @@ private struct CatCardSurface<CatImage: View>: View {
 
     private var secondaryContentColor: Color {
         palette.secondaryContent
+    }
+
+    private var metadataContentColor: Color {
+        palette.metadataContent
     }
 
     private var separatorColor: Color {
@@ -212,6 +254,7 @@ private struct CatCardSurface<CatImage: View>: View {
                             footer
                         }
                     }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 }
             }
             .padding(outerPadding)
@@ -222,13 +265,32 @@ private struct CatCardSurface<CatImage: View>: View {
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                     .stroke(CatLocalTheme.imageOutline, lineWidth: 1)
             )
-            .shadow(
-                color: CatLocalTheme.shadow.opacity(focused ? 0.72 : 0.36),
-                radius: focused ? 28 : 11,
-                y: focused ? 18 : 6
-            )
+            .shadow(color: shadowColor, radius: shadowRadius, y: shadowOffset)
         }
-        .aspectRatio(focused || stylePreview ? 0.64 : 0.72, contentMode: .fit)
+        .aspectRatio(cardAspectRatio, contentMode: .fit)
+    }
+
+    private var cardAspectRatio: CGFloat {
+        switch presentation {
+        case .focused:
+            0.64
+        case .stylePreview:
+            0.64
+        case .thumbnail:
+            0.72
+        }
+    }
+
+    private var shadowColor: Color {
+        CatLocalTheme.shadow.opacity(focused ? 0.72 : (thumbnail ? 0.16 : 0.36))
+    }
+
+    private var shadowRadius: CGFloat {
+        focused ? 28 : (thumbnail ? 8 : 11)
+    }
+
+    private var shadowOffset: CGFloat {
+        focused ? 18 : (thumbnail ? 4 : 6)
     }
 
     private var imageStageRatio: CGFloat {
@@ -261,7 +323,9 @@ private struct CatCardSurface<CatImage: View>: View {
 
                 Text(date, format: .dateTime.month(.abbreviated).day().year())
                     .font(focused ? .footnote.weight(.medium) : .caption2.weight(.medium))
-                    .foregroundStyle(secondaryContentColor)
+                    .foregroundStyle(metadataContentColor)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.78)
             }
 
             Spacer(minLength: 10)
@@ -274,27 +338,26 @@ private struct CatCardSurface<CatImage: View>: View {
     @ViewBuilder
     private var footer: some View {
         if focused {
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 14) {
                 Rectangle()
                     .fill(separatorColor)
                     .frame(height: 1)
 
-                Text("Notes")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(secondaryContentColor)
+                VStack(alignment: .leading, spacing: 5) {
+                    metadataHeading(title: "Notes", icon: "note.text")
 
-                Text(note.isEmpty ? "No Note Yet." : note)
-                    .font(.body)
-                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? 5 : 3)
-                    .foregroundStyle(note.isEmpty ? secondaryContentColor : primaryContentColor)
+                    Text(note.isEmpty ? "No Note Yet." : note)
+                        .font(.body)
+                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? 5 : 3)
+                        .foregroundStyle(note.isEmpty ? secondaryContentColor : primaryContentColor)
+                }
 
                 if let placeName {
                     focusedPlaceDetails(placeName: placeName, placeDetail: placeDetail)
-                        .padding(.top, 1)
                 }
             }
         } else {
-            if let placeName {
+            if showsThumbnailPlaceFooter, let placeName {
                 memoryPlacePill(placeName)
             } else {
                 Spacer(minLength: 0)
@@ -304,29 +367,35 @@ private struct CatCardSurface<CatImage: View>: View {
 
     private var sequenceMedallion: some View {
         Text(sequence.formatted())
-            .font(.system(size: focused ? 16 : 13, weight: .semibold, design: .rounded))
+            .font(
+                .system(
+                    focused ? .callout : .caption,
+                    design: .rounded,
+                    weight: .semibold
+                )
+            )
             .monospacedDigit()
             .minimumScaleFactor(0.7)
             .foregroundStyle(primaryContentColor)
             .frame(width: focused ? 34 : 27, height: focused ? 34 : 27)
-        .background(
-            medallionFill,
-            in: Circle()
-        )
-        .overlay(
-            Circle()
-                .stroke(separatorColor.opacity(0.9), lineWidth: 1)
-        )
-        .shadow(
-            color: CatLocalTheme.shadow.opacity(focused ? 0.14 : 0.08),
-            radius: focused ? 7 : 3,
-            y: focused ? 4 : 2
-        )
-        .accessibilityHidden(true)
+            .background(
+                medallionFill,
+                in: Circle()
+            )
+            .overlay(
+                Circle()
+                    .stroke(separatorColor.opacity(0.9), lineWidth: 1)
+            )
+            .shadow(
+                color: CatLocalTheme.shadow.opacity(focused ? 0.14 : 0.08),
+                radius: focused ? 7 : 3,
+                y: focused ? 4 : 2
+            )
+            .accessibilityHidden(true)
     }
 
     private func focusedPlaceDetails(placeName: String, placeDetail: String?) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 14) {
             placeDetailRow(
                 title: "Memory Place",
                 icon: "mappin.and.ellipse",
@@ -344,17 +413,31 @@ private struct CatCardSurface<CatImage: View>: View {
     }
 
     private func placeDetailRow(title: String, icon: String, value: String) -> some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Label(title, systemImage: icon)
-                .font(.caption2.weight(.semibold))
-                .foregroundStyle(secondaryContentColor)
+        VStack(alignment: .leading, spacing: 5) {
+            metadataHeading(title: title, icon: icon)
 
             Text(value)
                 .font(.body)
                 .foregroundStyle(primaryContentColor)
                 .lineLimit(dynamicTypeSize.isAccessibilitySize ? 3 : 2)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .accessibilityElement(children: .combine)
+    }
+
+    private func metadataHeading(title: String, icon: String) -> some View {
+        HStack(alignment: .center, spacing: 7) {
+            Image(systemName: icon)
+                .font(.system(size: 16, weight: .semibold))
+                .imageScale(.medium)
+                .symbolRenderingMode(.monochrome)
+                .frame(width: 22, height: 20, alignment: .center)
+                .accessibilityHidden(true)
+
+            Text(title)
+                .font(Font.subheadline.weight(.semibold))
+        }
+        .foregroundStyle(metadataContentColor)
     }
 
     private func memoryPlacePill(_ placeName: String) -> some View {
@@ -364,7 +447,8 @@ private struct CatCardSurface<CatImage: View>: View {
                 .minimumScaleFactor(0.76)
         } icon: {
             Image(systemName: "mappin.and.ellipse")
-                .font(.caption.weight(.bold))
+                .font((focused ? Font.footnote : Font.caption2).weight(.semibold))
+                .imageScale(.small)
         }
         .font(focused ? .footnote.weight(.semibold) : .caption2.weight(.semibold))
         .foregroundStyle(primaryContentColor)
@@ -392,15 +476,26 @@ private struct CatCardSurface<CatImage: View>: View {
 
     @ViewBuilder
     private var surface: some View {
-        switch cardStyle {
-        case .prism:
-            prismSurface
-        case .gold:
-            goldSurface
-        case .topo:
-            topoSurface
-        default:
+        if thumbnail {
+            thumbnailSurface
+        } else {
+            switch cardStyle {
+            case .prism:
+                prismSurface
+            case .gold:
+                goldSurface
+            case .topo:
+                topoSurface
+            default:
+                standardSurface
+            }
+        }
+    }
+
+    private var thumbnailSurface: some View {
+        ZStack {
             standardSurface
+            thumbnailStyleHintSurface
         }
     }
 
@@ -414,24 +509,67 @@ private struct CatCardSurface<CatImage: View>: View {
 
             RadialGradient(
                 colors: [
-                    palette.accent.opacity(focused ? 0.34 : 0.25),
-                    palette.secondaryAccent.opacity(focused ? 0.16 : 0.10),
+                    palette.accent.opacity(focused ? 0.34 : (thumbnail ? 0.11 : 0.25)),
+                    palette.secondaryAccent.opacity(focused ? 0.16 : (thumbnail ? 0.05 : 0.10)),
                     .clear
                 ],
                 center: .topTrailing,
                 startRadius: 8,
-                endRadius: focused ? 260 : 150
+                endRadius: focused ? 260 : (thumbnail ? 120 : 150)
             )
 
             LinearGradient(
                 colors: [
-                    palette.sheen.opacity(focused ? 0.28 : 0.20),
-                    palette.secondaryAccent.opacity(focused ? 0.18 : 0.12)
+                    palette.sheen.opacity(focused ? 0.28 : (thumbnail ? 0.07 : 0.20)),
+                    palette.secondaryAccent.opacity(focused ? 0.18 : (thumbnail ? 0.05 : 0.12))
                 ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
         }
+    }
+
+    private var thumbnailStyleHintSurface: some View {
+        ZStack(alignment: .topTrailing) {
+            RadialGradient(
+                colors: [
+                    palette.accent.opacity(0.16),
+                    palette.secondaryAccent.opacity(0.08),
+                    .clear
+                ],
+                center: .topTrailing,
+                startRadius: 0,
+                endRadius: 130
+            )
+
+            if cardStyle == .topo {
+                topoThumbnailLayer
+                    .opacity(0.48)
+            }
+
+            thumbnailStyleGlint
+        }
+        .blendMode(.softLight)
+        .accessibilityHidden(true)
+    }
+
+    private var thumbnailStyleGlint: some View {
+        Capsule(style: .continuous)
+            .fill(
+                LinearGradient(
+                    colors: [
+                        palette.sheen.opacity(0.48),
+                        palette.accent.opacity(0.34),
+                        palette.secondaryAccent.opacity(0.18)
+                    ],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+            )
+            .frame(width: 34, height: 5)
+            .padding(.top, 12)
+            .padding(.trailing, 12)
+            .opacity(0.38)
     }
 
     private var prismSurface: some View {
@@ -514,8 +652,7 @@ private struct CatCardSurface<CatImage: View>: View {
             )
 
             if presentation == .thumbnail {
-                topoFoilLayer
-                    .opacity(0.16)
+                topoThumbnailLayer
             } else {
                 topoFoilLayer
                     .mask {
@@ -535,6 +672,28 @@ private struct CatCardSurface<CatImage: View>: View {
                     .animation(.easeInOut(duration: 0.18), value: foilLightOpacity)
             }
         }
+    }
+
+    private var topoThumbnailLayer: some View {
+        ZStack {
+            ForEach(0..<6, id: \.self) { index in
+                TopoContourShape(index: index, total: 6, seed: positiveSeed)
+                    .stroke(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(0.36),
+                                palette.accent.opacity(0.24)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        style: StrokeStyle(lineWidth: 0.7, lineCap: .round, lineJoin: .round)
+                    )
+            }
+        }
+        .opacity(0.58)
+        .blendMode(.softLight)
+        .accessibilityHidden(true)
     }
 
     private var topoFoilLayer: some View {
@@ -690,6 +849,7 @@ private struct CardStylePalette {
     let sheen: Color
     let primaryContent: Color
     let secondaryContent: Color
+    let metadataContent: Color
     let separator: Color
     let medallionFill: Color
     let pillFill: Color
@@ -791,7 +951,8 @@ private struct CardStylePalette {
             primaryContent = .white
         }
 
-        secondaryContent = primaryContent.opacity(0.72)
+        secondaryContent = primaryContent.opacity(0.82)
+        metadataContent = primaryContent.opacity(0.88)
         separator = primaryContent.opacity(0.24)
         medallionFill = primaryContent.opacity(0.14)
         pillFill = primaryContent.opacity(0.13)
@@ -953,7 +1114,11 @@ struct CardStyleCarousel<Preview: View>: View {
     }
 
     private var styleCount: Int {
-        CardStyle.allCases.count
+        orderedStyles.count
+    }
+
+    private var orderedStyles: [CardStyle] {
+        CardStyle.orderedCases
     }
 
     private var carouselCycleCount: Int {
@@ -969,7 +1134,7 @@ struct CardStyleCarousel<Preview: View>: View {
         return (0..<(styleCount * carouselCycleCount)).map { index in
             CarouselStyleItem(
                 id: index,
-                style: CardStyle.allCases[index % styleCount],
+                style: orderedStyles[index % styleCount],
                 cycle: index / styleCount
             )
         }
@@ -981,7 +1146,7 @@ struct CardStyleCarousel<Preview: View>: View {
     }
 
     private func centeredItemID(for style: CardStyle) -> Int {
-        let styleIndex = CardStyle.allCases.firstIndex(of: style) ?? 0
+        let styleIndex = orderedStyles.firstIndex(of: style) ?? style.displayIndex
         return centerCycle * styleCount + styleIndex
     }
 
@@ -1037,7 +1202,7 @@ struct CardStyleCarousel<Preview: View>: View {
             playSelectionHaptic(for: style)
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(style.title) card design")
+        .accessibilityLabel("Design \(style.displayIndex + 1), \(style.title) card design")
         .accessibilityAddTraits(isSelected ? [.isSelected] : [])
     }
 
@@ -1077,8 +1242,9 @@ struct CardStyleSwatch: View {
                         .fill(contentColor.opacity(0.16))
                         .frame(width: 20, height: 20)
                         .overlay {
-                            Text("1")
+                            Text("\(style.displayIndex + 1)")
                                 .font(.caption2.weight(.bold))
+                                .monospacedDigit()
                                 .foregroundStyle(contentColor)
                         }
                 }

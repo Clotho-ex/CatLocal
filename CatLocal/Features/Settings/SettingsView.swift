@@ -33,17 +33,17 @@ struct SettingsView: View {
         .task {
             await refreshStorage()
         }
-        .confirmationDialog(
-            "Delete every cat?",
-            isPresented: $showingDeleteConfirmation,
-            titleVisibility: .visible
-        ) {
-            Button("Delete All Cats", role: .destructive) {
+        .sheet(isPresented: $showingDeleteConfirmation) {
+            CatDeletionConfirmationSheet(
+                title: "Delete every cat?",
+                message: "Every stored photo, cutout, note, and cat will be permanently removed from this iPhone.",
+                deleteTitle: "Delete All"
+            ) {
+                showingDeleteConfirmation = false
                 Task { await deleteAll() }
+            } onCancel: {
+                showingDeleteConfirmation = false
             }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("Every stored photo, cutout, note, and cat will be permanently removed from this iPhone.")
         }
         .alert("Could not update storage", isPresented: .constant(errorMessage != nil)) {
             Button("OK") { errorMessage = nil }
@@ -220,6 +220,7 @@ struct SettingsView: View {
             records.forEach(modelContext.delete)
             try modelContext.save()
             await refreshStorage()
+            showingDeleteConfirmation = false
         } catch {
             errorMessage = error.localizedDescription
         }

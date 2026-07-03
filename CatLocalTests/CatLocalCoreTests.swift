@@ -14,6 +14,17 @@ struct CatLocalCoreTests {
     }
 
     @Test
+    func compactSequencesKeepsRemainingCardNumbersContiguous() {
+        let first = makeRecord(sequence: 1)
+        let third = makeRecord(sequence: 3)
+
+        CatRecord.compactSequences([third, first])
+
+        #expect(first.sequence == 1)
+        #expect(third.sequence == 2)
+    }
+
+    @Test
     func unnamedCatsUseFunnyNamePool() {
         #expect(CatNamePool.names.count == 130)
         #expect(Set(CatNamePool.names).count == 130)
@@ -155,6 +166,21 @@ struct CatLocalCoreTests {
         }
     }
 
+    @Test
+    func imageStoreRejectsSiblingPrefixTraversal() async throws {
+        let parent = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let root = parent.appendingPathComponent("Cats", isDirectory: true)
+        let sibling = parent.appendingPathComponent("CatsBackup", isDirectory: true)
+        try FileManager.default.createDirectory(at: sibling, withIntermediateDirectories: true)
+        try Data("outside".utf8).write(to: sibling.appendingPathComponent("secret.txt"))
+
+        let store = CatImageStore(rootURL: root)
+        await #expect(throws: CatImageStoreError.self) {
+            _ = try await store.data(at: "../CatsBackup/secret.txt")
+        }
+    }
+
     @Test @MainActor
     func imageStoreDownsamplesAndTrimsStoredImages() async throws {
         let root = FileManager.default.temporaryDirectory
@@ -193,6 +219,71 @@ struct CatLocalCoreTests {
         let cutoutSize = try imagePixelSize(from: cutoutData)
         #expect(cutoutSize.width < 340)
         #expect(cutoutSize.height < 380)
+    }
+
+    @Test
+    func dustingAnchorSamplerIgnoresTransparentPixels() throws {
+        let image = renderedImage(size: CGSize(width: 100, height: 100), opaque: false) { context in
+            UIColor.clear.setFill()
+            context.fill(CGRect(x: 0, y: 0, width: 100, height: 100))
+            UIColor.black.setFill()
+            context.fill(CGRect(x: 40, y: 40, width: 20, height: 20))
+        }
+
+        let cgImage = try #require(image.cgImage)
+        let bounds = try #require(DustingAnchorSampler.visibleBounds(in: cgImage))
+        let anchors = DustingAnchorSampler.sampleVisibleAnchors(
+            in: cgImage,
+            maximumAnchors: 20
+        )
+
+        #expect(bounds.minX >= 0.35)
+        #expect(bounds.maxX <= 0.65)
+        #expect(bounds.minY >= 0.35)
+        #expect(bounds.maxY <= 0.65)
+        #expect(!anchors.isEmpty)
+        #expect(anchors.allSatisfy { anchor in
+            anchor.x >= 0.35
+                && anchor.x <= 0.65
+                && anchor.y >= 0.35
+                && anchor.y <= 0.65
+        })
+    }
+
+    @Test
+    func dustingAnchorSamplerCapsAnchorCount() throws {
+        let image = renderedImage(size: CGSize(width: 120, height: 120), opaque: true) { context in
+            UIColor.systemBlue.setFill()
+            context.fill(CGRect(x: 0, y: 0, width: 120, height: 120))
+        }
+
+        let anchors = DustingAnchorSampler.sampleVisibleAnchors(
+            in: try #require(image.cgImage),
+            maximumAnchors: 8
+        )
+
+        #expect(anchors.count <= 8)
+        #expect(!anchors.isEmpty)
+    }
+
+    @Test
+    func dustingAnchorSamplerHandlesTransparentImages() throws {
+        let image = renderedImage(size: CGSize(width: 80, height: 80), opaque: false) { context in
+            UIColor.clear.setFill()
+            context.fill(CGRect(x: 0, y: 0, width: 80, height: 80))
+        }
+
+        let anchors = DustingAnchorSampler.sampleVisibleAnchors(
+            in: try #require(image.cgImage),
+            maximumAnchors: 40
+        )
+
+        #expect(anchors.isEmpty)
+        #expect(DustingAnchorSampler.visibleBounds(in: try #require(image.cgImage)) == nil)
+        #expect(DustingAnchorSampler.sampleVisibleAnchors(
+            in: try #require(image.cgImage),
+            maximumAnchors: 0
+        ).isEmpty)
     }
 
     @Test
@@ -305,6 +396,22 @@ struct CatLocalCoreTests {
         #expect(outOfBounds.rotateX == 12)
         #expect(outOfBounds.rotateY == 12)
         #expect(outOfBounds.isAtLimit)
+    }
+
+    private func makeRecord(sequence: Int) -> CatRecord {
+        CatRecord(
+            id: UUID(),
+            sequence: sequence,
+            capturedAt: Date(timeIntervalSinceReferenceDate: TimeInterval(sequence)),
+            nickname: "Cat \(sequence)",
+            note: "",
+            source: .camera,
+            cardStyle: .archive,
+            styleSeed: 0,
+            originalImagePath: "\(sequence)/original.heic",
+            cutoutImagePath: "\(sequence)/cutout.png",
+            thumbnailImagePath: "\(sequence)/thumbnail.png"
+        )
     }
 
     private func renderedImage(

@@ -79,6 +79,58 @@ Do not add remote image storage, synced photos, GPS coordinates, or automatic
 location metadata in v1. Manual Catlas labels are user-entered cat
 metadata and stay in SwiftData.
 
+### Storage Safety Guardrails
+
+`CatImageStore` is a privacy and integrity boundary, not just a file helper.
+Future storage changes should preserve these invariants:
+
+- Validate local image reads with directory-aware URL containment. Do not use a
+  raw string prefix check such as `path.hasPrefix(root.path)`, because sibling
+  directories with the same prefix can pass that test.
+- Treat file writes and SwiftData metadata saves as one logical transaction.
+  If image variants are written but `modelContext.save()` fails, delete the new
+  image directory before surfacing the error so Application Support does not
+  accumulate orphaned cat files.
+- Keep deletion cleanup explicit: removing a `CatRecord` should also remove its
+  image directory, and deleting all cats should remove the storage root before
+  saving the empty metadata state.
+- Add unit coverage for path-containment and rollback behavior whenever
+  storage path rules or save ordering changes.
+
+### Capture Pipeline Guardrails
+
+`CaptureView` coordinates camera capture, private photo import, Vision, the
+reveal, editor, and persistence. Small state mistakes here can produce duplicate
+saves or a stuck first-use flow.
+
+- Gate camera shutter, private import, and debug validation import with a single
+  in-flight capture flag. `CameraController` owns one photo completion, so
+  repeated taps must not be able to start overlapping captures or overwrite the
+  active completion.
+- Reset the in-flight flag on every exit path: successful Vision handoff,
+  import/capture failure, user cancellation, close, and reset.
+- Keep expensive image preparation off the main actor. Decode and downsample
+  imported/captured images before sending them into Vision or card rendering.
+- Preserve explicit stage transitions: `camera -> analyzing -> choosingCat` or
+  `creatingCutout -> stickerReveal -> stickerInspecting -> cardCelebrating`.
+  Avoid implicit fallthrough that lets UI controls from an earlier stage remain
+  active while async work is running.
+
+### Reveal And Image Loading Guardrails
+
+The first successful save should feel tactile, but the animation path must not
+delay the UI while doing image analysis.
+
+- Do not scan full alpha buffers synchronously in SwiftUI initializers or body
+  builders. Compute cutout bounds off-main or start the reveal with fallback
+  bounds and update precise bounds asynchronously.
+- Timed reveal tasks should always complete even if optional sampling work is
+  slow or cancelled. The user must not get stuck waiting for a decorative
+  effect.
+- `StoredImageView` should keep disk reads and `UIImage(data:)` decoding off
+  the main actor, reuse a small cache for repeated local paths, and expose a
+  clear placeholder/error state instead of silently hiding failed image loads.
+
 ## UI System
 
 `CatLocalTheme` defines semantic dynamic tokens for light and dark mode. Feature screens should consume those tokens instead of hardcoded light colors.
@@ -112,6 +164,22 @@ Implementation notes from the foil polish pass:
 - `presentation == .thumbnail` must ignore live tilt and stay cheap. Home grid thumbnails are deliberately blurred/material-muted until a card is focused.
 - The home grid wraps card buttons in an explicit aspect-ratio hit box. Preserve that wrapper so cards do not steal touches from the `Catlas` segmented control.
 - Card style selection uses an infinite-feeling carousel by rendering repeated style cycles and recentering near the ends. Selection haptics fire when the centered style changes.
+
+### Collection Performance Guardrails
+
+Home and Catlas rendering scale with the saved-card count. Keep repeated work
+out of hot render paths:
+
+- Derive sorted records, Catlas groups, and animation ID arrays once per body
+  path before passing them into `ForEach` or `.animation(value:)`.
+- Do not repeatedly sort or filter `@Query` results from several computed
+  properties in the same render pass when one local derived value can be reused.
+- Keep premium card effects focused-only. Grid thumbnails should use static,
+  cheap overlays and local thumbnails rather than full cutout images, live tilt,
+  motion sensors, or layered foil effects.
+- Avoid compiling unused effect models. If a motion/animation helper is no
+  longer referenced, remove it from the project file too so future work does not
+  accidentally start continuous sensors or timers.
 
 ## Editing Handoff
 

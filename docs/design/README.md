@@ -21,3 +21,12 @@ specification. Native behavior, legibility, and accessibility take priority.
 - `Midnight Prism`, `Gold Leaf`, and `Topographic` are premium foil styles. Their animated light should appear only while the focused card is being touched.
 - `Topographic` should read as visible contour lines over color, not a flat rainbow wash.
 - The theme carousel should feel endless and should give a small selection haptic while scrolling between styles.
+
+## Palette Guardrails
+
+- Use warm limestone and paper tones for the app background, cards, settings surfaces, and image staging.
+- Use deep ink/forest for primary text and sage-gray for supporting metadata.
+- Use cobalt for primary actions and selected states so controls read clearly against the warm surfaces.
+- Use terracotta/apricot for warnings and warm card accents, not as the default action color.
+- Use moss green for saved, success, and manual place states so success feedback stays distinct from actions and warnings.
+- Keep dark mode in the same role map: charcoal-green foundations, cream text, cobalt actions, terracotta warnings, and bright moss success.

@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct RootView: View {
     @State private var selectedTab: AppTab = .home
@@ -29,6 +30,7 @@ struct RootView: View {
                 homeReselectionID += 1
             }
 
+            playContentTabHaptic(from: selectedTab, to: newTab)
             selectedTab = newTab
             lastContentTab = newTab
         }
@@ -117,12 +119,27 @@ struct RootView: View {
         presentedSheet = .capture
     }
 
+    private func playContentTabHaptic(from oldTab: AppTab, to newTab: AppTab) {
+        guard oldTab != newTab else { return }
+        guard oldTab.isContentTab, newTab.isContentTab else { return }
+        UISelectionFeedbackGenerator().selectionChanged()
+    }
+
 }
 
 enum AppTab: Hashable {
     case home
     case settings
     case capture
+
+    var isContentTab: Bool {
+        switch self {
+        case .home, .settings:
+            return true
+        case .capture:
+            return false
+        }
+    }
 }
 
 enum AppSheet: String, Identifiable {

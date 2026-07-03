@@ -1,57 +1,58 @@
 import SwiftUI
+import UIKit
 
 enum CatLocalTheme {
     static let background = Color(
-        light: UIColor(red: 0.957, green: 0.969, blue: 0.957, alpha: 1),
-        dark: UIColor(red: 0.043, green: 0.047, blue: 0.063, alpha: 1)
+        light: UIColor(hex: 0xF6F2E8),
+        dark: UIColor(hex: 0x101412)
     )
     static let backgroundGlow = Color(
-        light: UIColor.white,
-        dark: UIColor(red: 0.122, green: 0.157, blue: 0.200, alpha: 1)
+        light: UIColor(hex: 0xFFF8EA),
+        dark: UIColor(hex: 0x24312A)
     )
     static let elevatedSurface = Color(
-        light: UIColor(red: 0.910, green: 0.937, blue: 0.914, alpha: 1),
-        dark: UIColor(red: 0.122, green: 0.157, blue: 0.200, alpha: 1)
+        light: UIColor(hex: 0xECE4D3),
+        dark: UIColor(hex: 0x1B241E)
     )
     static let cardSurface = Color(
-        light: UIColor.white,
-        dark: UIColor(red: 0.122, green: 0.157, blue: 0.200, alpha: 1)
+        light: UIColor(hex: 0xFFFDF7),
+        dark: UIColor(hex: 0x202820)
     )
     static let primaryText = Color(
-        light: UIColor(red: 0.102, green: 0.184, blue: 0.145, alpha: 1),
-        dark: UIColor.white
+        light: UIColor(hex: 0x1C241F),
+        dark: UIColor(hex: 0xF4F0E6)
     )
     static let secondaryText = Color(
-        light: UIColor(red: 0.439, green: 0.518, blue: 0.478, alpha: 1),
-        dark: UIColor(red: 0.600, green: 0.651, blue: 0.710, alpha: 1)
+        light: UIColor(hex: 0x687169),
+        dark: UIColor(hex: 0xAEB7AD)
     )
     static let separator = Color(
-        light: UIColor(red: 0.102, green: 0.184, blue: 0.145, alpha: 0.08),
-        dark: UIColor.white.withAlphaComponent(0.12)
+        light: UIColor(hex: 0x1C241F, alpha: 0.10),
+        dark: UIColor(hex: 0xF4F0E6, alpha: 0.13)
     )
     static let imageOutline = Color(
-        light: UIColor(red: 0.102, green: 0.184, blue: 0.145, alpha: 0.10),
-        dark: UIColor.white.withAlphaComponent(0.12)
+        light: UIColor(hex: 0x1C241F, alpha: 0.13),
+        dark: UIColor(hex: 0xF4F0E6, alpha: 0.16)
     )
     static let shadow = Color(
-        light: UIColor(red: 0.102, green: 0.184, blue: 0.145, alpha: 0.12),
-        dark: UIColor.black.withAlphaComponent(0.60)
+        light: UIColor(hex: 0x1C241F, alpha: 0.16),
+        dark: UIColor.black.withAlphaComponent(0.65)
     )
     static let blueAction = Color(
-        light: UIColor(red: 0.173, green: 0.333, blue: 0.271, alpha: 1),
-        dark: UIColor(red: 0.271, green: 0.635, blue: 0.620, alpha: 1)
+        light: UIColor(hex: 0x2457A6),
+        dark: UIColor(hex: 0x82AFFF)
     )
     static let warning = Color(
-        light: UIColor(red: 0.898, green: 0.451, blue: 0.333, alpha: 1),
-        dark: UIColor(red: 1.0, green: 0.533, blue: 0.400, alpha: 1)
+        light: UIColor(hex: 0xA64E2D),
+        dark: UIColor(hex: 0xF29A6E)
     )
     static let sage = Color(
-        light: UIColor(red: 0.855, green: 0.890, blue: 0.855, alpha: 1),
-        dark: UIColor(red: 0.071, green: 0.090, blue: 0.110, alpha: 1)
+        light: UIColor(hex: 0xD9E1CF),
+        dark: UIColor(hex: 0x1F2A22)
     )
     static let information = Color(
-        light: UIColor(hex: 0x2F6F5E),
-        dark: UIColor(hex: 0x8EC8B5)
+        light: UIColor(hex: 0x2A6F8F),
+        dark: UIColor(hex: 0x7DCAE0)
     )
     static let positive = Color(
         light: UIColor(hex: 0x2F7C4F),
@@ -62,12 +63,12 @@ enum CatLocalTheme {
     static let dangerSymbol = warning
     static let successSymbol = positive
     static let memoryPlaceFill = Color(
-        light: UIColor(hex: 0xDCE7DB, alpha: 0.88),
-        dark: UIColor(hex: 0x203329, alpha: 0.92)
+        light: UIColor(hex: 0xE1E8D6, alpha: 0.92),
+        dark: UIColor(hex: 0x263424, alpha: 0.94)
     )
     static let memoryPlaceStroke = Color(
-        light: UIColor(hex: 0x2F6F5E, alpha: 0.22),
-        dark: UIColor(hex: 0x8EC8B5, alpha: 0.24)
+        light: UIColor(hex: 0x567A46, alpha: 0.30),
+        dark: UIColor(hex: 0x91D7A9, alpha: 0.28)
     )
 
     static let limestone = background
@@ -208,6 +209,222 @@ struct CatGlassGroup<Content: View>: View {
     }
 }
 
+@MainActor
+struct CatSheetActionButton: View {
+    enum Mode: Equatable {
+        case close
+        case confirm
+    }
+
+    let mode: Mode
+    let isLoading: Bool
+    let action: () -> Void
+
+    init(mode: Mode, isLoading: Bool = false, action: @escaping () -> Void) {
+        self.mode = mode
+        self.isLoading = isLoading
+        self.action = action
+    }
+
+    var body: some View {
+        Button(action: action) {
+            ZStack {
+                Image(systemName: mode.symbolName)
+                    .font(.system(size: 22, weight: .semibold))
+                    .symbolRenderingMode(.monochrome)
+                    .foregroundStyle(mode.iconColor)
+                    .frame(width: 30, height: 30)
+                    .opacity(isLoading ? 0 : 1)
+                    .contentTransition(.symbolEffect(.replace))
+
+                if isLoading {
+                    ProgressView()
+                        .controlSize(.small)
+                        .tint(CatLocalTheme.blueAction)
+                }
+            }
+            .catSingleActionIconSurface()
+        }
+        .labelStyle(.iconOnly)
+        .buttonStyle(.plain)
+        .contentShape(Circle())
+        .disabled(isLoading)
+        .accessibilityLabel(mode.accessibilityLabel)
+        .animation(.snappy(duration: 0.18, extraBounce: 0), value: mode)
+        .animation(.snappy(duration: 0.18, extraBounce: 0), value: isLoading)
+    }
+}
+
+struct CatDeletionConfirmationSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    let title: String
+    let message: String
+    let deleteTitle: String
+    let isDeleting: Bool
+    let onDelete: () -> Void
+    let onCancel: () -> Void
+
+    init(
+        title: String,
+        message: String,
+        deleteTitle: String = "Delete",
+        isDeleting: Bool = false,
+        onDelete: @escaping () -> Void,
+        onCancel: @escaping () -> Void = {}
+    ) {
+        self.title = title
+        self.message = message
+        self.deleteTitle = deleteTitle
+        self.isDeleting = isDeleting
+        self.onDelete = onDelete
+        self.onCancel = onCancel
+    }
+
+    var body: some View {
+        ZStack {
+            CatLocalBackground()
+
+            ScrollView {
+                sheetContent
+                    .padding(22)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .scrollIndicators(.hidden)
+        }
+        .presentationDetents(presentationDetents)
+        .presentationDragIndicator(.visible)
+        .presentationBackground(CatLocalTheme.background)
+        .interactiveDismissDisabled(isDeleting)
+    }
+
+    private var sheetContent: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            deleteIcon
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text(title)
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(CatLocalTheme.primaryText)
+                    .lineLimit(nil)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Text(message)
+                    .font(.body)
+                    .foregroundStyle(CatLocalTheme.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            actionButtons
+        }
+    }
+
+    private var deleteIcon: some View {
+        Image(systemName: "trash.fill")
+            .font(.system(size: 26, weight: .semibold))
+            .foregroundStyle(CatLocalTheme.background)
+            .frame(width: 52, height: 52)
+            .background(CatLocalTheme.warning, in: Circle())
+            .accessibilityHidden(true)
+    }
+
+    @ViewBuilder
+    private var actionButtons: some View {
+        if dynamicTypeSize.isAccessibilitySize {
+            VStack(spacing: 12) {
+                cancelButton
+                deleteButton
+            }
+        } else {
+            HStack(spacing: 12) {
+                cancelButton
+                deleteButton
+            }
+        }
+    }
+
+    private var cancelButton: some View {
+        Button {
+            guard !isDeleting else { return }
+            onCancel()
+            dismiss()
+        } label: {
+            Text("Cancel")
+                .font(.headline.weight(.semibold))
+                .foregroundStyle(CatLocalTheme.primaryText)
+                .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
+                .minimumScaleFactor(dynamicTypeSize.isAccessibilitySize ? 1 : 0.82)
+                .frame(maxWidth: .infinity)
+                .catSingleActionPillSurface()
+        }
+        .buttonStyle(.plain)
+        .disabled(isDeleting)
+    }
+
+    private var deleteButton: some View {
+        Button(role: .destructive) {
+            guard !isDeleting else { return }
+            onDelete()
+        } label: {
+            HStack(spacing: 8) {
+                if isDeleting {
+                    ProgressView()
+                        .controlSize(.small)
+                        .tint(CatLocalTheme.background)
+                        .accessibilityHidden(true)
+                }
+
+                Text(isDeleting ? "Deleting" : deleteTitle)
+                    .font(.headline.weight(.semibold))
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
+                    .minimumScaleFactor(dynamicTypeSize.isAccessibilitySize ? 1 : 0.82)
+            }
+            .foregroundStyle(CatLocalTheme.background)
+            .frame(maxWidth: .infinity)
+            .frame(minHeight: 56)
+            .padding(.horizontal, 12)
+            .background(CatLocalTheme.warning.opacity(isDeleting ? 0.74 : 1), in: Capsule(style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .disabled(isDeleting)
+        .accessibilityLabel(isDeleting ? "Deleting" : deleteTitle)
+    }
+
+    private var presentationDetents: Set<PresentationDetent> {
+        dynamicTypeSize.isAccessibilitySize ? [.medium, .large] : [.height(324)]
+    }
+}
+
+private extension CatSheetActionButton.Mode {
+    var symbolName: String {
+        switch self {
+        case .close:
+            "xmark"
+        case .confirm:
+            "checkmark"
+        }
+    }
+
+    var iconColor: Color {
+        switch self {
+        case .close:
+            CatLocalTheme.primaryText
+        case .confirm:
+            CatLocalTheme.cobalt
+        }
+    }
+
+    var accessibilityLabel: String {
+        switch self {
+        case .close:
+            "Close"
+        case .confirm:
+            "Done"
+        }
+    }
+}
+
 private struct CatGlassModifier: ViewModifier {
     let cornerRadius: CGFloat
     let interactive: Bool
@@ -270,13 +487,28 @@ extension View {
         padding(.horizontal, 16)
             .padding(.vertical, 14)
             .background(
-                CatLocalTheme.elevatedSurface.opacity(0.86),
+                CatLocalTheme.cardSurface.opacity(0.94),
                 in: RoundedRectangle(cornerRadius: CatLocalTheme.inputRadius, style: .continuous)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: CatLocalTheme.inputRadius, style: .continuous)
                     .stroke(CatLocalTheme.imageOutline, lineWidth: 1)
             )
+            .shadow(color: CatLocalTheme.shadow.opacity(0.08), radius: 8, y: 3)
+    }
+
+    nonisolated func catSingleActionIconSurface() -> some View {
+        frame(width: 56, height: 56)
+            .catGlass(cornerRadius: 28, interactive: true)
+    }
+
+    nonisolated func catSingleActionPillSurface() -> some View {
+        lineLimit(1)
+            .minimumScaleFactor(0.82)
+            .padding(.horizontal, 18)
+            .frame(minHeight: 56)
+            .catGlass(cornerRadius: 28, interactive: true)
+            .contentShape(Capsule(style: .continuous))
     }
 
     nonisolated func catPrimaryActionSurface(

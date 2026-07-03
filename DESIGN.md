@@ -70,21 +70,26 @@ Use `CatLocalTheme` tokens instead of hardcoded colors.
 
 | Token                            | Light            | Dark                | Role                               |
 | -------------------------------- | ---------------- | ------------------- | ---------------------------------- |
-| `background` / `limestone`       | `#FDFCF9`        | `#0B0C10`           | App background                     |
-| `backgroundGlow`                 | `#FFFFFF`        | `#1E212B`           | Top-left radial glow               |
-| `elevatedSurface` / `chalk`      | `#F5F5F7`        | `#16181F`           | Empty states, image stages, inputs |
-| `cardSurface`                    | `#FFFFFF`        | `#1C1E26`           | Card and settings surfaces         |
-| `primaryText` / `forest` / `ink` | `#0D1117`        | `#F0F2F5`           | Titles and primary content         |
-| `secondaryText`                  | `#5C6573`        | `#8B95A5`           | Metadata and supporting text       |
-| `separator`                      | `#0D1117` at 8%  | `#F0F2F5` at 12%    | Dividers                           |
-| `imageOutline`                   | black at 8%      | white at 12%        | Image/card strokes                 |
-| `shadow`                         | `#0D111F` at 12% | black at 55%        | Depth                              |
-| `blueAction` / `cobalt`          | `#005EEC`        | `#4A90E2`           | Primary actions                    |
-| `warning` / `apricot`            | `#FFA300`        | `#FFBD3D`           | Sunny warnings and warm card tones |
-| `sage`                           | `#214D3B`        | `#579174`           | Archive tone and forest accents    |
+| `background` / `limestone`       | `#F6F2E8`        | `#101412`           | Warm field-journal background      |
+| `backgroundGlow`                 | `#FFF8EA`        | `#24312A`           | Soft sunlit glow                   |
+| `elevatedSurface` / `chalk`      | `#ECE4D3`        | `#1B241E`           | Empty states, image stages, inputs |
+| `cardSurface`                    | `#FFFDF7`        | `#202820`           | Card and settings surfaces         |
+| `primaryText` / `forest` / `ink` | `#1C241F`        | `#F4F0E6`           | Titles and primary content         |
+| `secondaryText`                  | `#687169`        | `#AEB7AD`           | Metadata and supporting text       |
+| `separator`                      | `#1C241F` at 10% | `#F4F0E6` at 13%    | Dividers                           |
+| `imageOutline`                   | `#1C241F` at 13% | `#F4F0E6` at 16%    | Image/card strokes                 |
+| `shadow`                         | `#1C241F` at 16% | black at 65%        | Depth                              |
+| `blueAction` / `cobalt`          | `#2457A6`        | `#82AFFF`           | Primary actions and selected state |
+| `warning` / `apricot`            | `#A64E2D`        | `#F29A6E`           | Warnings and warm card tones       |
+| `sage`                           | `#D9E1CF`        | `#1F2A22`           | Archive wash and quiet fill        |
+| `information`                    | `#2A6F8F`        | `#7DCAE0`           | Privacy and info symbols           |
+| `positive`                       | `#2F7C4F`        | `#91D7A9`           | Success, saved, and place states   |
 
 The app background is layered: a limestone base, a soft top-left radial glow,
-and a subtle diagonal sage-to-apricot wash. Avoid flat single-color screens.
+and a subtle diagonal sage-to-apricot wash. Cobalt, terracotta, moss, and
+Aegean blue are intentionally distinct so actions, warnings, saved states, and
+privacy proof points do not compete with one another. Avoid flat single-color
+screens and avoid using green as the default action color.
 
 ## Typography
 

@@ -105,6 +105,25 @@ final class CatRecord {
             height: catBoundingBoxHeight
         )
     }
+
+    static func compactSequences(_ records: [CatRecord]) {
+        let orderedRecords = records.sorted { lhs, rhs in
+            if lhs.sequence != rhs.sequence {
+                return lhs.sequence < rhs.sequence
+            }
+            if lhs.capturedAt != rhs.capturedAt {
+                return lhs.capturedAt < rhs.capturedAt
+            }
+            return lhs.id.uuidString < rhs.id.uuidString
+        }
+
+        for (index, record) in orderedRecords.enumerated() {
+            let compactedSequence = index + 1
+            if record.sequence != compactedSequence {
+                record.sequence = compactedSequence
+            }
+        }
+    }
 }
 
 enum CaptureSource: String, Codable, CaseIterable, Sendable {
@@ -131,6 +150,22 @@ enum CardStyle: String, Codable, CaseIterable, Identifiable, Hashable, Sendable 
     case topo
 
     var id: String { rawValue }
+
+    static let orderedCases: [CardStyle] = [
+        .archive,
+        .sunstamp,
+        .clear,
+        .garden,
+        .midnight,
+        .apricot,
+        .prism,
+        .gold,
+        .topo
+    ]
+
+    var displayIndex: Int {
+        Self.orderedCases.firstIndex(of: self) ?? 0
+    }
 
     var title: String {
         switch self {

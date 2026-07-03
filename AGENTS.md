@@ -69,6 +69,17 @@ Do not reintroduce a custom floating tab bar unless a native API cannot express 
 - `CatImageStore` owns Application Support paths, metadata stripping, downsampling, compression, thumbnails, and deletion cleanup.
 - `CatVisionProcessor` owns on-device animal detection and foreground mask/cutout generation.
 - `CatRecord` stores SwiftData metadata, optional normalized Vision bounding boxes, and references local image filenames, not remote URLs.
+- Never validate local image paths with a naive string prefix check. Use directory-aware URL containment so sibling folders with the same prefix cannot be read.
+- Treat `CatImageStore.save(...)` plus `modelContext.save()` as one logical persistence operation. If SwiftData save fails after files are written, roll back the new image directory.
+- Do not silently swallow storage migration/optimization errors. If a maintenance routine is intentionally best-effort, document the reason and surface enough diagnostics for debugging.
+- Keep full-image decode, downsampling, alpha-bound scanning, and Vision work off the main actor.
+
+## Capture Flow Safety
+
+- Gate camera capture, private import, and validation import with one in-flight state so repeated taps cannot start overlapping image work or overwrite the active camera completion.
+- Reset that in-flight state on every path: success, failure, cancel, close, and reset.
+- The first-save reveal must never depend on optional decorative sampling finishing. Start with safe fallback bounds and update precise animation anchors asynchronously.
+- When adding or changing capture stages, preserve explicit transitions between camera, analyzing, cutout creation, sticker reveal, inspection/editor, celebration, and failure.
 
 ## UI Notes
 
@@ -81,6 +92,10 @@ Do not reintroduce a custom floating tab bar unless a native API cannot express 
 - The card style carousel repeats style cycles to feel infinite and fires a small selection haptic as the centered style changes.
 - Liquid Glass belongs on native navigation and compact actions.
 - `LiveInteractiveCardView` passes `rotateX`, `rotateY`, and `isInteracting` into card content. It preserves one-shot boundary haptics and thresholded tilt haptics; do not alter the haptic gate or spring constants casually.
+- Keep grid thumbnails cheap: static overlays, thumbnail image paths, no live tilt, no motion sensors, no full premium foil stack.
+- Cache or reuse decoded local thumbnails where practical; do not repeatedly read and decode the same image path during ordinary grid rebuilds.
+- Derive sorted records, Catlas groups, and animation identity arrays once per render path instead of re-sorting/filtering the same `@Query` data across several computed properties.
+- Remove unused implementation helpers from both the filesystem and `CatLocal.xcodeproj/project.pbxproj`; do not leave compiled sensor/timer/effect models around as dormant future traps.
 
 ## Verification
 
@@ -90,6 +105,14 @@ Preferred validation after code changes:
 2. Build/run the `CatLocal` scheme on an iOS Simulator.
 3. Run relevant unit/UI tests when behavior changes.
 4. Visually inspect light/dark UI changes when touching design.
+
+Add or update tests when changing:
+
+- path containment, storage save ordering, or deletion cleanup;
+- capture/import in-flight state;
+- first-save reveal timing or completion behavior;
+- collection sorting/grouping logic;
+- thumbnail/image loading behavior.
 
 After any Simulator build, run, test, or screenshot:
 

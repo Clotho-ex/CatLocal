@@ -14,7 +14,7 @@ struct LiveInteractiveCardView<Content: View>: View {
     let maxTiltAngle: CGFloat
     let cornerRadius: CGFloat
     let hapticsEnabled: Bool
-    let feedbackGenerator = UISelectionFeedbackGenerator()
+    let onInteractionChanged: ((Bool) -> Void)?
     @ViewBuilder let content: (_ rotateX: CGFloat, _ rotateY: CGFloat, _ isInteracting: Bool) -> Content
 
     @State private var rotateX: CGFloat = 0
@@ -23,6 +23,7 @@ struct LiveInteractiveCardView<Content: View>: View {
     @State private var isInteracting = false
     @State private var lastHapticAngle: CGFloat = 0
     @State private var hasHitLimit = false
+    @State private var selectionFeedbackTrigger = 0
 
     init(
         width: CGFloat? = 350,
@@ -30,6 +31,7 @@ struct LiveInteractiveCardView<Content: View>: View {
         maxTiltAngle: CGFloat = 12,
         cornerRadius: CGFloat = 34,
         hapticsEnabled: Bool = true,
+        onInteractionChanged: ((Bool) -> Void)? = nil,
         @ViewBuilder content: @escaping (_ rotateX: CGFloat, _ rotateY: CGFloat, _ isInteracting: Bool) -> Content
     ) {
         self.width = width
@@ -37,6 +39,7 @@ struct LiveInteractiveCardView<Content: View>: View {
         self.maxTiltAngle = maxTiltAngle
         self.cornerRadius = cornerRadius
         self.hapticsEnabled = hapticsEnabled
+        self.onInteractionChanged = onInteractionChanged
         self.content = content
     }
 
@@ -78,6 +81,10 @@ struct LiveInteractiveCardView<Content: View>: View {
                     resetInteraction(size: size)
                 }
             }
+            .onChange(of: isInteracting) { _, isInteracting in
+                onInteractionChanged?(isInteracting)
+            }
+            .sensoryFeedback(.selection, trigger: selectionFeedbackTrigger)
         }
         .frame(width: width, height: height)
     }
@@ -117,8 +124,7 @@ struct LiveInteractiveCardView<Content: View>: View {
                 spotlightLocation = tilt.location
                 let hapticMagnitude = abs(tilt.rotateX) + abs(tilt.rotateY)
                 if hapticsEnabled, abs(hapticMagnitude - lastHapticAngle) > 2.5 {
-                    feedbackGenerator.selectionChanged()
-                    feedbackGenerator.prepare()
+                    selectionFeedbackTrigger += 1
                     lastHapticAngle = hapticMagnitude
                 }
 

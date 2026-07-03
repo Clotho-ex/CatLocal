@@ -9,12 +9,6 @@ struct StoredCatImages: Sendable {
     let thumbnailPath: String
 }
 
-struct StoredCatImageReferences: Sendable {
-    let id: UUID
-    let originalPath: String
-    let cutoutPath: String
-}
-
 struct SendableImage: @unchecked Sendable {
     let value: UIImage
 }
@@ -116,10 +110,7 @@ actor CatImageStore: CatImageStoring {
     }
 
     func data(at relativePath: String) async throws -> Data {
-        let url = rootURL.appendingPathComponent(relativePath)
-        guard url.standardizedFileURL.path.hasPrefix(rootURL.standardizedFileURL.path) else {
-            throw CatImageStoreError.invalidPath
-        }
+        let url = try fileURL(for: relativePath)
         return try Data(contentsOf: url, options: .mappedIfSafe)
     }
 
@@ -148,32 +139,18 @@ actor CatImageStore: CatImageStoring {
         return total
     }
 
-    func optimizeExisting(records: [StoredCatImageReferences]) async {
-        for record in records {
-            do {
-                let original = try await image(at: record.originalPath)
-                let cutout = try await image(at: record.cutoutPath)
-                _ = try await save(
-                    id: record.id,
-                    original: SendableImage(value: original),
-                    cutout: SendableImage(value: cutout)
-                )
-            } catch {
-                continue
-            }
+    private func fileURL(for relativePath: String) throws -> URL {
+        guard !relativePath.isEmpty, !relativePath.hasPrefix("/") else {
+            throw CatImageStoreError.invalidPath
         }
-    }
 
-    private func relativePath(for url: URL) -> String {
-        url.path.replacingOccurrences(of: rootURL.path + "/", with: "")
-    }
-
-    private func image(at relativePath: String) async throws -> UIImage {
-        let imageData = try await data(at: relativePath)
-        guard let image = UIImage(data: imageData) else {
-            throw CatImageStoreError.imageEncodingFailed
+        let root = rootURL.standardizedFileURL
+        let url = rootURL.appendingPathComponent(relativePath).standardizedFileURL
+        let rootPath = root.path.hasSuffix("/") ? root.path : root.path + "/"
+        guard url.path.hasPrefix(rootPath) else {
+            throw CatImageStoreError.invalidPath
         }
-        return image
+        return url
     }
 
     private static func heicData(from image: UIImage, quality: CGFloat) throws -> Data {
@@ -205,13 +182,6 @@ actor CatImageStore: CatImageStoring {
 
     private static func pngData(from image: UIImage) throws -> Data {
         guard let data = image.pngData() else {
-            throw CatImageStoreError.imageEncodingFailed
-        }
-        return data
-    }
-
-    private static func jpegData(from image: UIImage, quality: CGFloat) throws -> Data {
-        guard let data = image.jpegData(compressionQuality: quality) else {
             throw CatImageStoreError.imageEncodingFailed
         }
         return data
