@@ -1,6 +1,5 @@
 import SwiftData
 import SwiftUI
-import UIKit
 
 struct CollectionView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -14,6 +13,7 @@ struct CollectionView: View {
     @Namespace private var cardTransitionNamespace
 
     @State private var selectedRecord: CatRecord?
+    @State private var selectedAtlasRecord: CatRecord?
     @State private var editingRecord: CatRecord?
     @State private var removalRecord: CatRecord?
     @State private var selectedAtlasRoute: AtlasRoute?
@@ -25,6 +25,14 @@ struct CollectionView: View {
     @State private var showingBulkDeleteConfirmation = false
     @State private var isBulkDeleting = false
     @State private var suppressFocusedZoomTransition = false
+    @State private var isFocusedCardTabBarHidden = false
+    @State private var collectionCountDelightTrigger = 0
+    @State private var collectionModeDelightTrigger = 0
+    @State private var collectionSelectionFeedbackTrigger = 0
+    @State private var collectionDeletionFeedbackTrigger = 0
+    @State private var sortDelightTrigger = 0
+    @State private var recentlyAddedRecordID: UUID?
+    @State private var recentlyUpdatedAtlasGroupID: String?
     @State private var errorMessage: String?
 
     private let onCaptureRequested: (() -> Void)?
@@ -145,14 +153,36 @@ struct CollectionView: View {
         }
         .onChange(of: selectedTab) { _, tab in
             guard tab != .home else { return }
-            if selectedRecord != nil {
+            if activeFocusedRecordID != nil {
                 closeFocusedRecord()
             }
             selectedAtlasRoute = nil
             endSelectionMode()
         }
-        .onChange(of: records.map(\.id)) { _, recordIDs in
+        .onChange(of: collectionMode) { oldMode, newMode in
+            guard oldMode != newMode else { return }
+            collectionModeDelightTrigger += 1
+        }
+        .onChange(of: selectedAtlasRoute?.id) { _, routeID in
+            if routeID == nil {
+                selectedAtlasRecord = nil
+            }
+        }
+        .onChange(of: activeFocusedRecordID) { _, recordID in
+            if let recordID {
+                scheduleFocusedTabBarHide(for: recordID)
+            } else {
+                scheduleFocusedTabBarReveal()
+            }
+        }
+        .onChange(of: records.map(\.id)) { oldRecordIDs, recordIDs in
+            let addedRecordID = recordIDs.first { !oldRecordIDs.contains($0) }
+            let didAddRecord = recordIDs.count > oldRecordIDs.count && addedRecordID != nil
             reconcileSelection(with: recordIDs)
+            if didAddRecord, let addedRecordID {
+                collectionCountDelightTrigger += 1
+                markRecentlyAddedRecord(addedRecordID)
+            }
         }
         .safeAreaInset(edge: .bottom) {
             if isSelectionMode {
@@ -163,12 +193,21 @@ struct CollectionView: View {
             }
         }
         .toolbar(hidesTabBar ? .hidden : .visible, for: .tabBar)
-        .animation(.snappy(duration: 0.24), value: hidesTabBar)
+        .animation(.snappy(duration: 0.24), value: isSelectionMode)
+        .sensoryFeedback(.success, trigger: collectionCountDelightTrigger)
+        .sensoryFeedback(.selection, trigger: collectionModeDelightTrigger)
+        .sensoryFeedback(.selection, trigger: collectionSelectionFeedbackTrigger)
+        .sensoryFeedback(.success, trigger: collectionDeletionFeedbackTrigger)
+        .sensoryFeedback(.selection, trigger: sortDelightTrigger)
         .accessibilityIdentifier("collection-screen")
     }
 
     private var hidesTabBar: Bool {
-        isSelectionMode || selectedRecord != nil
+        isSelectionMode || isFocusedCardTabBarHidden
+    }
+
+    private var activeFocusedRecordID: UUID? {
+        selectedRecord?.id ?? selectedAtlasRecord?.id
     }
 
     private var focusTransitionAnimation: Animation {
@@ -195,29 +234,42 @@ struct CollectionView: View {
     }
 
     private var scrollBottomPadding: CGFloat {
-        guard isSelectionMode else { return 140 }
+        guard isSelectionMode else {
+            return dynamicTypeSize.isAccessibilitySize ? 320 : 140
+        }
         return dynamicTypeSize.isAccessibilitySize ? 230 : 170
     }
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 5) {
             Text("CatLocal")
-                .font(.largeTitle.weight(.semibold))
+                .font(CatTypography.screenTitle)
                 .foregroundStyle(CatLocalTheme.primaryText)
                 .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
                 .minimumScaleFactor(dynamicTypeSize.isAccessibilitySize ? 1 : 0.82)
 
             Text("A private home for the cats you meet.")
-                .font(.callout)
+                .font(CatTypography.screenSubtitle)
                 .foregroundStyle(CatLocalTheme.secondaryText)
                 .lineLimit(nil)
         }
     }
 
     private var collectionSummary: some View {
-        Text(summaryCountLabel)
-            .font(.subheadline.weight(.semibold))
-            .foregroundStyle(CatLocalTheme.primaryText)
+        HStack(spacing: 7) {
+            Image(systemName: summaryIconName)
+                .font(CatTypography.metadata)
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(summaryAccent)
+                .symbolEffect(.bounce, value: summaryDelightTrigger)
+                .accessibilityHidden(true)
+
+            Text(summaryCountLabel)
+                .contentTransition(.numericText())
+        }
+        .font(CatTypography.supportingEmphasized)
+        .foregroundStyle(CatLocalTheme.primaryText)
+        .animation(.smooth(duration: 0.22, extraBounce: 0), value: summaryCountLabel)
     }
 
     private var summaryCountLabel: String {
@@ -225,6 +277,18 @@ struct CollectionView: View {
             return atlasPlaceCountText
         }
         return catCountText(records.count)
+    }
+
+    private var summaryIconName: String {
+        collectionMode == .atlas ? "mappin.and.ellipse" : "pawprint.fill"
+    }
+
+    private var summaryAccent: Color {
+        collectionMode == .atlas ? CatAttentionRole.info.accent : CatAttentionRole.success.accent
+    }
+
+    private var summaryDelightTrigger: Int {
+        collectionCountDelightTrigger + collectionModeDelightTrigger
     }
 
     private var modePicker: some View {
@@ -245,7 +309,7 @@ struct CollectionView: View {
 
             if isSelectionMode {
                 Text("Tap cards to choose what to delete.")
-                    .font(.footnote.weight(.medium))
+                    .font(CatTypography.metadata)
                     .foregroundStyle(CatLocalTheme.secondaryText)
                     .lineLimit(nil)
                     .transition(.opacity)
@@ -265,12 +329,13 @@ struct CollectionView: View {
         context: CardGridContext = .collection
     ) -> some View {
         let isSelected = selectedRecordIDs.contains(record.id)
+        let isFreshlyAdded = recentlyAddedRecordID == record.id
 
         return Button {
             if isSelectionMode {
                 toggleSelection(for: record)
             } else {
-                selectedRecord = record
+                openFocusedRecord(record, context: context)
             }
         } label: {
             CatCardView(
@@ -281,6 +346,9 @@ struct CollectionView: View {
                 .aspectRatio(0.72, contentMode: .fit)
                 .overlay {
                     homeCardQuietingOverlay
+                }
+                .overlay {
+                    newCardArrivalGlow(isVisible: isFreshlyAdded)
                 }
                 .overlay {
                     selectionStroke(isSelected: isSelected)
@@ -297,6 +365,8 @@ struct CollectionView: View {
                 }
         }
         .buttonStyle(.plain)
+        .scaleEffect(isFreshlyAdded && !reduceMotion ? 1.012 : 1)
+        .animation(.smooth(duration: 0.28, extraBounce: 0), value: isFreshlyAdded)
         .frame(maxWidth: .infinity)
         .aspectRatio(0.72, contentMode: .fit)
         .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
@@ -375,6 +445,24 @@ struct CollectionView: View {
         }
         .navigationTitle(route.title)
         .navigationBarTitleDisplayMode(.inline)
+        .navigationDestination(item: $selectedAtlasRecord) { record in
+            FocusedCardView(
+                record: record,
+                onClose: {
+                    closeFocusedRecord()
+                },
+                onDeleted: {
+                    closeFocusedRecordAfterDeletion()
+                }
+            )
+            .modifier(
+                FocusedCardZoomTransition(
+                    recordID: record.id,
+                    namespace: cardTransitionNamespace,
+                    isEnabled: !suppressFocusedZoomTransition
+                )
+            )
+        }
     }
 
     private func atlasRecords(for route: AtlasRoute) -> [CatRecord] {
@@ -387,18 +475,30 @@ struct CollectionView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline) {
                 Text("Places")
-                    .font(.headline.weight(.semibold))
+                    .font(CatTypography.sectionTitle)
                     .foregroundStyle(CatLocalTheme.primaryText)
                 Spacer()
                 sortMenu
             }
 
-            Text("Places you type yourself. No GPS or public map.")
-                .font(.footnote)
+            Text(atlasIntroText)
+                .contentTransition(.numericText())
+                .font(CatTypography.metadata)
                 .foregroundStyle(CatLocalTheme.secondaryText)
                 .lineLimit(nil)
         }
         .padding(.top, 2)
+    }
+
+    private var atlasIntroText: String {
+        switch atlasPlaceCount {
+        case 0:
+            "Add a Memory Place from Edit to build Catlas. No GPS or public map."
+        case 1:
+            "1 private place typed by you. No GPS or public map."
+        default:
+            "\(atlasPlaceCount) private places typed by you. No GPS or public map."
+        }
     }
 
     private var atlasPlaceCount: Int {
@@ -447,6 +547,7 @@ struct CollectionView: View {
     private func atlasGroup(_ group: MemoryAtlasGroup) -> some View {
         Button {
             withAnimation(focusTransitionAnimation) {
+                collectionSelectionFeedbackTrigger += 1
                 selectedAtlasRoute = AtlasRoute(group: group)
             }
         } label: {
@@ -454,11 +555,12 @@ struct CollectionView: View {
                 group: group,
                 countText: catCountText(group.records.count),
                 unplacedText: group.isUnplaced
-                    ? "Add a memory place in Edit Cat."
-                    : nil
+                    ? "No memory place yet."
+                    : nil,
+                isHighlighted: recentlyUpdatedAtlasGroupID == group.id
             )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.catTactile)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(group.displayTitle), \(catCountText(group.records.count))")
         .accessibilityHint("Opens a filtered Catlas grid")
@@ -490,7 +592,7 @@ struct CollectionView: View {
 
     private func sectionTitle(_ title: String) -> some View {
         Text(title)
-            .font(.headline.weight(.semibold))
+            .font(CatTypography.sectionTitle)
             .foregroundStyle(CatLocalTheme.primaryText)
             .lineLimit(nil)
     }
@@ -524,12 +626,12 @@ struct CollectionView: View {
     private func atlasRouteSummary(_ route: AtlasRoute, recordCount: Int) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(catCountText(recordCount))
-                .font(.subheadline.weight(.semibold))
+                .font(CatTypography.supportingEmphasized)
                 .foregroundStyle(CatLocalTheme.primaryText)
 
             if route.isUnplaced {
-                Text("Add a memory place in Edit Cat.")
-                    .font(.footnote)
+                Text("No memory place yet.")
+                    .font(CatTypography.metadata)
                     .foregroundStyle(CatLocalTheme.secondaryText)
                     .lineLimit(nil)
             }
@@ -540,21 +642,11 @@ struct CollectionView: View {
         Menu {
             sortPicker
         } label: {
-            HStack(alignment: .center, spacing: 5) {
-                Image(systemName: "arrow.up.arrow.down")
-                    .font(.caption.weight(.semibold))
-                    .imageScale(.small)
-                    .accessibilityHidden(true)
-
-                Text(sortOption.title)
-                    .font(.caption.weight(.semibold))
-            }
-            .foregroundStyle(CatLocalTheme.secondaryText)
-            .frame(minHeight: 44)
-            .contentShape(Rectangle())
+            organizeMenuLabel(title: "Organize")
         }
-        .accessibilityLabel("Sort cats")
-        .accessibilityValue(sortOption.title)
+        .accessibilityLabel("Organize places")
+        .accessibilityValue("Sorted by \(sortOption.title)")
+        .accessibilityHint("Sorts Catlas places")
     }
 
     private var cardGridOrganizeMenu: some View {
@@ -571,27 +663,32 @@ struct CollectionView: View {
                 }
             } label: {
                 Label(
-                    isSelectionMode ? "Done Selecting" : "Select for Deletion",
-                    systemImage: isSelectionMode ? "checkmark.circle.fill" : "checkmark.circle"
+                    isSelectionMode ? "Done Selecting" : "Bulk Delete...",
+                    systemImage: isSelectionMode ? "checkmark.circle.fill" : "trash.circle"
                 )
             }
         } label: {
-            HStack(alignment: .center, spacing: 5) {
-                Image(systemName: "line.3.horizontal.decrease.circle")
-                    .font(.caption.weight(.semibold))
-                    .imageScale(.small)
-                    .accessibilityHidden(true)
-
-                Text("Organize")
-                    .font(.caption.weight(.semibold))
-            }
-            .foregroundStyle(CatLocalTheme.secondaryText)
-            .frame(minHeight: 44)
-            .contentShape(Rectangle())
+            organizeMenuLabel(title: "Organize")
         }
         .accessibilityLabel("Organize cats")
         .accessibilityValue(isSelectionMode ? "Selection active" : "Sorted by \(sortOption.title)")
-        .accessibilityHint("Sort cats or choose cats to delete")
+        .accessibilityHint("Sort cats or enter bulk delete mode")
+    }
+
+    private func organizeMenuLabel(title: String) -> some View {
+        HStack(alignment: .center, spacing: 7) {
+            Image(systemName: "line.3.horizontal.decrease.circle")
+                .font(.system(size: 17, weight: .semibold))
+                .imageScale(.medium)
+                .accessibilityHidden(true)
+
+            Text(title)
+                .font(CatTypography.compactControl)
+        }
+        .foregroundStyle(CatLocalTheme.secondaryText)
+        .padding(.horizontal, 6)
+        .frame(minHeight: 48)
+        .contentShape(Rectangle())
     }
 
     private var sortPicker: some View {
@@ -606,9 +703,11 @@ struct CollectionView: View {
         Binding(
             get: { sortOption },
             set: { option in
+                guard sortOption != option else { return }
                 withAnimation(sortAnimation) {
                     sortOption = option
                 }
+                sortDelightTrigger += 1
             }
         )
     }
@@ -659,13 +758,13 @@ struct CollectionView: View {
                 .frame(width: 44, height: 44)
                 .contentShape(Circle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.catTactile)
         .accessibilityLabel("Cancel selection")
     }
 
     private var selectionStatus: some View {
         Text(selectedSelectionText)
-            .font(.subheadline.weight(.semibold))
+            .font(CatTypography.supportingEmphasized)
             .foregroundStyle(CatLocalTheme.primaryText)
             .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
             .minimumScaleFactor(dynamicTypeSize.isAccessibilitySize ? 1 : 0.78)
@@ -678,18 +777,17 @@ struct CollectionView: View {
             showingBulkDeleteConfirmation = true
         } label: {
             Label(isBulkDeleting ? "Deleting" : "Delete", systemImage: "trash.fill")
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(CatLocalTheme.background)
+                .font(CatTypography.compactControl)
                 .padding(.horizontal, 16)
                 .frame(maxWidth: dynamicTypeSize.isAccessibilitySize ? .infinity : nil)
-                .frame(minHeight: 46)
-                .background(
-                    RoundedRectangle(cornerRadius: 17, style: .continuous)
-                        .fill(selectedRecordIDs.isEmpty ? CatLocalTheme.secondaryText.opacity(0.36) : CatLocalTheme.warning)
+                .catDestructiveActionSurface(
+                    cornerRadius: 17,
+                    minHeight: 46,
+                    isProminent: true,
+                    isDisabled: selectedRecordIDs.isEmpty
                 )
-                .contentShape(RoundedRectangle(cornerRadius: 17, style: .continuous))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.catTactile)
         .disabled(selectedRecordIDs.isEmpty || isBulkDeleting)
         .accessibilityLabel(bulkDeleteTitle)
     }
@@ -754,16 +852,43 @@ struct CollectionView: View {
     }
 
     @ViewBuilder
+    private func newCardArrivalGlow(isVisible: Bool) -> some View {
+        if isVisible {
+            ZStack {
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                CatAttentionRole.success.wash.opacity(0.30),
+                                CatAttentionRole.success.wash.opacity(0.08),
+                                .clear
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .strokeBorder(CatAttentionRole.success.stroke.opacity(0.74), lineWidth: 1.4)
+                    .shadow(color: CatAttentionRole.success.accent.opacity(0.14), radius: 9, y: 3)
+            }
+            .transition(reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.985)))
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+        }
+    }
+
+    @ViewBuilder
     private func selectionStroke(isSelected: Bool) -> some View {
         if isSelectionMode {
             RoundedRectangle(cornerRadius: 22, style: .continuous)
                 .stroke(
-                    isSelected ? CatLocalTheme.blueAction : CatLocalTheme.imageOutline.opacity(0.58),
+                    isSelected ? CatAttentionRole.action.accent : CatLocalTheme.imageOutline.opacity(0.58),
                     lineWidth: isSelected ? 2 : 1
                 )
                 .background(
                     RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .fill(isSelected ? CatLocalTheme.blueAction.opacity(0.07) : .clear)
+                        .fill(isSelected ? CatAttentionRole.action.wash.opacity(0.72) : .clear)
                 )
                 .allowsHitTesting(false)
                 .accessibilityHidden(true)
@@ -775,17 +900,17 @@ struct CollectionView: View {
         if isSelectionMode {
             ZStack {
                 Circle()
-                    .fill(isSelected ? CatLocalTheme.blueAction : CatLocalTheme.cardSurface.opacity(0.90))
+                    .fill(isSelected ? CatAttentionRole.action.accent : CatLocalTheme.cardSurface.opacity(0.90))
 
                 Circle()
                     .stroke(
-                        isSelected ? CatLocalTheme.blueAction : CatLocalTheme.secondaryText.opacity(0.62),
+                        isSelected ? CatAttentionRole.action.accent : CatLocalTheme.secondaryText.opacity(0.62),
                         lineWidth: isSelected ? 0 : 1.8
                     )
 
                 if isSelected {
                     Image(systemName: "checkmark")
-                        .font(.system(size: 11, weight: .bold))
+                        .font(CatTypography.finePrint.weight(.bold))
                         .foregroundStyle(.white)
                 }
             }
@@ -800,12 +925,14 @@ struct CollectionView: View {
 
     private func closeFocusedRecord() {
         selectedRecord = nil
+        selectedAtlasRecord = nil
     }
 
     private func closeFocusedRecordAfterDeletion() {
         suppressFocusedZoomTransition = true
         DispatchQueue.main.async {
             selectedRecord = nil
+            selectedAtlasRecord = nil
             Task { @MainActor in
                 try? await Task.sleep(nanoseconds: 450_000_000)
                 suppressFocusedZoomTransition = false
@@ -815,6 +942,8 @@ struct CollectionView: View {
 
     private func navigateHomeToCats() {
         selectedRecord = nil
+        selectedAtlasRecord = nil
+        isFocusedCardTabBarHidden = false
         withAnimation(focusTransitionAnimation) {
             selectedAtlasRoute = nil
             collectionMode = .cards
@@ -822,12 +951,38 @@ struct CollectionView: View {
         endSelectionMode()
     }
 
+    private func scheduleFocusedTabBarHide(for recordID: UUID) {
+        Task { @MainActor in
+            // Let the native zoom capture the Catlas thumbnail before the tab bar changes layout.
+            try? await Task.sleep(nanoseconds: 120_000_000)
+            guard activeFocusedRecordID == recordID else { return }
+            isFocusedCardTabBarHidden = true
+        }
+    }
+
+    private func scheduleFocusedTabBarReveal() {
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 280_000_000)
+            guard activeFocusedRecordID == nil else { return }
+            isFocusedCardTabBarHidden = false
+        }
+    }
+
+    private func openFocusedRecord(_ record: CatRecord, context: CardGridContext) {
+        switch context {
+        case .collection:
+            selectedRecord = record
+        case .catlas:
+            selectedAtlasRecord = record
+        }
+    }
+
     private func beginSelectionMode() {
         withAnimation(.snappy(duration: 0.22)) {
             isSelectionMode = true
             selectedRecordIDs.removeAll()
         }
-        UISelectionFeedbackGenerator().selectionChanged()
+        collectionSelectionFeedbackTrigger += 1
     }
 
     private func beginSelection(with record: CatRecord) {
@@ -835,7 +990,7 @@ struct CollectionView: View {
             isSelectionMode = true
             selectedRecordIDs = [record.id]
         }
-        UISelectionFeedbackGenerator().selectionChanged()
+        collectionSelectionFeedbackTrigger += 1
     }
 
     private func toggleSelection(for record: CatRecord) {
@@ -846,7 +1001,7 @@ struct CollectionView: View {
                 selectedRecordIDs.insert(record.id)
             }
         }
-        UISelectionFeedbackGenerator().selectionChanged()
+        collectionSelectionFeedbackTrigger += 1
     }
 
     private func endSelectionMode() {
@@ -861,7 +1016,7 @@ struct CollectionView: View {
         if isSelectionMode {
             return isSelected ? "Remove from Selection" : "Add to Selection"
         }
-        return "Select for Deletion"
+        return "Select for Bulk Delete"
     }
 
     private func selectionAccessibilityValue(isSelected: Bool) -> String {
@@ -886,6 +1041,24 @@ struct CollectionView: View {
         }
     }
 
+    private func markRecentlyAddedRecord(_ recordID: UUID) {
+        let groupID = records.first { $0.id == recordID }?.atlasGroupTitle
+        withAnimation(reduceMotion ? nil : .smooth(duration: 0.28, extraBounce: 0)) {
+            recentlyAddedRecordID = recordID
+            recentlyUpdatedAtlasGroupID = groupID
+        }
+
+        Task { @MainActor [recordID] in
+            try? await Task.sleep(nanoseconds: 1_450_000_000)
+            withAnimation(reduceMotion ? nil : .smooth(duration: 0.30, extraBounce: 0)) {
+                if recentlyAddedRecordID == recordID {
+                    recentlyAddedRecordID = nil
+                    recentlyUpdatedAtlasGroupID = nil
+                }
+            }
+        }
+    }
+
     private func remove(record: CatRecord) async {
         guard deletingRecordID == nil else { return }
         let remainingRecords = records.filter { $0.id != record.id }
@@ -901,8 +1074,9 @@ struct CollectionView: View {
             modelContext.delete(record)
             CatRecord.compactSequences(remainingRecords)
             try modelContext.save()
-            if selectedRecord?.id == record.id {
+            if selectedRecord?.id == record.id || selectedAtlasRecord?.id == record.id {
                 selectedRecord = nil
+                selectedAtlasRecord = nil
             }
             selectedRecordIDs.remove(record.id)
             if selectedRecordIDs.isEmpty && isSelectionMode {
@@ -942,7 +1116,7 @@ struct CollectionView: View {
             try modelContext.save()
             showingBulkDeleteConfirmation = false
             endSelectionMode()
-            UINotificationFeedbackGenerator().notificationOccurred(.success)
+            collectionDeletionFeedbackTrigger += 1
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -962,13 +1136,13 @@ struct CollectionView: View {
 
             VStack(spacing: 7) {
                 Text("Meet Your First Cat")
-                    .font(.title2.weight(.semibold))
+                    .font(CatTypography.pageTitle)
                     .foregroundStyle(CatLocalTheme.primaryText)
                     .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
                     .minimumScaleFactor(dynamicTypeSize.isAccessibilitySize ? 1 : 0.82)
 
                 Text("Capture a cat encounter and keep it private on this iPhone.")
-                    .font(.body)
+                    .font(CatTypography.body)
                     .multilineTextAlignment(.center)
                     .foregroundStyle(CatLocalTheme.secondaryText)
                     .frame(maxWidth: dynamicTypeSize.isAccessibilitySize ? .infinity : 300)
@@ -979,12 +1153,11 @@ struct CollectionView: View {
                     onCaptureRequested()
                 } label: {
                     Label("Capture or Import", systemImage: "camera.fill")
-                        .font(.headline.weight(.semibold))
-                        .foregroundStyle(CatLocalTheme.primaryText)
+                        .font(CatTypography.control)
                         .frame(maxWidth: .infinity)
-                        .catSingleActionPillSurface()
+                        .catPrimaryActionSurface(role: .action, cornerRadius: 28)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.catTactile)
                 .accessibilityHint("Starts the private capture and photo import flow")
             }
 
@@ -1002,31 +1175,30 @@ struct CollectionView: View {
         CatGlassGroup(spacing: 14) {
             if dynamicTypeSize.isAccessibilitySize {
                 VStack(alignment: .leading, spacing: 12) {
-                    privacyPoint(icon: "person.crop.circle.badge.xmark", title: "No Account")
-                    privacyPoint(icon: "map.fill", title: "No Public Map")
-                    privacyPoint(icon: "brain.head.profile", title: "No AI Training")
+                    privacyPoint(icon: "person.crop.circle.badge.xmark", title: "No Account", role: .info)
+                    privacyPoint(icon: "map.fill", title: "No Public Map", role: .success)
+                    privacyPoint(icon: "brain.head.profile", title: "No Model Training", role: .success)
                 }
             } else {
                 HStack(alignment: .top, spacing: 10) {
-                    privacyPoint(icon: "person.crop.circle.badge.xmark", title: "No Account")
-                    privacyPoint(icon: "map.fill", title: "No Public Map")
-                    privacyPoint(icon: "brain.head.profile", title: "No AI Training")
+                    privacyPoint(icon: "person.crop.circle.badge.xmark", title: "No Account", role: .info)
+                    privacyPoint(icon: "map.fill", title: "No Public Map", role: .success)
+                    privacyPoint(icon: "brain.head.profile", title: "No Model Training", role: .success)
                 }
             }
         }
     }
 
-    private func privacyPoint(icon: String, title: String) -> some View {
+    private func privacyPoint(icon: String, title: String, role: CatAttentionRole) -> some View {
         VStack(alignment: dynamicTypeSize.isAccessibilitySize ? .leading : .center, spacing: 7) {
             Image(systemName: icon)
                 .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(CatLocalTheme.secondaryText)
-                .frame(width: 28, height: 28)
-                .catGlass(cornerRadius: 14)
+                .foregroundStyle(role.accent)
+                .frame(width: 30, height: 30)
 
             Text(title)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(CatLocalTheme.secondaryText)
+                .font(CatTypography.badge)
+                .foregroundStyle(role.text)
                 .multilineTextAlignment(dynamicTypeSize.isAccessibilitySize ? .leading : .center)
                 .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
                 .minimumScaleFactor(dynamicTypeSize.isAccessibilitySize ? 1 : 0.82)
@@ -1043,23 +1215,63 @@ private struct AtlasFolderButton: View {
     let group: MemoryAtlasGroup
     let countText: String
     let unplacedText: String?
+    let isHighlighted: Bool
 
     var body: some View {
-        let bodyShape = RoundedRectangle(cornerRadius: 18, style: .continuous)
+        let bodyShape = RoundedRectangle(cornerRadius: 16, style: .continuous)
 
-        VStack(alignment: .leading, spacing: dynamicTypeSize.isAccessibilitySize ? 12 : 10) {
+        VStack(alignment: .leading, spacing: dynamicTypeSize.isAccessibilitySize ? 12 : 9) {
             folderLayout
             unplacedGuidance
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 12)
+        .padding(.horizontal, 15)
+        .padding(.vertical, 14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(CatLocalTheme.chalk.opacity(0.56), in: bodyShape)
-        .overlay {
-            bodyShape
-                .stroke(CatLocalTheme.imageOutline.opacity(0.76), lineWidth: 1)
+        .background {
+            folderBackground(in: bodyShape)
         }
+        .overlay { rowOutline(bodyShape) }
+        .overlay(alignment: .topLeading) {
+            folderLip
+        }
+        .shadow(color: CatLocalTheme.shadow.opacity(rowShadowOpacity), radius: 7, y: 3)
         .contentShape(Rectangle())
+    }
+
+    private var baseGroupBackground: Color {
+        group.isUnplaced ? CatLocalTheme.elevatedSurface.opacity(0.74) : CatLocalTheme.cardSurface.opacity(0.78)
+    }
+
+    private var rowShadowOpacity: Double {
+        if isHighlighted {
+            return 0.11
+        }
+        return group.isUnplaced ? 0.09 : 0.07
+    }
+
+    @ViewBuilder
+    private func folderBackground(in shape: RoundedRectangle) -> some View {
+        shape
+            .fill(baseGroupBackground)
+
+        if !group.isUnplaced {
+            shape
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            CatAttentionRole.info.wash.opacity(isHighlighted ? 0.28 : 0.10),
+                            .clear
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+        }
+
+        if isHighlighted {
+            shape
+                .fill(CatAttentionRole.success.wash.opacity(0.22))
+        }
     }
 
     @ViewBuilder
@@ -1098,23 +1310,32 @@ private struct AtlasFolderButton: View {
 
     private var folderText: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(group.displayTitle)
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(CatLocalTheme.ink)
-                .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Image(systemName: group.isUnplaced ? "tray" : "mappin.and.ellipse")
+                    .font(.system(size: 12, weight: .semibold))
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(group.isUnplaced ? CatLocalTheme.secondaryText : CatAttentionRole.info.accent)
+                    .accessibilityHidden(true)
+
+                Text(group.displayTitle)
+                    .font(CatTypography.supportingEmphasized)
+                    .foregroundStyle(CatLocalTheme.ink)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
+            }
 
             Text(countText)
-                .font(.caption.weight(.medium))
+                .font(CatTypography.finePrint)
                 .foregroundStyle(CatLocalTheme.secondaryText)
+                .contentTransition(.numericText())
                 .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
         }
     }
 
     private var chevron: some View {
         Image(systemName: "chevron.right")
-            .font(.footnote.weight(.semibold))
+            .font(CatTypography.metadata)
             .imageScale(.small)
-            .foregroundStyle(CatLocalTheme.secondaryText.opacity(0.74))
+            .foregroundStyle(CatLocalTheme.secondaryText.opacity(0.72))
             .frame(width: 22, height: 22)
             .accessibilityHidden(true)
     }
@@ -1123,10 +1344,38 @@ private struct AtlasFolderButton: View {
     private var unplacedGuidance: some View {
         if let unplacedText {
             Text(unplacedText)
-                .font(.footnote.weight(.medium))
+                .font(CatTypography.metadata)
                 .foregroundStyle(CatLocalTheme.secondaryText)
                 .lineLimit(nil)
         }
+    }
+
+    private var folderLip: some View {
+        Capsule(style: .continuous)
+            .fill(
+                (group.isUnplaced ? CatLocalTheme.secondaryText : CatAttentionRole.info.accent)
+                    .opacity(isHighlighted ? 0.42 : 0.22)
+            )
+            .frame(width: 44, height: 3)
+            .padding(.leading, 18)
+            .accessibilityHidden(true)
+    }
+
+    @ViewBuilder
+    private func rowOutline(_ shape: RoundedRectangle) -> some View {
+        shape.stroke(
+            rowOutlineColor,
+            lineWidth: isHighlighted ? 1.35 : 1
+        )
+    }
+
+    private var rowOutlineColor: Color {
+        if isHighlighted {
+            return CatAttentionRole.success.stroke.opacity(0.62)
+        }
+        return group.isUnplaced
+            ? CatLocalTheme.imageOutline.opacity(0.52)
+            : CatLocalTheme.imageOutline.opacity(0.46)
     }
 }
 
@@ -1173,17 +1422,13 @@ private struct AtlasArchiveRemainder: View {
 
     var body: some View {
         Text("+\(count)")
-            .font(.caption.weight(.semibold))
+            .font(CatTypography.badge)
             .foregroundStyle(CatLocalTheme.primaryText)
             .frame(width: 48, height: 48)
             .background(
                 CatLocalTheme.elevatedSurface.opacity(0.82),
                 in: RoundedRectangle(cornerRadius: 11, style: .continuous)
             )
-            .overlay {
-                RoundedRectangle(cornerRadius: 11, style: .continuous)
-                    .stroke(CatLocalTheme.imageOutline, lineWidth: 1)
-            }
             .accessibilityHidden(true)
     }
 }
@@ -1197,17 +1442,13 @@ private struct AtlasArchiveThumbnail: View {
                 .font(.system(size: 16, weight: .semibold))
                 .foregroundStyle(CatLocalTheme.secondaryText)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(CatLocalTheme.elevatedSurface.opacity(0.72))
+                .background(CatLocalTheme.elevatedSurface.opacity(0.88))
         }
         .frame(width: 48, height: 48)
         .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 11, style: .continuous)
                 .stroke(CatLocalTheme.cardSurface.opacity(0.92), lineWidth: 2)
-        }
-        .overlay {
-            RoundedRectangle(cornerRadius: 11, style: .continuous)
-                .stroke(CatLocalTheme.imageOutline.opacity(0.72), lineWidth: 1)
         }
         .accessibilityHidden(true)
     }

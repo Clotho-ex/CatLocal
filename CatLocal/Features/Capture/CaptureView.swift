@@ -24,7 +24,7 @@ struct CaptureView: View {
     @State private var placeName = ""
     @State private var placeDetail = ""
     @State private var selectedStyle: CardStyle = .archive
-    @State private var draftGreeting = ""
+    @State private var draftSuggestedName = ""
     @State private var draftSequence: Int?
     @State private var persistedRecord: CatRecord?
     @State private var errorMessage: String?
@@ -37,6 +37,7 @@ struct CaptureView: View {
     @State private var isCardMintingDone = false
     @State private var captureSelectionFeedbackTrigger = 0
     @State private var captureWarningFeedbackTrigger = 0
+    @State private var captureSaveSuccessFeedbackTrigger = 0
     @FocusState private var focusedEditorField: EditorField?
 
     private let processor = CatVisionProcessor()
@@ -83,6 +84,7 @@ struct CaptureView: View {
         .interactiveDismissDisabled(stage != .camera)
         .sensoryFeedback(.selection, trigger: captureSelectionFeedbackTrigger)
         .sensoryFeedback(.warning, trigger: captureWarningFeedbackTrigger)
+        .sensoryFeedback(.success, trigger: captureSaveSuccessFeedbackTrigger)
     }
 
     private var cameraScreen: some View {
@@ -121,10 +123,7 @@ struct CaptureView: View {
     private var cameraTopBar: some View {
         CatGlassGroup(spacing: 18) {
             HStack {
-                Label("On-device only", systemImage: "lock.fill")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.white)
-                    .catSingleActionPillSurface()
+                cameraPrivacyBadge
 
                 Spacer()
 
@@ -136,19 +135,47 @@ struct CaptureView: View {
                         .foregroundStyle(.white)
                         .catSingleActionIconSurface()
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.catTactile)
                 .accessibilityLabel("Close camera")
             }
         }
     }
 
+    private var cameraPrivacyBadge: some View {
+        HStack(spacing: 9) {
+            Image(systemName: "lock.shield.fill")
+                .font(.system(size: 15, weight: .semibold))
+                .frame(width: 24, height: 24)
+                .background(.white.opacity(0.16), in: Circle())
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: 1) {
+                Text("Private scan")
+                    .font(CatTypography.compactControl)
+                Text("On this iPhone")
+                    .font(CatTypography.finePrint)
+                    .opacity(0.82)
+            }
+            .lineLimit(1)
+            .minimumScaleFactor(0.86)
+        }
+        .foregroundStyle(CatAttentionRole.info.strongForeground)
+        .padding(.leading, 10)
+        .padding(.trailing, 13)
+        .frame(minHeight: 50)
+        .background(CatAttentionRole.info.accent.opacity(0.92), in: Capsule(style: .continuous))
+        .contentShape(Capsule(style: .continuous))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Private scan on this iPhone")
+    }
+
     private var cameraGuidance: some View {
         VStack(spacing: 7) {
             Text("Give them a little room")
-                .font(.title3.weight(.semibold))
+                .font(CatTypography.momentTitle)
                 .lineLimit(nil)
             Text("Keep the whole cat visible for the cleanest cutout.")
-                .font(.subheadline)
+                .font(CatTypography.supporting)
                 .foregroundStyle(.white.opacity(0.76))
                 .lineLimit(nil)
         }
@@ -167,7 +194,7 @@ struct CaptureView: View {
                             .foregroundStyle(.white)
                             .catSingleActionIconSurface()
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.catTactile)
                     .disabled(isProcessingCapture)
                     .opacity(isProcessingCapture ? 0.45 : 1)
                     .accessibilityLabel("Add Photo")
@@ -187,7 +214,7 @@ struct CaptureView: View {
                                     .padding(8)
                             }
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.catTactile)
                     .disabled(!canTakePhoto)
                     .opacity(canTakePhoto ? 1 : 0.45)
                     .accessibilityLabel("Take photo")
@@ -205,13 +232,13 @@ struct CaptureView: View {
                         Task { await loadValidationPhoto() }
                     } label: {
                         Label("Use validation photo", systemImage: "wand.and.stars")
-                            .font(.caption.weight(.bold))
+                            .font(CatTypography.badge.weight(.bold))
                             .foregroundStyle(.white)
                             .padding(.horizontal, 14)
                             .frame(minHeight: 40)
                             .catGlass(cornerRadius: 20, interactive: true)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.catTactile)
                     .disabled(isProcessingCapture)
                     .opacity(isProcessingCapture ? 0.45 : 1)
                 }
@@ -228,28 +255,59 @@ struct CaptureView: View {
 
             if camera.authorizationStatus == .denied || camera.authorizationStatus == .restricted {
                 Text("Camera access is off")
-                    .font(.title3.weight(.semibold))
+                    .font(CatTypography.momentTitle)
                     .foregroundStyle(.white)
                 Text("You can still choose a private photo, or enable camera access in Settings.")
                     .multilineTextAlignment(.center)
                     .foregroundStyle(.white.opacity(0.68))
                     .frame(maxWidth: 300)
-                Button("Open Settings") {
-                    guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
-                    UIApplication.shared.open(url)
+
+                VStack(spacing: 10) {
+                    privatePhotoImportAction
+                    openCameraSettingsButton
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(CatLocalTheme.warning)
+                .frame(maxWidth: 280)
             } else if let cameraError = camera.errorMessage {
                 Text(cameraError)
                     .multilineTextAlignment(.center)
                     .foregroundStyle(.white.opacity(0.72))
                     .frame(maxWidth: 300)
+
+                privatePhotoImportAction
+                    .frame(maxWidth: 280)
             } else {
                 ProgressView()
                     .tint(.white)
             }
         }
+    }
+
+    private var privatePhotoImportAction: some View {
+        PhotosPicker(selection: $photoItem, matching: .images) {
+            Label("Choose Private Photo", systemImage: "photo.on.rectangle")
+                .font(CatTypography.control)
+                .padding(.horizontal, 18)
+                .frame(maxWidth: .infinity)
+                .catPrimaryActionSurface(role: .action, cornerRadius: 24)
+        }
+        .buttonStyle(.catTactile)
+        .disabled(isProcessingCapture)
+        .opacity(isProcessingCapture ? 0.45 : 1)
+        .accessibilityHint("The selected photo stays on this iPhone")
+    }
+
+    private var openCameraSettingsButton: some View {
+        Button {
+            guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+            UIApplication.shared.open(url)
+        } label: {
+            Label("Open Settings", systemImage: "gearshape")
+                .font(CatTypography.control)
+                .padding(.horizontal, 18)
+                .frame(maxWidth: .infinity)
+                .catSecondaryActionSurface(cornerRadius: 24, minHeight: 52)
+        }
+        .buttonStyle(.catTactile)
     }
 
     private var processingScreen: some View {
@@ -273,11 +331,11 @@ struct CaptureView: View {
                     .controlSize(.large)
                     .tint(.white)
                 Text(stage == .analyzing ? "Looking for cats" : "Lifting the subject")
-                    .font(.title2.weight(.semibold))
+                    .font(CatTypography.pageTitle)
                     .foregroundStyle(.white)
                     .multilineTextAlignment(.center)
                 Text("This happens entirely on your iPhone.")
-                    .font(.subheadline)
+                    .font(CatTypography.supporting)
                     .foregroundStyle(.white.opacity(0.66))
                     .multilineTextAlignment(.center)
             }
@@ -310,8 +368,8 @@ struct CaptureView: View {
                         Button("Retake") { reset() }
                         Spacer()
                         Label("\(detections.count) cats found", systemImage: "checkmark.circle.fill")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(CatLocalTheme.primaryText)
+                            .font(CatTypography.supportingEmphasized)
+                            .catAttentionPillSurface(role: .success)
                     }
 
                     if let originalImage {
@@ -327,12 +385,12 @@ struct CaptureView: View {
 
                     VStack(spacing: 8) {
                         Text("Which cat should CatLocal save?")
-                            .font(.title2.weight(.semibold))
+                            .font(CatTypography.pageTitle)
                             .foregroundStyle(CatLocalTheme.primaryText)
                             .multilineTextAlignment(.center)
 
                         Text("Choose one subject. The photo still stays private.")
-                            .font(.subheadline)
+                            .font(CatTypography.supporting)
                             .foregroundStyle(CatLocalTheme.secondaryText)
                             .multilineTextAlignment(.center)
                     }
@@ -351,13 +409,13 @@ struct CaptureView: View {
                                             .foregroundStyle(CatLocalTheme.secondaryText)
                                         Image(systemName: "chevron.right")
                                     }
-                                    .font(.headline)
+                                    .font(CatTypography.control)
                                     .foregroundStyle(CatLocalTheme.primaryText)
                                     .padding(.horizontal, 18)
                                     .frame(minHeight: 56)
                                     .catGlass(cornerRadius: 20, interactive: true)
                                 }
-                                .buttonStyle(.plain)
+                                .buttonStyle(.catTactile)
                             }
                         }
                     }
@@ -386,25 +444,113 @@ struct CaptureView: View {
 
                 Spacer(minLength: 0)
 
-                customizeButton
+                stickerInspectionActions
                     .padding(.bottom, 18)
             }
         }
+    }
+
+    private var stickerInspectionActions: some View {
+        VStack(spacing: 10) {
+            quickSaveButton
+            customizeButton
+        }
+    }
+
+    private var quickSaveButton: some View {
+        let shape = RoundedRectangle(cornerRadius: 24, style: .continuous)
+
+        return Button {
+            Task { await finishCustomization() }
+        } label: {
+            HStack(spacing: 12) {
+                ZStack {
+                    Circle()
+                        .fill(CatAttentionRole.action.accent)
+
+                    if isSaving {
+                        ProgressView()
+                            .controlSize(.small)
+                            .tint(CatAttentionRole.action.strongForeground)
+                    } else {
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundStyle(CatAttentionRole.action.strongForeground)
+                            .contentTransition(.symbolEffect(.replace))
+                    }
+                }
+                .frame(width: 34, height: 34)
+                .accessibilityHidden(true)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(isSaving ? "Preparing card" : "Save Cat")
+                        .font(CatTypography.control)
+
+                    Text(isSaving ? "Adding a little finish" : "Edit name, style, or Catlas after")
+                        .font(CatTypography.metadata)
+                        .foregroundStyle(CatLocalTheme.secondaryText)
+                }
+                .lineLimit(1)
+                .minimumScaleFactor(0.82)
+
+                Spacer(minLength: 8)
+            }
+            .padding(.leading, 14)
+            .padding(.trailing, 16)
+            .contentShape(shape)
+            .catCommitActionSurface(role: .action, cornerRadius: 24)
+        }
+        .buttonStyle(.catTactile)
+        .contentShape(shape)
+        .disabled(isSaving)
+        .padding(.horizontal, CatLocalTheme.screenHorizontalPadding)
+        .accessibilityIdentifier("save-cat-immediate")
+        .accessibilityLabel(isSaving ? "Preparing Cat Card" : "Save Cat")
+        .accessibilityHint("Saves now. You can edit name, style, and Catlas details afterward.")
     }
 
     private var customizeButton: some View {
         Button {
             expandEditor()
         } label: {
-            Label("Tap to Customize", systemImage: "slider.horizontal.3")
-                .font(.headline.weight(.semibold))
-                .foregroundStyle(CatLocalTheme.primaryText)
-                .padding(.horizontal, 18)
-                .frame(minHeight: 48)
-                .catGlass(cornerRadius: 24, interactive: true)
+            HStack(spacing: 12) {
+                Image(systemName: "slider.horizontal.3")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(CatAttentionRole.action.accent)
+                    .frame(width: 34, height: 34)
+                    .background(CatAttentionRole.action.wash, in: Circle())
+                    .accessibilityHidden(true)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Customize First")
+                        .font(CatTypography.control)
+                        .foregroundStyle(CatLocalTheme.primaryText)
+
+                    Text("Style, name, and Catlas")
+                        .font(CatTypography.metadata)
+                        .foregroundStyle(CatLocalTheme.secondaryText)
+                }
+                .lineLimit(1)
+                .minimumScaleFactor(0.86)
+
+                Spacer(minLength: 8)
+
+                Image(systemName: "chevron.right")
+                    .font(CatTypography.metadata)
+                    .foregroundStyle(CatLocalTheme.secondaryText)
+                    .accessibilityHidden(true)
+            }
+            .padding(.leading, 14)
+            .padding(.trailing, 16)
+            .catSecondaryActionSurface(cornerRadius: 24, minHeight: 64)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.catTactile)
+        .disabled(isSaving)
+        .opacity(isSaving ? 0.55 : 1)
+        .padding(.horizontal, CatLocalTheme.screenHorizontalPadding)
         .accessibilityIdentifier("tap-to-customize")
+        .accessibilityLabel("Customize first")
+        .accessibilityHint("Opens card design, name, and Catlas controls before saving")
     }
 
     private func draggableSticker(_ image: UIImage) -> some View {
@@ -462,9 +608,6 @@ struct CaptureView: View {
                     .padding(.trailing, CatLocalTheme.screenHorizontalPadding)
             }
             .toolbar(.hidden, for: .navigationBar)
-            .safeAreaInset(edge: .bottom) {
-                editorSheetSaveButton
-            }
         }
         .accessibilityIdentifier("sticker-editor-sheet")
     }
@@ -477,40 +620,53 @@ struct CaptureView: View {
     }
 
     private var editorSheetSaveButton: some View {
-        let shape = RoundedRectangle(cornerRadius: 28, style: .continuous)
+        let shape = RoundedRectangle(cornerRadius: 24, style: .continuous)
 
         return Button {
             dismissEditorKeyboard()
             Task { await finishCustomization() }
         } label: {
-            HStack(spacing: 9) {
-                if isSaving {
-                    ProgressView()
-                        .controlSize(.small)
-                        .tint(CatLocalTheme.primaryText)
-                        .accessibilityHidden(true)
-                } else {
-                    Image(systemName: "checkmark")
-                        .font(.headline.weight(.semibold))
-                        .accessibilityHidden(true)
-                }
+            HStack(spacing: 12) {
+                ZStack {
+                    Circle()
+                        .fill(CatAttentionRole.action.accent)
 
-                Text(isSaving ? "Saving" : "Save Cat")
+                    if isSaving {
+                        ProgressView()
+                            .controlSize(.small)
+                            .tint(CatAttentionRole.action.strongForeground)
+                    } else {
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundStyle(CatAttentionRole.action.strongForeground)
+                            .contentTransition(.symbolEffect(.replace))
+                    }
+                }
+                .frame(width: 34, height: 34)
+                .accessibilityHidden(true)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(isSaving ? "Preparing card" : "Save Cat")
+                        .font(CatTypography.control)
+
+                    Text(isSaving ? "Adding a little finish" : "Add to Collection")
+                        .font(CatTypography.metadata)
+                        .foregroundStyle(CatLocalTheme.secondaryText)
+                }
+                .lineLimit(1)
+                .minimumScaleFactor(0.86)
+
+                Spacer(minLength: 8)
             }
-            .font(.headline.weight(.semibold))
-            .foregroundStyle(CatLocalTheme.primaryText)
-            .frame(maxWidth: .infinity)
+            .padding(.leading, 14)
+            .padding(.trailing, 16)
             .contentShape(shape)
-            .catSingleActionPillSurface()
+            .catCommitActionSurface(role: .action, cornerRadius: 24)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.catTactile)
         .contentShape(shape)
         .disabled(isSaving)
-        .accessibilityLabel(isSaving ? "Saving Cat" : "Save Cat")
-        .padding(.horizontal, CatLocalTheme.screenHorizontalPadding)
-        .padding(.top, 10)
-        .padding(.bottom, 10)
-        .background(.regularMaterial)
+        .accessibilityLabel(isSaving ? "Preparing Cat Card" : "Save Cat")
     }
 
     private var editorForm: some View {
@@ -518,8 +674,8 @@ struct CaptureView: View {
             VStack(alignment: .leading, spacing: 14) {
                 makeItYoursHeading
 
-                Text("Pick a card for this sticker, then add the details you want to remember.")
-                    .font(.callout)
+                Text("Optional: choose a design and add details now, or save and refine later.")
+                    .font(CatTypography.screenSubtitle)
                     .foregroundStyle(CatLocalTheme.secondaryText)
                     .lineLimit(nil)
                     .fixedSize(horizontal: false, vertical: true)
@@ -574,10 +730,12 @@ struct CaptureView: View {
                     .catInputSurface()
 
                 catlasPrivacyNote
+
+                editorSaveSection
             }
             .padding(18)
             .padding(.top, 52)
-            .padding(.bottom, 108)
+            .padding(.bottom, 34)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background {
                 Color.clear
@@ -589,6 +747,20 @@ struct CaptureView: View {
         }
         .scrollIndicators(.hidden)
         .scrollDismissesKeyboard(.interactively)
+    }
+
+    private var editorSaveSection: some View {
+        VStack(spacing: 9) {
+            editorSheetSaveButton
+
+            Text("The card, details, and images stay on this iPhone.")
+                .font(CatTypography.finePrint)
+                .foregroundStyle(CatLocalTheme.secondaryText)
+                .multilineTextAlignment(.center)
+                .lineLimit(nil)
+        }
+        .padding(.top, 4)
+        .frame(maxWidth: .infinity)
     }
 
     @ViewBuilder
@@ -622,9 +794,9 @@ struct CaptureView: View {
             Text("Make it ")
                 .foregroundStyle(CatLocalTheme.primaryText)
             + Text("Yours")
-                .foregroundStyle(CatLocalTheme.warning)
+                .foregroundStyle(CatAttentionRole.action.text)
         )
-        .font(.title2.weight(.semibold))
+        .font(CatTypography.pageTitle)
         .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
         .fixedSize(horizontal: false, vertical: true)
         .accessibilityLabel("Make it Yours")
@@ -664,7 +836,7 @@ struct CaptureView: View {
                         dismiss()
                     },
                     onKeepEditing: {
-                        expandEditor()
+                        editSavedCard()
                     }
                 ) { mintingSheen in
                     LiveInteractiveCardView(
@@ -739,14 +911,14 @@ struct CaptureView: View {
                 .foregroundStyle(CatLocalTheme.primaryText)
                 .catSingleActionIconSurface()
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.catTactile)
         .accessibilityLabel(accessibilityLabel)
     }
 
     private var editorStageTitle: some View {
         VStack(spacing: 2) {
             Text("A New Cat")
-                .font(.headline)
+                .font(CatTypography.panelTitle)
                 .foregroundStyle(CatLocalTheme.primaryText)
         }
         .multilineTextAlignment(.center)
@@ -757,18 +929,18 @@ struct CaptureView: View {
         HStack(alignment: .center, spacing: 12) {
             ZStack {
                 Circle()
-                    .fill(CatLocalTheme.warning.opacity(0.28))
+                    .fill(CatAttentionRole.info.wash)
 
                 Image(systemName: "shield.lefthalf.filled")
                     .font(.system(size: 19, weight: .semibold))
-                    .foregroundStyle(CatLocalTheme.primaryText)
+                    .foregroundStyle(CatAttentionRole.info.accent)
             }
             .frame(width: 34, height: 34)
             .accessibilityHidden(true)
 
             Text("Manual label only. CatLocal does not request GPS or save coordinates.")
-                .font(.callout.weight(.medium))
-                .foregroundStyle(CatLocalTheme.primaryText)
+                .font(CatTypography.bodyEmphasized)
+                .foregroundStyle(CatAttentionRole.info.text)
                 .lineLimit(nil)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -778,17 +950,13 @@ struct CaptureView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             Capsule(style: .continuous)
-                .fill(CatLocalTheme.warning.opacity(0.22))
-        )
-        .overlay(
-            Capsule(style: .continuous)
-                .stroke(CatLocalTheme.warning.opacity(0.55), lineWidth: 1)
+                .fill(CatAttentionRole.info.wash)
         )
     }
 
     private func editorFieldHeading(_ title: String) -> some View {
         Text(title)
-            .font(.footnote.weight(.semibold))
+            .font(CatTypography.fieldLabel)
             .foregroundStyle(CatLocalTheme.secondaryText)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.top, 2)
@@ -807,16 +975,16 @@ struct CaptureView: View {
                 VStack(spacing: 22) {
                     Image(systemName: "viewfinder.circle")
                         .font(.system(size: 64, weight: .ultraLight))
-                        .foregroundStyle(CatLocalTheme.warning)
+                        .foregroundStyle(CatAttentionRole.warning.accent)
 
                     VStack(spacing: 8) {
                         Text("That one was tricky")
-                            .font(.title2.weight(.semibold))
+                            .font(CatTypography.pageTitle)
                             .foregroundStyle(CatLocalTheme.primaryText)
                             .multilineTextAlignment(.center)
                             .lineLimit(nil)
                         Text(errorMessage ?? "CatLocal could not create a clean cat cutout from this photo.")
-                            .font(.body)
+                            .font(CatTypography.body)
                             .multilineTextAlignment(.center)
                             .foregroundStyle(CatLocalTheme.secondaryText)
                             .frame(maxWidth: 320)
@@ -846,7 +1014,7 @@ struct CaptureView: View {
                         .foregroundStyle(CatLocalTheme.primaryText)
                         .catSingleActionIconSurface()
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.catTactile)
                 .accessibilityLabel("Try another photo")
 
                 Spacer()
@@ -859,7 +1027,7 @@ struct CaptureView: View {
                         .foregroundStyle(CatLocalTheme.primaryText)
                         .catSingleActionIconSurface()
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.catTactile)
                 .accessibilityLabel("Close")
             }
         }
@@ -871,28 +1039,28 @@ struct CaptureView: View {
                 Task { await createCutout(for: nil) }
             } label: {
                 Label("Use Cutout Anyway", systemImage: "sparkles")
-                    .font(.headline.weight(.semibold))
+                    .font(CatTypography.control)
                     .frame(maxWidth: .infinity)
                     .contentShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
             }
-            .buttonStyle(.plain)
-            .catPrimaryActionSurface(cornerRadius: 26)
+            .buttonStyle(.catTactile)
+            .catPrimaryActionSurface(role: .warning, cornerRadius: 26)
             .frame(maxWidth: 320)
             .accessibilityHint("Uses the foreground cutout even though CatLocal could not confirm a cat")
 
             HStack(alignment: .top, spacing: 10) {
                 Image(systemName: "info.circle.fill")
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(CatLocalTheme.information)
+                    .font(CatTypography.fieldLabel)
+                    .foregroundStyle(CatAttentionRole.warning.accent)
 
                 VStack(alignment: .leading, spacing: 3) {
                     Text("CatLocal could not confirm a cat in this photo.")
-                        .font(.footnote.weight(.semibold))
-                        .foregroundStyle(CatLocalTheme.primaryText)
+                        .font(CatTypography.fieldLabel)
+                        .foregroundStyle(CatAttentionRole.warning.text)
 
                     Text("You can still use the foreground cutout and edit the card before saving.")
-                        .font(.footnote.weight(.medium))
-                        .foregroundStyle(CatLocalTheme.secondaryText)
+                        .font(CatTypography.metadata)
+                        .foregroundStyle(CatAttentionRole.warning.text.opacity(0.82))
                 }
                 .fixedSize(horizontal: false, vertical: true)
             }
@@ -901,11 +1069,7 @@ struct CaptureView: View {
             .frame(maxWidth: 320, alignment: .leading)
             .background(
                 RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .fill(CatLocalTheme.cardSurface.opacity(0.78))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .stroke(CatLocalTheme.imageOutline, lineWidth: 1)
+                    .fill(CatAttentionRole.warning.wash)
             )
             .accessibilityElement(children: .combine)
         }
@@ -1113,7 +1277,7 @@ struct CaptureView: View {
     private func beginStickerReveal(cutout: UIImage, detection: CatDetection?) {
         selectedBoundingBox = detection?.boundingBox
         cutoutImage = cutout
-        draftGreeting = Self.randomDraftGreeting()
+        draftSuggestedName = freshDraftName()
         #if DEBUG
         if prefillsValidationEditorFields {
             prefillValidationEditorFields()
@@ -1179,12 +1343,17 @@ struct CaptureView: View {
     private func finishCustomization() async {
         guard !isSaving else { return }
         let shouldCelebrateSave = isInitialCardDesignSave || stage == .cardCelebrating
+        let saveStartedAt = Date()
+        captureSelectionFeedbackTrigger += 1
         isSaving = true
         do {
-            persistedRecord = try await persistCard()
+            let record = try await persistCard()
+            await holdForSaveAnticipation(since: saveStartedAt)
+            persistedRecord = record
             isSaving = false
             focusedEditorField = nil
             isEditorSheetPresented = false
+            captureSaveSuccessFeedbackTrigger += 1
             if shouldCelebrateSave {
                 isCardMintingDone = true
                 stage = .cardCelebrating
@@ -1195,6 +1364,14 @@ struct CaptureView: View {
             isSaving = false
             fail(with: error.localizedDescription)
         }
+    }
+
+    private func holdForSaveAnticipation(since startDate: Date) async {
+        let minimumDuration: TimeInterval = 0.72
+        let remaining = minimumDuration - Date().timeIntervalSince(startDate)
+        guard remaining > 0 else { return }
+
+        try? await Task.sleep(nanoseconds: UInt64(remaining * 1_000_000_000))
     }
 
     private var isInitialCardDesignSave: Bool {
@@ -1344,7 +1521,7 @@ struct CaptureView: View {
         placeName = ""
         placeDetail = ""
         selectedStyle = .archive
-        draftGreeting = ""
+        draftSuggestedName = ""
         draftSequence = nil
         persistedRecord = nil
         photoItem = nil
@@ -1370,31 +1547,43 @@ struct CaptureView: View {
         guard trimmedName.isEmpty else { return trimmedName }
 
         let existingNames = Set(existingRecords.map(\.displayName))
+        let suggestedName = trimmedMemoryText(draftSuggestedName)
+        if !suggestedName.isEmpty, !existingNames.contains(suggestedName) {
+            return suggestedName
+        }
+
         return CatNamePool.randomName(excluding: existingNames)
     }
 
     private var editorPreviewName: String {
         let trimmedName = trimmedMemoryText(nickname)
         guard trimmedName.isEmpty else { return trimmedName }
-        return draftGreeting.isEmpty ? Self.randomDraftGreeting() : draftGreeting
+        return draftSuggestedName.isEmpty ? CatNamePool.names.first ?? "Miso" : draftSuggestedName
     }
 
     private var celebrationPreviewName: String {
         persistedRecord?.displayName ?? editorPreviewName
     }
 
-    private static func randomDraftGreeting() -> String {
-        draftGreetings.randomElement() ?? "A New Feline."
+    private func freshDraftName() -> String {
+        let existingNames = Set(existingRecords.map(\.displayName))
+        return CatNamePool.randomName(excluding: existingNames)
     }
 
-    private static let draftGreetings = [
-        "A New Feline.",
-        "Who Is This Cat?",
-        "Tiny Local Legend",
-        "Fresh Pawprint",
-        "Mystery Whiskers",
-        "Hello, Fur Ball"
-    ]
+    private func editSavedCard() {
+        hydrateEditorFromSavedRecord()
+        expandEditor()
+    }
+
+    private func hydrateEditorFromSavedRecord() {
+        guard let persistedRecord else { return }
+
+        nickname = persistedRecord.nickname
+        note = persistedRecord.note
+        placeName = persistedRecord.placeName
+        placeDetail = persistedRecord.placeDetail
+        selectedStyle = persistedRecord.cardStyle
+    }
 }
 
 private enum CaptureStage: Equatable {

@@ -61,12 +61,12 @@ struct DustingRevealView: View {
                 .padding(.horizontal, 32)
 
                 Text("Lifting the subject")
-                    .font(.title2.weight(.semibold))
+                    .font(CatTypography.pageTitle)
                     .foregroundStyle(CatLocalTheme.primaryText)
                     .multilineTextAlignment(.center)
 
                 Text("A private sticker is taking shape.")
-                    .font(.subheadline)
+                    .font(CatTypography.supporting)
                     .foregroundStyle(CatLocalTheme.secondaryText)
                     .multilineTextAlignment(.center)
 

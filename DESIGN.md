@@ -91,27 +91,42 @@ Aegean blue are intentionally distinct so actions, warnings, saved states, and
 privacy proof points do not compete with one another. Avoid flat single-color
 screens and avoid using green as the default action color.
 
+Color attention is semantic and restrained:
+
+- `CatAttentionRole.action`: cobalt for primary actions, selected states, focused interaction hints, and current choices.
+- `CatAttentionRole.info`: Aegean teal for privacy proof, on-device processing, storage, and manual/no-GPS education.
+- `CatAttentionRole.success`: moss green for saved states, safe privacy outcomes, and completed/place-labeled states.
+- `CatAttentionRole.warning`: terracotta for fallback paths, uncertain detection, and recoverable caution.
+- `CatAttentionRole.destructive`: red for deletion only. Do not use warning/apricot for permanent deletion.
+
+Each role provides a strong fill, quiet wash, stroke, text color, and strong
+foreground color. Prefer those roles over one-off colors so important states
+stay recognizable across Home, Capture, Catlas, Settings, and card editing.
+Do not turn every semantic color into a bordered badge. CatLocal should use
+colored symbols, text, and soft washes first; strokes are reserved for selected,
+destructive, or genuinely separated states.
+
 ## Typography
 
-The app currently uses native SwiftUI system typography with semibold editorial
-titles. Do not introduce a new type family without updating the design system.
+The app uses native SwiftUI system typography through `CatTypography` in
+`CatLocalTheme.swift`. Do not introduce a new type family without updating the
+design system and this document.
 
-- App title: `CatLocal`, large native SwiftUI title treatment.
-- Settings title: `Settings`, native large navigation title that collapses while scrolling.
-- Focused card name: 31pt semibold.
-- Thumbnail card name: 18pt semibold.
-- Empty-state title: 27pt semibold.
-- Eyebrow labels: 12pt semibold with 2.4 tracking, or caption2 bold with 1.8 tracking.
-- Sequence marks use bold monospaced digits.
+- Screen title: large native SwiftUI title treatment for `CatLocal`.
+- Moment and page titles: semibold native title styles for capture, reveal, empty state, and failure states.
+- Panel and section titles: semibold headline styles for Settings, Catlas, and sheet sections.
+- Body, supporting text, metadata, field labels, and compact badges use distinct semantic roles instead of one-off font literals.
+- Card names, card dates, place labels, and sequence marks use card-specific roles; sequence marks stay rounded and monospaced.
+- Field labels stay quiet and title case. Avoid tiny uppercase tracked eyebrow labels unless a future design system explicitly reintroduces them.
 
 ## Layout
 
 Shared screen rhythm:
 
 - Main scroll screens use 22pt horizontal padding.
-- Home and settings use 18pt top padding and 140pt bottom padding.
+- Home uses 18pt top padding; Settings can sit slightly tighter beneath the native title.
 - Card grids use two flexible columns with 14pt column spacing and 18pt row spacing.
-- Empty states and settings cards are generous, centered or left-aligned, and bounded by continuous rounded rectangles.
+- Empty states and settings panels are generous but should feel baked into the limestone surface, not stacked as bordered cards.
 
 Card geometry:
 
@@ -132,7 +147,7 @@ uses `role: .search` (or `.prominent` where available) so the system renders it 
 
 The empty state leads with `Meet Your First Cat`, the line `Capture a cat
 encounter and keep it private on this iPhone.`, and three proof points:
-`No Account`, `No Public Map`, and `No AI Training`.
+`No Account`, `No Public Map`, and `No Model Training`.
 
 Saved cats appear under the `Cats` segmented mode and sort ascending by sequence
 number. `Catlas` groups the same saved cats by manual place labels without

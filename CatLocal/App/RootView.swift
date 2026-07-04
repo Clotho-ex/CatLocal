@@ -1,15 +1,16 @@
 import SwiftUI
-import UIKit
 
 struct RootView: View {
     @State private var selectedTab: AppTab = .home
     @State private var lastContentTab: AppTab = .home
     @State private var presentedSheet: AppSheet?
     @State private var homeReselectionID = 0
+    @State private var contentTabFeedbackTrigger = 0
 
     var body: some View {
         nativeTabs
-        .fullScreenCover(item: $presentedSheet) { sheet in
+        .sensoryFeedback(.selection, trigger: contentTabFeedbackTrigger)
+        .fullScreenCover(item: $presentedSheet, onDismiss: restoreContentTabSelection) { sheet in
             switch sheet {
             case .capture:
                 CaptureView()
@@ -115,14 +116,18 @@ struct RootView: View {
     }
 
     private func presentCapture() {
-        selectedTab = lastContentTab
+        selectedTab = .capture
         presentedSheet = .capture
+    }
+
+    private func restoreContentTabSelection() {
+        selectedTab = lastContentTab
     }
 
     private func playContentTabHaptic(from oldTab: AppTab, to newTab: AppTab) {
         guard oldTab != newTab else { return }
         guard oldTab.isContentTab, newTab.isContentTab else { return }
-        UISelectionFeedbackGenerator().selectionChanged()
+        contentTabFeedbackTrigger += 1
     }
 
 }

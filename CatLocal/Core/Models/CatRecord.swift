@@ -197,37 +197,37 @@ enum CardStyle: String, Codable, CaseIterable, Identifiable, Hashable, Sendable 
 
 enum CatNamePool {
     static let names: [String] = [
-        "Nimbus Nibbler", "Juniper Jumps", "Maple Menace", "Velvet Voltage", "Cosmic Crumbs",
-        "Mothball Monarch", "Cricket Commander", "Pickpocket Peach", "Snuggle Static", "Marble Mirage",
-        "Purrlock Holmes", "Fennel Phantom", "Wobblesworth", "Cherry Chomper", "Dust Bunny",
-        "Hazel Hiccup", "Sugar Goblin", "Zipper Zephyr", "Mango Minister", "Taco Bandolier",
-        "Coconut Courier", "Quasar Kitty", "Pancetta Paws", "Bubble Baroness", "Tofu Tycoon",
-        "Licorice Lurker", "Mittens McZoom", "Pistachio Phantom", "Yogurt Yeti", "Ramen Ranger",
-        "Gizmo Gremlin", "Peachy Purrkins", "Froyo Bandit", "Sprout Sniper", "Muffler Munch",
-        "Cactus Cuddles", "Tiramisu Tiger", "Pillow Pirate", "Clover Comet", "Bumble Beans",
-        "Sardine Sultan", "Mulberry Mew", "Whisker Wobble", "Plum Bandit", "Cabbage King",
-        "Dizzy Dumpling", "Sushi Specter", "Brûlée Bandit", "Cereal Baron", "Mochaccino Mew",
-        "Turbo Tofu", "Lemon Loaf", "Bramble Biscuit", "Caramel Gremlin", "Snail Sprinter",
-        "Paprika Purr", "Taco Phantom", "Pearl Pouncer", "Meringue Menace", "Saffron Sultan",
-        "Cuddle Circuit", "Cloudberry Cat", "Bumble Baron", "Tuna Typhoon", "Riceball Rogue",
-        "Hazelnut Houdini", "Kiki Kaboom", "Marshmallow Mage", "Zucchini Zoomer", "Cashew Count",
-        "Lentil Legend", "Pickled Phantom", "Purrito Bandit", "Wiggle Wizard", "Couscous Captain",
-        "Mango Monarch", "Bento Bandit", "Twinkle Tofu", "Macaron Marauder", "Basil Bandit",
-        "Carrot Comet", "Nectarine Ninja", "Snuggle Sphinx", "Grape Goblin", "Crackle Cat",
-        "Poppy Phantom", "Coconut Countess", "Mushroom Mayor", "Papaya Pirate", "Fizzy Feline",
-        "Butterscotch Boss", "Hazel Hopper", "Slinky Sultan", "Cranberry Count", "Purrfect Storm",
-        "Chonky Chimera", "Dandelion Dash", "Nori Nomad", "Miso Meteor", "Burrito Baron",
-        "Sable Scooter", "Cheeky Chestnut", "Tangerine Trickster", "Pecan Pouncer", "Mellow Mackerel",
-        "Fudge Falcon", "Curry Cloud", "Waffle Wraith", "Peanut Phantom", "Loki Loaf",
-        "Sultan Snuggle", "Mango Mancer", "Tumble Truffle", "Cocoa Courier", "Whimsy Whiskers",
-        "Pillow Pasha", "Moonbeam Miso", "Sprinkles McPurr", "Biscuit Mirage", "Taffy Tycoon",
-        "Karamel Kitty", "Simit Sultan", "Lokum Loafer", "Börek Bandit", "Meze Monarch",
-        "Kumpir King", "Ayran Admiral", "Dolma Drifter", "Zeytin Zoomer", "Künefe Comet"
+        "Almond", "Apricot", "Ash", "Basil", "Bean",
+        "Biscuit", "Borek", "Boots", "Brie", "Button",
+        "Cashew", "Chai", "Cherry", "Cinnamon", "Clover",
+        "Coco", "Cookie", "Daisy", "Daphne", "Duman",
+        "Fig", "Findik", "Fiona", "Ginger", "Hazel",
+        "Honey", "Jasper", "Juniper", "Karamel", "Kiki",
+        "Kimchi", "Kiwi", "Lemon", "Leo", "Lila",
+        "Loki", "Lokum", "Luna", "Maple", "Marble",
+        "Marmalade", "Mavi", "Mimi", "Milo", "Miso",
+        "Mochi", "Momo", "Nala", "Nane", "Nori",
+        "Olive", "Oscar", "Pasha", "Peanut", "Pebble",
+        "Pepper", "Pickle", "Pillow", "Pippin", "Pixel",
+        "Plum", "Poppy", "Pumpkin", "Remy", "Ruby",
+        "Saffron", "Sage", "Sesame", "Shadow", "Simit",
+        "Socks", "Suki", "Sunny", "Taffy", "Tango",
+        "Teddy", "Tofu", "Truffle", "Velvet", "Zeytin",
+        "Apricot Pasha", "Basil Boots", "Biscuit Miso", "Blueberry Socks", "Butter Bean",
+        "Chai Button", "Cherry Button", "Cinnamon Momo", "Clover Nori", "Cocoa Pebble",
+        "Cookie Pasha", "Daisy Mochi", "Fig Biscuit", "Ginger Pixel", "Hazel Miso",
+        "Honey Pippin", "Juniper Socks", "Karamel Pasha", "Kiwi Button", "Lemon Boots",
+        "Lila Bean", "Lokum Socks", "Maple Mochi", "Marble Pasha", "Marmalade Mimi",
+        "Mavi Biscuit", "Milo Button", "Miso Pasha", "Mochi Boots", "Nala Bean",
+        "Nori Button", "Olive Pasha", "Peanut Socks", "Pebble Miso", "Pepper Boots",
+        "Pickle Button", "Pillow Pasha", "Pixel Miso", "Plum Mochi", "Pumpkin Pasha",
+        "Ruby Biscuit", "Saffron Socks", "Sesame Bean", "Simit Pasha", "Sunny Mochi",
+        "Taffy Boots", "Tango Miso", "Teddy Button", "Tofu Socks", "Truffle Pasha"
     ]
 
     static func randomName(excluding existingNames: Set<String> = []) -> String {
         let availableNames = names.filter { !existingNames.contains($0) }
-        return (availableNames.isEmpty ? names : availableNames).randomElement() ?? "Nimbus Nibbler"
+        return (availableNames.isEmpty ? names : availableNames).randomElement() ?? "Miso"
     }
 
     static func stableName(id: UUID, sequence: Int) -> String {

@@ -212,7 +212,7 @@ private struct CatCardSurface<CatImage: View>: View {
             let cardWidth = max(proxy.size.width, 1)
             let cardHeight = max(proxy.size.height, 1)
             let cornerRadius: CGFloat = focused ? 34 : (stylePreview ? 24 : 22)
-            let outerPadding: CGFloat = focused ? 18 : (stylePreview ? 12 : 11)
+            let outerPadding: CGFloat = focused ? 16 : (stylePreview ? 12 : 11)
             let imageStageHeight = max(cardHeight * imageStageRatio, 1)
             let imageMaxWidth = max(cardWidth - outerPadding * 2, 1)
             let previewImageHeight = max(cardHeight - outerPadding * 2, 1)
@@ -232,7 +232,7 @@ private struct CatCardSurface<CatImage: View>: View {
                             .accessibilityHidden(true)
                     }
                 } else {
-                    VStack(alignment: .leading, spacing: focused ? 14 : 9) {
+                    VStack(alignment: .leading, spacing: focused ? 12 : 9) {
                         header
 
                         ZStack {
@@ -252,6 +252,8 @@ private struct CatCardSurface<CatImage: View>: View {
 
                         if showsFooter {
                             footer
+                        } else if focused {
+                            Spacer(minLength: 0)
                         }
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -286,16 +288,20 @@ private struct CatCardSurface<CatImage: View>: View {
     }
 
     private var shadowRadius: CGFloat {
-        focused ? 28 : (thumbnail ? 8 : 11)
+        focused ? 22 : (thumbnail ? 8 : 11)
     }
 
     private var shadowOffset: CGFloat {
-        focused ? 18 : (thumbnail ? 4 : 6)
+        focused ? 14 : (thumbnail ? 4 : 6)
     }
 
     private var imageStageRatio: CGFloat {
         if stylePreview {
             return 1
+        }
+
+        if focused, !showsFooter {
+            return dynamicTypeSize.isAccessibilitySize ? 0.66 : 0.62
         }
 
         if focused, showsFooter, hasFocusedTextContent {
@@ -317,12 +323,12 @@ private struct CatCardSurface<CatImage: View>: View {
         HStack(alignment: .firstTextBaseline) {
             VStack(alignment: .leading, spacing: focused ? 3 : 1) {
                 Text(name)
-                    .font(focused ? .title.weight(.semibold) : .headline.weight(.semibold))
+                    .font(CatTypography.cardTitle(focused: focused))
                     .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
                     .minimumScaleFactor(0.7)
 
                 Text(date, format: .dateTime.month(.abbreviated).day().year())
-                    .font(focused ? .footnote.weight(.medium) : .caption2.weight(.medium))
+                    .font(CatTypography.cardDate(focused: focused))
                     .foregroundStyle(metadataContentColor)
                     .lineLimit(1)
                     .minimumScaleFactor(0.78)
@@ -338,16 +344,16 @@ private struct CatCardSurface<CatImage: View>: View {
     @ViewBuilder
     private var footer: some View {
         if focused {
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 12) {
                 Rectangle()
                     .fill(separatorColor)
                     .frame(height: 1)
 
-                VStack(alignment: .leading, spacing: 5) {
+                VStack(alignment: .leading, spacing: 4) {
                     metadataHeading(title: "Notes", icon: "note.text")
 
                     Text(note.isEmpty ? "No Note Yet." : note)
-                        .font(.body)
+                        .font(CatTypography.body)
                         .lineLimit(dynamicTypeSize.isAccessibilitySize ? 5 : 3)
                         .foregroundStyle(note.isEmpty ? secondaryContentColor : primaryContentColor)
                 }
@@ -367,17 +373,11 @@ private struct CatCardSurface<CatImage: View>: View {
 
     private var sequenceMedallion: some View {
         Text(sequence.formatted())
-            .font(
-                .system(
-                    focused ? .callout : .caption,
-                    design: .rounded,
-                    weight: .semibold
-                )
-            )
+            .font(CatTypography.sequence(focused: focused))
             .monospacedDigit()
             .minimumScaleFactor(0.7)
             .foregroundStyle(primaryContentColor)
-            .frame(width: focused ? 34 : 27, height: focused ? 34 : 27)
+            .frame(width: focused ? 32 : 27, height: focused ? 32 : 27)
             .background(
                 medallionFill,
                 in: Circle()
@@ -388,14 +388,14 @@ private struct CatCardSurface<CatImage: View>: View {
             )
             .shadow(
                 color: CatLocalTheme.shadow.opacity(focused ? 0.14 : 0.08),
-                radius: focused ? 7 : 3,
-                y: focused ? 4 : 2
+                radius: focused ? 5 : 3,
+                y: focused ? 3 : 2
             )
             .accessibilityHidden(true)
     }
 
     private func focusedPlaceDetails(placeName: String, placeDetail: String?) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 11) {
             placeDetailRow(
                 title: "Memory Place",
                 icon: "mappin.and.ellipse",
@@ -413,11 +413,11 @@ private struct CatCardSurface<CatImage: View>: View {
     }
 
     private func placeDetailRow(title: String, icon: String, value: String) -> some View {
-        VStack(alignment: .leading, spacing: 5) {
+        VStack(alignment: .leading, spacing: 4) {
             metadataHeading(title: title, icon: icon)
 
             Text(value)
-                .font(.body)
+                .font(CatTypography.body)
                 .foregroundStyle(primaryContentColor)
                 .lineLimit(dynamicTypeSize.isAccessibilitySize ? 3 : 2)
                 .fixedSize(horizontal: false, vertical: true)
@@ -426,16 +426,16 @@ private struct CatCardSurface<CatImage: View>: View {
     }
 
     private func metadataHeading(title: String, icon: String) -> some View {
-        HStack(alignment: .center, spacing: 7) {
+        HStack(alignment: .center, spacing: 6) {
             Image(systemName: icon)
-                .font(.system(size: 16, weight: .semibold))
+                .font(CatTypography.supportingEmphasized)
                 .imageScale(.medium)
                 .symbolRenderingMode(.monochrome)
-                .frame(width: 22, height: 20, alignment: .center)
+                .frame(width: 20, height: 19, alignment: .center)
                 .accessibilityHidden(true)
 
             Text(title)
-                .font(Font.subheadline.weight(.semibold))
+                .font(CatTypography.supportingEmphasized)
         }
         .foregroundStyle(metadataContentColor)
     }
@@ -447,10 +447,10 @@ private struct CatCardSurface<CatImage: View>: View {
                 .minimumScaleFactor(0.76)
         } icon: {
             Image(systemName: "mappin.and.ellipse")
-                .font((focused ? Font.footnote : Font.caption2).weight(.semibold))
+                .font(CatTypography.cardPlace(focused: focused))
                 .imageScale(.small)
         }
-        .font(focused ? .footnote.weight(.semibold) : .caption2.weight(.semibold))
+        .font(CatTypography.cardPlace(focused: focused))
         .foregroundStyle(primaryContentColor)
         .padding(.horizontal, focused ? 12 : 9)
         .padding(.vertical, focused ? 8 : 6)
@@ -1074,7 +1074,7 @@ struct CardStyleCarousel<Preview: View>: View {
         VStack(alignment: .leading, spacing: 10) {
             if showsTitle {
                 Text("Card design")
-                    .font(.caption.weight(.semibold))
+                    .font(CatTypography.badge)
                     .foregroundStyle(CatLocalTheme.secondaryText)
             }
 
@@ -1170,8 +1170,8 @@ struct CardStyleCarousel<Preview: View>: View {
                 .allowsHitTesting(false)
 
             Text(style.title)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(isSelected ? CatLocalTheme.primaryText : CatLocalTheme.secondaryText)
+                .font(CatTypography.badge)
+                .foregroundStyle(isSelected ? CatAttentionRole.action.text : CatLocalTheme.secondaryText)
                 .lineLimit(2)
                 .multilineTextAlignment(.center)
                 .frame(minHeight: titleMinHeight, alignment: .center)
@@ -1180,7 +1180,7 @@ struct CardStyleCarousel<Preview: View>: View {
         .padding(itemPadding)
         .background {
             shape
-                .fill(CatLocalTheme.cardSurface.opacity(isSelected ? 0.88 : 0.36))
+                .fill(isSelected ? CatAttentionRole.action.wash : CatLocalTheme.cardSurface.opacity(0.36))
                 .shadow(
                     color: CatLocalTheme.blueAction.opacity(isSelected ? 0.10 : 0),
                     radius: isSelected ? 7 : 0,
@@ -1191,6 +1191,10 @@ struct CardStyleCarousel<Preview: View>: View {
                     radius: isSelected ? 8 : 0,
                     y: isSelected ? 4 : 0
                 )
+        }
+        .overlay {
+            shape
+                .stroke(isSelected ? CatAttentionRole.action.stroke : Color.clear, lineWidth: 1)
         }
         .scaleEffect(isSelected ? 1 : 0.96)
         .contentShape(RoundedRectangle(cornerRadius: itemCornerRadius, style: .continuous))
@@ -1243,7 +1247,7 @@ struct CardStyleSwatch: View {
                         .frame(width: 20, height: 20)
                         .overlay {
                             Text("\(style.displayIndex + 1)")
-                                .font(.caption2.weight(.bold))
+                                .font(CatTypography.finePrint.weight(.bold))
                                 .monospacedDigit()
                                 .foregroundStyle(contentColor)
                         }

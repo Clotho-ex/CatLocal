@@ -25,9 +25,11 @@ struct CatLocalCoreTests {
     }
 
     @Test
-    func unnamedCatsUseFunnyNamePool() {
+    func unnamedCatsUseFriendlyNamePool() {
         #expect(CatNamePool.names.count == 130)
         #expect(Set(CatNamePool.names).count == 130)
+        #expect(!CatNamePool.names.contains("Fresh Pawprint"))
+        #expect(!CatNamePool.names.contains("Fresh Paw Print"))
 
         let record = CatRecord(
             id: UUID(uuidString: "11111111-1111-1111-1111-111111111111")!,
@@ -44,6 +46,12 @@ struct CatLocalCoreTests {
 
         #expect(CatNamePool.names.contains(record.displayName))
         #expect(record.displayName != "Cat 1")
+    }
+
+    @Test
+    func randomNameAvoidsExistingNamesWhenPossible() {
+        let existingNames = Set(CatNamePool.names.dropLast())
+        #expect(CatNamePool.randomName(excluding: existingNames) == CatNamePool.names.last)
     }
 
     @Test

@@ -83,10 +83,10 @@ struct CardMintingSuccessView<Content: View>: View {
     }
 
     private var savedBadge: some View {
-        let badgeFill = Color(red: 0.86, green: 0.96, blue: 0.90)
-        let badgeBorder = Color(red: 0.09, green: 0.39, blue: 0.24)
-        let badgeText = Color(red: 0.04, green: 0.24, blue: 0.15)
-        let checkmarkFill = Color(red: 0.11, green: 0.48, blue: 0.30)
+        let badgeFill = CatAttentionRole.success.wash
+        let badgeBorder = CatAttentionRole.success.stroke
+        let badgeText = CatAttentionRole.success.text
+        let checkmarkFill = CatAttentionRole.success.accent
 
         return HStack(spacing: 8) {
             ZStack {
@@ -106,7 +106,7 @@ struct CardMintingSuccessView<Content: View>: View {
 
             Text("Saved Successfully")
         }
-        .font(.subheadline.weight(.semibold))
+        .font(CatTypography.supportingEmphasized)
         .foregroundStyle(badgeText)
         .padding(.horizontal, 14)
         .frame(minHeight: 38)
@@ -120,7 +120,7 @@ struct CardMintingSuccessView<Content: View>: View {
         }
         .overlay(
             Capsule(style: .continuous)
-                .stroke(badgeBorder.opacity(0.72), lineWidth: 1)
+                .stroke(badgeBorder, lineWidth: 1)
         )
         .opacity(badgeVisible ? 1 : 0)
         .scaleEffect(badgeVisible || reduceMotion ? 1 : 0.94)
@@ -136,29 +136,26 @@ struct CardMintingSuccessView<Content: View>: View {
                 onHome()
             } label: {
                 Label("Home", systemImage: "house.fill")
-                    .font(.headline.weight(.semibold))
+                    .font(CatTypography.control)
                     .padding(.horizontal, 18)
                     .frame(maxWidth: .infinity)
-                    .frame(minHeight: 52)
-                    .catGlass(cornerRadius: 26, interactive: true)
+                    .catPrimaryActionSurface(role: .action, cornerRadius: 24)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.catTactile)
             .accessibilityIdentifier("card-minting-home")
 
             Button {
                 onKeepEditing()
             } label: {
                 Label("Edit", systemImage: "pencil")
-                    .font(.headline.weight(.semibold))
+                    .font(CatTypography.control)
                     .padding(.horizontal, 18)
                     .frame(maxWidth: .infinity)
-                    .frame(minHeight: 52)
-                    .catGlass(cornerRadius: 26, interactive: true)
+                    .catSecondaryActionSurface(cornerRadius: 24, minHeight: 56)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.catTactile)
             .accessibilityIdentifier("card-minting-edit")
         }
-        .foregroundStyle(CatLocalTheme.primaryText)
         .padding(.horizontal, 24)
         .padding(.bottom, 34)
         .opacity(buttonsVisible || reduceMotion ? 1 : 0)
@@ -177,10 +174,10 @@ struct CardMintingSuccessView<Content: View>: View {
 
             VStack(alignment: .leading, spacing: 6) {
                 Text("Customize")
-                    .font(.title3.weight(.semibold))
+                    .font(CatTypography.momentTitle)
                     .foregroundStyle(CatLocalTheme.primaryText)
                 Text("Choose the finishing details for this card.")
-                    .font(.subheadline)
+                    .font(CatTypography.supporting)
                     .foregroundStyle(CatLocalTheme.secondaryText)
             }
 
@@ -188,12 +185,11 @@ struct CardMintingSuccessView<Content: View>: View {
                 isCustomizationDone = true
             } label: {
                 Text("Done")
-                    .font(.headline.weight(.semibold))
+                    .font(CatTypography.control)
                     .frame(maxWidth: .infinity)
+                    .catPrimaryActionSurface(role: .action, cornerRadius: 24)
             }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
-            .tint(CatLocalTheme.blueAction)
+            .buttonStyle(.catTactile)
         }
         .padding(22)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 28, style: .continuous))

@@ -15,7 +15,7 @@ final class CatLocalUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Meet Your First Cat"].exists)
         XCTAssertTrue(app.staticTexts["No Account"].exists)
         XCTAssertTrue(app.staticTexts["No Public Map"].exists)
-        XCTAssertTrue(app.staticTexts["No AI Training"].exists)
+        XCTAssertTrue(app.staticTexts["No Model Training"].exists)
 
         let settingsButton = app.tabBars.buttons["Settings"]
         XCTAssertTrue(settingsButton.waitForExistence(timeout: 5))
@@ -86,16 +86,11 @@ final class CatLocalUITests: XCTestCase {
         XCTAssertTrue(validationButton.waitForExistence(timeout: 8))
         validationButton.tap()
 
-        let customizeButton = app.buttons["tap-to-customize"]
-        XCTAssertTrue(customizeButton.waitForExistence(timeout: 15))
-        customizeButton.tap()
+        let saveNowButton = app.buttons["save-cat-immediate"]
+        XCTAssertTrue(saveNowButton.waitForExistence(timeout: 15))
+        XCTAssertTrue(app.buttons["tap-to-customize"].exists)
+        saveNowButton.tap()
 
-        XCTAssertTrue(app.staticTexts["Make it Yours"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Pick a card for this sticker, then add the details you want to remember."].exists)
-        XCTAssertTrue(app.scrollViews["Card design"].exists || app.staticTexts["Archive"].exists)
-        XCTAssertTrue(app.buttons["Save Cat"].waitForExistence(timeout: 5))
-
-        app.buttons["Save Cat"].tap()
         let celebrationHomeButton = app.buttons["card-minting-home"]
         let celebrationEditButton = app.buttons["card-minting-edit"]
         XCTAssertTrue(celebrationHomeButton.waitForExistence(timeout: 15))
@@ -106,6 +101,12 @@ final class CatLocalUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["South ledge"].waitForExistence(timeout: 5))
 
         celebrationEditButton.tap()
+        XCTAssertTrue(app.staticTexts["Make it Yours"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Optional: choose a design and add details now, or save and refine later."].exists)
+        XCTAssertTrue(app.scrollViews["Card design"].exists || app.staticTexts["Archive"].exists)
+        let nicknameField = app.textFields["Nickname (optional)"]
+        XCTAssertTrue(nicknameField.waitForExistence(timeout: 5))
+        XCTAssertEqual(nicknameField.value as? String, "Pixel")
         XCTAssertTrue(app.buttons["Save Cat"].waitForExistence(timeout: 5))
         app.buttons["Save Cat"].tap()
         XCTAssertTrue(celebrationHomeButton.waitForExistence(timeout: 8))

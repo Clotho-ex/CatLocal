@@ -42,9 +42,41 @@ enum CatLocalTheme {
         light: UIColor(hex: 0x2457A6),
         dark: UIColor(hex: 0x82AFFF)
     )
+    static let actionWash = Color(
+        light: UIColor(hex: 0xE5EDFB),
+        dark: UIColor(hex: 0x13243D)
+    )
+    static let actionStroke = Color(
+        light: UIColor(hex: 0x7B99C9),
+        dark: UIColor(hex: 0x98BCFF)
+    )
+    static let actionText = Color(
+        light: UIColor(hex: 0x173F78),
+        dark: UIColor(hex: 0xC8D9FF)
+    )
+    static let actionForeground = Color(
+        light: UIColor.white,
+        dark: UIColor(hex: 0x08131D)
+    )
     static let warning = Color(
         light: UIColor(hex: 0xA64E2D),
         dark: UIColor(hex: 0xF29A6E)
+    )
+    static let warningWash = Color(
+        light: UIColor(hex: 0xF7E4D9),
+        dark: UIColor(hex: 0x3A2118)
+    )
+    static let warningStroke = Color(
+        light: UIColor(hex: 0xCE8A6F),
+        dark: UIColor(hex: 0xF7B28D)
+    )
+    static let warningText = Color(
+        light: UIColor(hex: 0x6D321D),
+        dark: UIColor(hex: 0xFFD6C4)
+    )
+    static let warningForeground = Color(
+        light: UIColor.white,
+        dark: UIColor(hex: 0x22110A)
     )
     static let sage = Color(
         light: UIColor(hex: 0xD9E1CF),
@@ -54,13 +86,65 @@ enum CatLocalTheme {
         light: UIColor(hex: 0x2A6F8F),
         dark: UIColor(hex: 0x7DCAE0)
     )
+    static let informationWash = Color(
+        light: UIColor(hex: 0xE2F1F6),
+        dark: UIColor(hex: 0x12313A)
+    )
+    static let informationStroke = Color(
+        light: UIColor(hex: 0x7CB4C6),
+        dark: UIColor(hex: 0x9ADBEA)
+    )
+    static let informationText = Color(
+        light: UIColor(hex: 0x175A75),
+        dark: UIColor(hex: 0xB9EAF4)
+    )
+    static let informationForeground = Color(
+        light: UIColor.white,
+        dark: UIColor(hex: 0x061821)
+    )
     static let positive = Color(
         light: UIColor(hex: 0x2F7C4F),
         dark: UIColor(hex: 0x91D7A9)
     )
+    static let positiveWash = Color(
+        light: UIColor(hex: 0xE2F2E8),
+        dark: UIColor(hex: 0x142A1D)
+    )
+    static let positiveStroke = Color(
+        light: UIColor(hex: 0x7FB994),
+        dark: UIColor(hex: 0xA9E6BB)
+    )
+    static let positiveText = Color(
+        light: UIColor(hex: 0x1F5E39),
+        dark: UIColor(hex: 0xC5F1D0)
+    )
+    static let positiveForeground = Color(
+        light: UIColor.white,
+        dark: UIColor(hex: 0x07190F)
+    )
+    static let destructive = Color(
+        light: UIColor(hex: 0xB3261E),
+        dark: UIColor(hex: 0xFFB4AB)
+    )
+    static let destructiveWash = Color(
+        light: UIColor(hex: 0xFCE8E6),
+        dark: UIColor(hex: 0x3B1918)
+    )
+    static let destructiveStroke = Color(
+        light: UIColor(hex: 0xD4877E),
+        dark: UIColor(hex: 0xFFB4AB)
+    )
+    static let destructiveText = Color(
+        light: UIColor(hex: 0x8C1D18),
+        dark: UIColor(hex: 0xFFDAD6)
+    )
+    static let destructiveForeground = Color(
+        light: UIColor.white,
+        dark: UIColor(hex: 0x230A08)
+    )
     static let neutralSymbol = secondaryText
     static let infoSymbol = information
-    static let dangerSymbol = warning
+    static let dangerSymbol = destructive
     static let successSymbol = positive
     static let memoryPlaceFill = Color(
         light: UIColor(hex: 0xE1E8D6, alpha: 0.92),
@@ -113,6 +197,139 @@ enum CatLocalTheme {
         case .gold:
             Color(red: 0.15, green: 0.11, blue: 0.07)
         }
+    }
+}
+
+enum CatAttentionRole: Equatable {
+    case action
+    case info
+    case success
+    case warning
+    case destructive
+    case neutral
+
+    var accent: Color {
+        switch self {
+        case .action:
+            CatLocalTheme.blueAction
+        case .info:
+            CatLocalTheme.information
+        case .success:
+            CatLocalTheme.positive
+        case .warning:
+            CatLocalTheme.warning
+        case .destructive:
+            CatLocalTheme.destructive
+        case .neutral:
+            CatLocalTheme.secondaryText
+        }
+    }
+
+    var wash: Color {
+        switch self {
+        case .action:
+            CatLocalTheme.actionWash
+        case .info:
+            CatLocalTheme.informationWash
+        case .success:
+            CatLocalTheme.positiveWash
+        case .warning:
+            CatLocalTheme.warningWash
+        case .destructive:
+            CatLocalTheme.destructiveWash
+        case .neutral:
+            CatLocalTheme.elevatedSurface
+        }
+    }
+
+    var stroke: Color {
+        switch self {
+        case .action:
+            CatLocalTheme.actionStroke
+        case .info:
+            CatLocalTheme.informationStroke
+        case .success:
+            CatLocalTheme.positiveStroke
+        case .warning:
+            CatLocalTheme.warningStroke
+        case .destructive:
+            CatLocalTheme.destructiveStroke
+        case .neutral:
+            CatLocalTheme.imageOutline
+        }
+    }
+
+    var text: Color {
+        switch self {
+        case .action:
+            CatLocalTheme.actionText
+        case .info:
+            CatLocalTheme.informationText
+        case .success:
+            CatLocalTheme.positiveText
+        case .warning:
+            CatLocalTheme.warningText
+        case .destructive:
+            CatLocalTheme.destructiveText
+        case .neutral:
+            CatLocalTheme.secondaryText
+        }
+    }
+
+    var strongForeground: Color {
+        switch self {
+        case .action:
+            CatLocalTheme.actionForeground
+        case .info:
+            CatLocalTheme.informationForeground
+        case .success:
+            CatLocalTheme.positiveForeground
+        case .warning:
+            CatLocalTheme.warningForeground
+        case .destructive:
+            CatLocalTheme.destructiveForeground
+        case .neutral:
+            CatLocalTheme.primaryText
+        }
+    }
+}
+
+enum CatTypography {
+    static let screenTitle: Font = .largeTitle.weight(.semibold)
+    static let screenSubtitle: Font = .callout
+    static let pageTitle: Font = .title2.weight(.semibold)
+    static let momentTitle: Font = .title3.weight(.semibold)
+    static let panelTitle: Font = .headline.weight(.semibold)
+    static let sectionTitle: Font = .headline.weight(.semibold)
+    static let body: Font = .body
+    static let bodyEmphasized: Font = .body.weight(.medium)
+    static let supporting: Font = .subheadline
+    static let supportingEmphasized: Font = .subheadline.weight(.semibold)
+    static let metadata: Font = .footnote.weight(.medium)
+    static let fieldLabel: Font = .footnote.weight(.semibold)
+    static let control: Font = .headline.weight(.semibold)
+    static let compactControl: Font = .subheadline.weight(.semibold)
+    static let badge: Font = .caption.weight(.semibold)
+    static let finePrint: Font = .caption2.weight(.medium)
+
+    static func cardTitle(focused: Bool) -> Font {
+        focused ? .title.weight(.semibold) : .headline.weight(.semibold)
+    }
+
+    static func cardDate(focused: Bool) -> Font {
+        focused ? .footnote.weight(.medium) : .caption2.weight(.medium)
+    }
+
+    static func cardFooter(focused: Bool) -> Font {
+        focused ? .body : .caption.weight(.medium)
+    }
+
+    static func cardPlace(focused: Bool) -> Font {
+        focused ? .footnote.weight(.semibold) : .caption2.weight(.semibold)
+    }
+
+    static func sequence(focused: Bool) -> Font {
+        .system(focused ? .callout : .caption, design: .rounded, weight: .semibold)
     }
 }
 
@@ -209,6 +426,21 @@ struct CatGlassGroup<Content: View>: View {
     }
 }
 
+struct CatTactileButtonStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.982 : 1)
+            .brightness(configuration.isPressed ? -0.018 : 0)
+            .animation(.smooth(duration: 0.14, extraBounce: 0), value: configuration.isPressed)
+    }
+}
+
+extension ButtonStyle where Self == CatTactileButtonStyle {
+    static var catTactile: CatTactileButtonStyle { CatTactileButtonStyle() }
+}
+
 @MainActor
 struct CatSheetActionButton: View {
     enum Mode: Equatable {
@@ -246,7 +478,7 @@ struct CatSheetActionButton: View {
             .catSingleActionIconSurface()
         }
         .labelStyle(.iconOnly)
-        .buttonStyle(.plain)
+        .buttonStyle(.catTactile)
         .contentShape(Circle())
         .disabled(isLoading)
         .accessibilityLabel(mode.accessibilityLabel)
@@ -288,7 +520,9 @@ struct CatDeletionConfirmationSheet: View {
 
             ScrollView {
                 sheetContent
-                    .padding(22)
+                    .padding(.horizontal, 22)
+                    .padding(.top, 18)
+                    .padding(.bottom, 12)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             .scrollIndicators(.hidden)
@@ -300,20 +534,22 @@ struct CatDeletionConfirmationSheet: View {
     }
 
     private var sheetContent: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            deleteIcon
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(alignment: .top, spacing: 13) {
+                deleteIcon
 
-            VStack(alignment: .leading, spacing: 8) {
-                Text(title)
-                    .font(.title3.weight(.semibold))
-                    .foregroundStyle(CatLocalTheme.primaryText)
-                    .lineLimit(nil)
-                    .fixedSize(horizontal: false, vertical: true)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(title)
+                        .font(CatTypography.panelTitle)
+                        .foregroundStyle(CatLocalTheme.primaryText)
+                        .lineLimit(nil)
+                        .fixedSize(horizontal: false, vertical: true)
 
-                Text(message)
-                    .font(.body)
-                    .foregroundStyle(CatLocalTheme.secondaryText)
-                    .fixedSize(horizontal: false, vertical: true)
+                    Text(message)
+                        .font(CatTypography.supporting)
+                        .foregroundStyle(CatLocalTheme.secondaryText)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
 
             actionButtons
@@ -322,10 +558,10 @@ struct CatDeletionConfirmationSheet: View {
 
     private var deleteIcon: some View {
         Image(systemName: "trash.fill")
-            .font(.system(size: 26, weight: .semibold))
-            .foregroundStyle(CatLocalTheme.background)
-            .frame(width: 52, height: 52)
-            .background(CatLocalTheme.warning, in: Circle())
+            .font(.system(size: 22, weight: .semibold))
+            .foregroundStyle(CatAttentionRole.destructive.strongForeground)
+            .frame(width: 44, height: 44)
+            .background(CatAttentionRole.destructive.accent, in: Circle())
             .accessibilityHidden(true)
     }
 
@@ -351,14 +587,14 @@ struct CatDeletionConfirmationSheet: View {
             dismiss()
         } label: {
             Text("Cancel")
-                .font(.headline.weight(.semibold))
+                .font(CatTypography.control)
                 .foregroundStyle(CatLocalTheme.primaryText)
                 .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
                 .minimumScaleFactor(dynamicTypeSize.isAccessibilitySize ? 1 : 0.82)
                 .frame(maxWidth: .infinity)
                 .catSingleActionPillSurface()
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.catTactile)
         .disabled(isDeleting)
     }
 
@@ -371,28 +607,28 @@ struct CatDeletionConfirmationSheet: View {
                 if isDeleting {
                     ProgressView()
                         .controlSize(.small)
-                        .tint(CatLocalTheme.background)
+                        .tint(CatAttentionRole.destructive.strongForeground)
                         .accessibilityHidden(true)
                 }
 
                 Text(isDeleting ? "Deleting" : deleteTitle)
-                    .font(.headline.weight(.semibold))
+                    .font(CatTypography.control)
                     .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
                     .minimumScaleFactor(dynamicTypeSize.isAccessibilitySize ? 1 : 0.82)
             }
-            .foregroundStyle(CatLocalTheme.background)
+            .foregroundStyle(CatAttentionRole.destructive.strongForeground)
             .frame(maxWidth: .infinity)
             .frame(minHeight: 56)
             .padding(.horizontal, 12)
-            .background(CatLocalTheme.warning.opacity(isDeleting ? 0.74 : 1), in: Capsule(style: .continuous))
+            .background(CatAttentionRole.destructive.accent.opacity(isDeleting ? 0.74 : 1), in: Capsule(style: .continuous))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.catTactile)
         .disabled(isDeleting)
         .accessibilityLabel(isDeleting ? "Deleting" : deleteTitle)
     }
 
     private var presentationDetents: Set<PresentationDetent> {
-        dynamicTypeSize.isAccessibilitySize ? [.medium, .large] : [.height(324)]
+        dynamicTypeSize.isAccessibilitySize ? [.medium, .large] : [.height(232)]
     }
 }
 
@@ -468,23 +704,22 @@ extension View {
 
     nonisolated func catPanelSurface(
         cornerRadius: CGFloat = CatLocalTheme.panelRadius,
-        fillOpacity: Double = 0.92,
-        shadowOpacity: Double = 0.24
+        fillOpacity: Double = 0.86,
+        shadowOpacity: Double = 0.10
     ) -> some View {
         frame(maxWidth: .infinity, alignment: .leading)
             .background(
                 CatLocalTheme.cardSurface.opacity(fillOpacity),
                 in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
             )
-            .overlay(
-                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .stroke(CatLocalTheme.imageOutline, lineWidth: 1)
-            )
-            .shadow(color: CatLocalTheme.shadow.opacity(shadowOpacity), radius: 16, y: 8)
+            .shadow(color: CatLocalTheme.shadow.opacity(shadowOpacity), radius: 12, y: 5)
     }
 
     nonisolated func catInputSurface() -> some View {
-        padding(.horizontal, 16)
+        font(CatTypography.body)
+            .foregroundStyle(CatLocalTheme.primaryText)
+            .tint(CatAttentionRole.action.accent)
+            .padding(.horizontal, 16)
             .padding(.vertical, 14)
             .background(
                 CatLocalTheme.cardSurface.opacity(0.94),
@@ -511,34 +746,148 @@ extension View {
             .contentShape(Capsule(style: .continuous))
     }
 
+    nonisolated func catAttentionPillSurface(
+        role: CatAttentionRole,
+        cornerRadius: CGFloat = 18
+    ) -> some View {
+        let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+
+        return lineLimit(1)
+            .minimumScaleFactor(0.82)
+            .padding(.horizontal, 11)
+            .frame(minHeight: 34)
+            .foregroundStyle(role.text)
+            .background(role.wash, in: shape)
+            .contentShape(shape)
+    }
+
+    nonisolated func catStrongAttentionPillSurface(
+        role: CatAttentionRole,
+        cornerRadius: CGFloat = 18,
+        minHeight: CGFloat = 38
+    ) -> some View {
+        let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+
+        return lineLimit(1)
+            .minimumScaleFactor(0.82)
+            .padding(.horizontal, 14)
+            .frame(minHeight: minHeight)
+            .foregroundStyle(role.strongForeground)
+            .background(role.accent, in: shape)
+            .contentShape(shape)
+    }
+
+    nonisolated func catAttentionIconSurface(
+        role: CatAttentionRole,
+        size: CGFloat = 34
+    ) -> some View {
+        frame(width: size, height: size)
+            .background(role.wash.opacity(0.72), in: Circle())
+    }
+
     nonisolated func catPrimaryActionSurface(
+        role: CatAttentionRole = .action,
         cornerRadius: CGFloat = 19,
         isDisabled: Bool = false
     ) -> some View {
         foregroundStyle(
-            Color(
-                light: UIColor.white,
-                dark: UIColor(hex: 0x121413)
-            )
-            .opacity(isDisabled ? 0.72 : 1)
+            isDisabled ? CatLocalTheme.secondaryText : role.strongForeground
         )
             .frame(maxWidth: .infinity)
             .frame(minHeight: 56)
             .background(
                 LinearGradient(
                     colors: [
-                        CatLocalTheme.primaryText.opacity(isDisabled ? 0.42 : 0.9),
-                        CatLocalTheme.sage.opacity(isDisabled ? 0.32 : 0.72)
+                        isDisabled ? CatLocalTheme.elevatedSurface : role.accent,
+                        isDisabled ? CatLocalTheme.elevatedSurface.opacity(0.72) : role.accent.opacity(0.86)
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 ),
                 in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
             )
-            .overlay(
-                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .stroke(CatLocalTheme.imageOutline, lineWidth: 1)
+    }
+
+    nonisolated func catCommitActionSurface(
+        role: CatAttentionRole = .action,
+        cornerRadius: CGFloat = 24,
+        minHeight: CGFloat = 64,
+        isDisabled: Bool = false
+    ) -> some View {
+        let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+
+        return foregroundStyle(isDisabled ? CatLocalTheme.secondaryText : CatLocalTheme.primaryText)
+            .frame(maxWidth: .infinity)
+            .frame(minHeight: minHeight)
+            .background(
+                LinearGradient(
+                    colors: [
+                        isDisabled ? CatLocalTheme.elevatedSurface.opacity(0.58) : role.wash.opacity(0.96),
+                        isDisabled ? CatLocalTheme.elevatedSurface.opacity(0.44) : CatLocalTheme.cardSurface.opacity(0.9)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                ),
+                in: shape
             )
+            .overlay(
+                shape.stroke(
+                    isDisabled ? CatLocalTheme.imageOutline.opacity(0.32) : role.stroke.opacity(0.48),
+                    lineWidth: 1
+                )
+            )
+            .shadow(
+                color: isDisabled ? .clear : role.accent.opacity(0.12),
+                radius: 9,
+                x: 0,
+                y: 3
+            )
+            .contentShape(shape)
+    }
+
+    nonisolated func catSecondaryActionSurface(
+        cornerRadius: CGFloat = 24,
+        minHeight: CGFloat = 52,
+        isDisabled: Bool = false
+    ) -> some View {
+        let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+
+        return foregroundStyle(isDisabled ? CatLocalTheme.secondaryText : CatLocalTheme.primaryText)
+            .frame(maxWidth: .infinity)
+            .frame(minHeight: minHeight)
+            .background(CatLocalTheme.cardSurface.opacity(isDisabled ? 0.48 : 0.84), in: shape)
+            .overlay(
+                shape.stroke(CatLocalTheme.imageOutline.opacity(isDisabled ? 0.36 : 0.58), lineWidth: 1)
+            )
+            .contentShape(shape)
+    }
+
+    nonisolated func catDestructiveActionSurface(
+        cornerRadius: CGFloat = 18,
+        minHeight: CGFloat = 48,
+        isProminent: Bool = false,
+        isDisabled: Bool = false,
+        fillsWidth: Bool = true
+    ) -> some View {
+        let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+        let fill = isDisabled
+            ? CatLocalTheme.elevatedSurface.opacity(0.58)
+            : (isProminent ? CatAttentionRole.destructive.accent : CatAttentionRole.destructive.wash.opacity(0.9))
+        let foreground = isDisabled
+            ? CatLocalTheme.secondaryText
+            : (isProminent ? CatAttentionRole.destructive.strongForeground : CatAttentionRole.destructive.text)
+
+        return foregroundStyle(foreground)
+            .frame(maxWidth: fillsWidth ? .infinity : nil)
+            .frame(minHeight: minHeight)
+            .background(fill, in: shape)
+            .overlay(
+                shape.stroke(
+                    isProminent || isDisabled ? Color.clear : CatAttentionRole.destructive.stroke.opacity(0.55),
+                    lineWidth: 1
+                )
+            )
+            .contentShape(shape)
     }
 }
 

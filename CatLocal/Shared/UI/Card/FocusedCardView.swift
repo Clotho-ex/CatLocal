@@ -1,7 +1,5 @@
 import SwiftData
 import SwiftUI
-import UniformTypeIdentifiers
-import UIKit
 
 struct FocusedCardView: View {
     @Environment(\.dismiss) private var dismiss
@@ -30,41 +28,13 @@ struct FocusedCardView: View {
             CatLocalBackground()
                 .overlay(CatLocalTheme.primaryText.opacity(0.05))
 
-            VStack(spacing: 12) {
-                Spacer(minLength: 0)
-
-                LiveInteractiveCardView(
-                    width: nil,
-                    height: nil,
-                    cornerRadius: 34,
-                    onInteractionChanged: { isInteracting in
-                        isCardInteracting = isInteracting
-                    }
-                ) { rotateX, rotateY, isInteracting in
-                    CatCardView(
-                        record: record,
-                        presentation: .focused,
-                        rotateX: rotateX,
-                        rotateY: rotateY,
-                        isLightActive: isInteracting
-                    )
-                }
-                    .frame(maxWidth: dynamicTypeSize.isAccessibilitySize ? 350 : 390)
-                    .aspectRatio(0.64, contentMode: .fit)
-
-                Spacer(minLength: 0)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .padding(.horizontal, dynamicTypeSize.isAccessibilitySize ? 8 : 10)
-            .padding(.vertical, dynamicTypeSize.isAccessibilitySize ? 6 : 16)
+            focusedContent
         }
         .navigationTitle(record.displayName)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.hidden, for: .tabBar)
         .toolbar {
-            ToolbarItemGroup(placement: .topBarTrailing) {
-                shareToolbarAction
-
+            ToolbarItem(placement: .topBarTrailing) {
                 Button {
                     isEditing = true
                 } label: {
@@ -74,9 +44,11 @@ struct FocusedCardView: View {
             }
         }
         .safeAreaInset(edge: .bottom) {
-            lightHintPill
-                .padding(.horizontal, CatLocalTheme.screenHorizontalPadding)
-                .padding(.bottom, dynamicTypeSize.isAccessibilitySize ? 12 : 18)
+            if !dynamicTypeSize.isAccessibilitySize {
+                lightHintPill
+                    .padding(.horizontal, CatLocalTheme.screenHorizontalPadding)
+                    .padding(.bottom, 18)
+            }
         }
         .sheet(isPresented: $isEditing) {
             CatRecordEditSheet(record: record) {
@@ -91,27 +63,97 @@ struct FocusedCardView: View {
     }
 
     @ViewBuilder
-    private var shareToolbarAction: some View {
-        ShareLink(
-            item: CatCardShareItem(record: record),
-            preview: SharePreview(record.displayName, image: Image(systemName: "cat.fill"))
-        ) {
-            Image(systemName: "square.and.arrow.up")
+    private var focusedContent: some View {
+        if dynamicTypeSize.isAccessibilitySize {
+            accessibilityFocusedContent
+        } else {
+            standardFocusedContent
         }
-        .accessibilityLabel("Share")
+    }
+
+    private var standardFocusedContent: some View {
+        VStack(spacing: 12) {
+            Spacer(minLength: 0)
+            interactiveCard(showsFooter: true)
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 16)
+    }
+
+    private var accessibilityFocusedContent: some View {
+        ScrollView {
+            VStack(spacing: 12) {
+                interactiveCard(showsFooter: false)
+
+                FocusedJournalEntryView(record: record)
+
+                lightHintPill
+            }
+            .padding(.horizontal, 14)
+            .padding(.top, 18)
+            .padding(.bottom, 28)
+        }
+        .scrollIndicators(.hidden)
+    }
+
+    private var focusedCardMaxWidth: CGFloat {
+        dynamicTypeSize.isAccessibilitySize ? 230 : 326
+    }
+
+    @ViewBuilder
+    private func interactiveCard(showsFooter: Bool) -> some View {
+        if showsFooter {
+            liveInteractiveCard(showsFooter: showsFooter)
+        } else {
+            liveInteractiveCard(showsFooter: showsFooter)
+                .dynamicTypeSize(.xxxLarge)
+        }
+    }
+
+    private func liveInteractiveCard(showsFooter: Bool) -> some View {
+        LiveInteractiveCardView(
+            width: compactAccessibilityCardSize?.width,
+            height: compactAccessibilityCardSize?.height,
+            cornerRadius: 34,
+            onInteractionChanged: { isInteracting in
+                isCardInteracting = isInteracting
+            }
+        ) { rotateX, rotateY, isInteracting in
+            CatCardView(
+                record: record,
+                presentation: .focused,
+                rotateX: rotateX,
+                rotateY: rotateY,
+                isLightActive: isInteracting,
+                showsFooter: showsFooter
+            )
+        }
+        .frame(maxWidth: focusedCardMaxWidth)
+        .aspectRatio(0.64, contentMode: .fit)
+    }
+
+    private var compactAccessibilityCardSize: CGSize? {
+        guard dynamicTypeSize.isAccessibilitySize else { return nil }
+        return CGSize(width: focusedCardMaxWidth, height: focusedCardMaxWidth / 0.64)
     }
 
     private var lightHintPill: some View {
-        Label(
-            reduceMotion ? "Lighting motion is reduced" : "Drag to catch the light",
-            systemImage: reduceMotion ? "figure.stand" : "gyroscope"
-        )
-        .font(.subheadline.weight(.medium))
-        .foregroundStyle(CatLocalTheme.primaryText)
+        Label {
+            Text(reduceMotion ? "Lighting motion is reduced" : "Drag to catch the light")
+                .lineLimit(dynamicTypeSize.isAccessibilitySize ? 3 : 2)
+                .fixedSize(horizontal: false, vertical: true)
+        } icon: {
+            Image(systemName: reduceMotion ? "figure.stand" : "gyroscope")
+                .imageScale(.medium)
+                .accessibilityHidden(true)
+        }
+        .font(CatTypography.supportingEmphasized)
         .padding(.horizontal, 18)
         .padding(.vertical, 11)
-        .frame(maxWidth: dynamicTypeSize.isAccessibilitySize ? .infinity : nil)
-        .catGlass(cornerRadius: 22)
+        .frame(maxWidth: dynamicTypeSize.isAccessibilitySize ? .infinity : nil, alignment: .center)
+        .catAttentionPillSurface(role: .action, cornerRadius: 22)
         .lineLimit(dynamicTypeSize.isAccessibilitySize ? 3 : 2)
         .multilineTextAlignment(.center)
         .opacity(isCardInteracting && !reduceMotion ? 0 : 1)
@@ -138,107 +180,92 @@ struct FocusedCardView: View {
     }
 }
 
-private struct CatCardShareItem: Transferable, Sendable {
-    let displayName: String
-    let sequence: Int
-    let capturedAt: Date
-    let note: String
-    let placeName: String
-    let placeDetail: String
-    let cardStyle: CardStyle
-    let cutoutImagePath: String
-    let thumbnailImagePath: String
-    let catBoundingBox: CGRect?
-    let topoSeed: Int
+private struct FocusedJournalEntryView: View {
+    let record: CatRecord
 
-    init(record: CatRecord) {
-        displayName = record.displayName
-        sequence = record.sequence
-        capturedAt = record.capturedAt
-        note = record.note
-        placeName = record.memoryPlaceName ?? ""
-        placeDetail = record.memoryPlaceDetail ?? ""
-        cardStyle = record.cardStyle
-        cutoutImagePath = record.cutoutImagePath
-        thumbnailImagePath = record.thumbnailImagePath
-        catBoundingBox = record.catBoundingBox
-        topoSeed = record.id.hashValue
-    }
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Journal Entry")
+                .font(CatTypography.panelTitle)
+                .foregroundStyle(CatLocalTheme.primaryText)
 
-    static var transferRepresentation: some TransferRepresentation {
-        DataRepresentation(exportedContentType: .png) { item in
-            try await item.pngData()
-        }
-    }
+            journalRow(
+                title: "Captured",
+                icon: "calendar",
+                value: record.capturedAt.formatted(date: .abbreviated, time: .omitted)
+            )
 
-    @MainActor
-    private func pngData() async throws -> Data {
-        let cutoutImage = await resolvedShareImage()
-        let renderer = ImageRenderer(
-            content: shareCard(cutoutImage: cutoutImage)
-        )
-        renderer.scale = 3
-        renderer.proposedSize = ProposedViewSize(width: 350, height: 547)
+            journalRow(
+                title: "Notes",
+                icon: "note.text",
+                value: record.note.isEmpty ? "No note yet." : record.note,
+                isPlaceholder: record.note.isEmpty
+            )
 
-        guard let renderedImage = renderer.uiImage,
-              let pngData = renderedImage.pngData()
-        else {
-            throw CatCardShareError.renderFailed
-        }
+            if let placeName = record.memoryPlaceName {
+                journalRow(
+                    title: "Memory Place",
+                    icon: "mappin.and.ellipse",
+                    value: placeName
+                )
+            } else {
+                journalRow(
+                    title: "Memory Place",
+                    icon: "mappin.and.ellipse",
+                    value: "No memory place yet.",
+                    isPlaceholder: true
+                )
+            }
 
-        return pngData
-    }
-
-    @MainActor
-    private func resolvedShareImage() async -> UIImage {
-        for path in [cutoutImagePath, thumbnailImagePath] where !path.isEmpty {
-            if let data = try? await CatImageStore.shared.data(at: path),
-               let image = UIImage(data: data) {
-                return image
+            if let placeDetail = record.memoryPlaceDetail {
+                journalRow(
+                    title: "Place Detail",
+                    icon: "text.alignleft",
+                    value: placeDetail
+                )
             }
         }
-
-        return Self.placeholderShareImage()
-    }
-
-    @MainActor
-    private func shareCard(cutoutImage: UIImage) -> some View {
-        DraftCatCardView(
-            image: cutoutImage,
-            sequence: sequence,
-            name: displayName,
-            date: capturedAt,
-            note: note,
-            placeName: placeName,
-            placeDetail: placeDetail,
-            cardStyle: cardStyle,
-            presentation: .focused,
-            showsFooter: true,
-            catBoundingBox: catBoundingBox,
-            topoSeed: topoSeed
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(CatLocalTheme.cardSurface.opacity(0.82))
         )
-        .frame(width: 350, height: 547)
+        .overlay(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .stroke(CatLocalTheme.imageOutline.opacity(0.62), lineWidth: 1)
+        )
+        .accessibilityElement(children: .contain)
     }
 
-    @MainActor
-    private static func placeholderShareImage() -> UIImage {
-        let size = CGSize(width: 900, height: 900)
-        let format = UIGraphicsImageRendererFormat()
-        format.opaque = false
-        format.scale = UIScreen.main.scale
+    private func journalRow(
+        title: String,
+        icon: String,
+        value: String,
+        isPlaceholder: Bool = false
+    ) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: icon)
+                .font(CatTypography.supportingEmphasized)
+                .imageScale(.medium)
+                .foregroundStyle(CatLocalTheme.secondaryText)
+                .frame(width: 22, height: 22)
+                .accessibilityHidden(true)
 
-        return UIGraphicsImageRenderer(size: size, format: format).image { _ in
-            let configuration = UIImage.SymbolConfiguration(pointSize: 420, weight: .regular)
-            let image = UIImage(systemName: "cat.fill", withConfiguration: configuration)?
-                .withTintColor(.label, renderingMode: .alwaysOriginal)
-            let rect = CGRect(x: 210, y: 210, width: 480, height: 480)
-            image?.draw(in: rect)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(CatTypography.fieldLabel)
+                    .foregroundStyle(CatLocalTheme.secondaryText)
+
+                Text(value)
+                    .font(CatTypography.body)
+                    .foregroundStyle(isPlaceholder ? CatLocalTheme.secondaryText : CatLocalTheme.primaryText)
+                    .lineLimit(nil)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
+        .accessibilityElement(children: .combine)
     }
-}
-
-private enum CatCardShareError: Error {
-    case renderFailed
 }
 
 struct CatRecordEditSheet: View {
@@ -284,7 +311,7 @@ struct CatRecordEditSheet: View {
                     }
 
                 Form {
-                    Section("Card Design") {
+                    Section {
                         CardStyleCarousel(
                             selectedStyle: $selectedStyle,
                             showsTitle: false,
@@ -303,15 +330,19 @@ struct CatRecordEditSheet: View {
                                 dismissEditKeyboard()
                             }
                         )
+                    } header: {
+                        editSectionHeader("Card Design")
                     }
 
-                    Section("Name the Cat") {
+                    Section {
                         TextField("Nickname", text: $nickname)
                             .textInputAutocapitalization(.words)
                             .focused($focusedField, equals: .name)
+                    } header: {
+                        editSectionHeader("Name the Cat")
                     }
 
-                    Section("Catlas") {
+                    Section {
                         TextField("Memory Place", text: $placeName)
                             .textInputAutocapitalization(.words)
                             .focused($focusedField, equals: .location)
@@ -320,6 +351,8 @@ struct CatRecordEditSheet: View {
                             .lineLimit(1...4)
                             .textInputAutocapitalization(.sentences)
                             .focused($focusedField, equals: .location)
+                    } header: {
+                        editSectionHeader("Catlas")
                     }
 
                     Section {
@@ -327,7 +360,7 @@ struct CatRecordEditSheet: View {
                             .lineLimit(3...7)
                             .focused($focusedField, equals: .notes)
                     } header: {
-                        Text("Encounter Note")
+                        editSectionHeader("Encounter Note")
                     }
 
                     Section {
@@ -341,17 +374,15 @@ struct CatRecordEditSheet: View {
                             showingDeleteConfirmation = true
                         } label: {
                             Text("Delete Cat")
-                                .font(.headline.weight(.semibold))
-                                .foregroundStyle(.white)
+                                .font(CatTypography.control)
                                 .frame(maxWidth: .infinity, alignment: .center)
-                                .padding(.vertical, 13)
-                                .background(
-                                    Capsule(style: .continuous)
-                                        .fill(Color.red)
+                                .catDestructiveActionSurface(
+                                    cornerRadius: 24,
+                                    minHeight: 54,
+                                    isProminent: true
                                 )
-                                .shadow(color: Color.red.opacity(0.24), radius: 10, y: 4)
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.catTactile)
                         .accessibilityHint("Deletes this cat and its local images from this iPhone")
                     }
                     .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 20, trailing: 16))
@@ -412,18 +443,18 @@ struct CatRecordEditSheet: View {
         HStack(alignment: .center, spacing: 12) {
             ZStack {
                 Circle()
-                    .fill(CatLocalTheme.warning.opacity(0.28))
+                    .fill(CatAttentionRole.info.wash)
 
                 Image(systemName: "shield.lefthalf.filled")
                     .font(.system(size: 19, weight: .semibold))
-                    .foregroundStyle(CatLocalTheme.primaryText)
+                    .foregroundStyle(CatAttentionRole.info.accent)
             }
             .frame(width: 34, height: 34)
             .accessibilityHidden(true)
 
             Text("Manual label only. CatLocal does not request GPS or save coordinates.")
-                .font(.footnote.weight(.medium))
-                .foregroundStyle(CatLocalTheme.primaryText)
+                .font(CatTypography.metadata)
+                .foregroundStyle(CatAttentionRole.info.text)
                 .lineLimit(nil)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -434,11 +465,7 @@ struct CatRecordEditSheet: View {
         .textCase(nil)
         .background(
             Capsule(style: .continuous)
-                .fill(CatLocalTheme.warning.opacity(0.22))
-        )
-        .overlay(
-            Capsule(style: .continuous)
-                .stroke(CatLocalTheme.warning.opacity(0.55), lineWidth: 1)
+                .fill(CatAttentionRole.info.wash)
         )
     }
 
@@ -446,6 +473,13 @@ struct CatRecordEditSheet: View {
         if focusedField != nil {
             focusedField = nil
         }
+    }
+
+    private func editSectionHeader(_ title: String) -> some View {
+        Text(title)
+            .font(CatTypography.fieldLabel)
+            .foregroundStyle(CatLocalTheme.secondaryText)
+            .textCase(nil)
     }
 
     private func performEditSheetAction() {

@@ -58,6 +58,7 @@ struct LiveInteractiveCardView<Content: View>: View {
                 }
             }
             .frame(width: size.width, height: size.height)
+            .compositingGroup()
             .contentShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
             .rotation3DEffect(
                 .degrees(reduceMotion ? 0 : rotateX),
@@ -107,6 +108,7 @@ struct LiveInteractiveCardView<Content: View>: View {
                 )
             )
             .blendMode(.screen)
+            .compositingGroup()
             .allowsHitTesting(false)
             .accessibilityHidden(true)
     }
@@ -252,7 +254,7 @@ enum LiveInteractiveCardMath {
                 .fill(CatLocalTheme.elevatedSurface)
                 .overlay {
                     Text("CatLocal")
-                        .font(.system(size: 36, weight: .semibold))
+                        .font(CatTypography.screenTitle)
                         .foregroundStyle(CatLocalTheme.primaryText)
                 }
         }
