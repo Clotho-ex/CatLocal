@@ -1,11 +1,12 @@
-# Sunlit Gallery Archive
+# Sea-Glass Field Archive
 
 The selected visual direction combines the restraint of a contemporary gallery
-catalogue with the warmth and energy of an Istanbul street archive.
+catalogue with the cool clarity of an Istanbul street archive: ferry tile,
+sea air, and a private field notebook.
 
-- Pale mineral and limestone surfaces
-- Ink and deep forest typography
-- Warm apricot and cobalt details used sparingly
+- Sea-glass and porcelain surfaces
+- Pine ink typography with eucalyptus metadata
+- Peacock action, rust warning, and moss success details used sparingly
 - Personal notes alongside structured metadata
 - Native Liquid Glass tab navigation with camera as the detached primary action
 - Foil light and depth reserved for focused cards, with a calm baseline until touch
@@ -25,13 +26,14 @@ specification. Native behavior, legibility, and accessibility take priority.
 
 ## Palette Guardrails
 
-- Use warm limestone and paper tones for the app background, cards, settings surfaces, and image staging.
-- Use deep ink/forest for primary text and sage-gray for supporting metadata.
-- Use cobalt for primary actions and selected states so controls read clearly against the warm surfaces.
-- Use Aegean teal for privacy proof, local/on-device explanations, and storage/information cues.
-- Use terracotta/apricot for warnings and warm card accents, not as the default action color.
+- Use sea-glass and porcelain tones for the app background, cards, settings surfaces, and image staging.
+- Keep the background, elevated surfaces, cards, and glass controls visibly separated in both light and dark mode.
+- Use pine ink for primary text and eucalyptus gray-green for supporting metadata.
+- Use peacock teal for primary actions and selected states so controls read clearly against the cool surfaces.
+- Use azurite for privacy proof, local/on-device explanations, and storage/information cues.
+- Use rust for warnings and warm card accents, not as the default action color.
 - Use moss green for saved, success, and manual place states so success feedback stays distinct from actions and warnings.
-- Use destructive red only for permanent deletion. Do not reuse terracotta warning colors for delete actions.
+- Use destructive rose only for permanent deletion. Do not reuse rust warning colors for delete actions.
 - Apply color through `CatAttentionRole` washes, text, symbols, and strong fills instead of adding one-off colors in feature views.
 - Use strokes sparingly. A semantic role does not automatically need a bordered pill or outlined row.
-- Keep dark mode in the same role map: charcoal-green foundations, cream text, cobalt actions, terracotta warnings, and bright moss success.
+- Keep dark mode in the same role map: pine-charcoal foundations, porcelain text, peacock actions, rust warnings, and bright moss success.

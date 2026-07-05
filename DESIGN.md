@@ -21,13 +21,13 @@ storage, and privacy proof points support the loop, but they do not replace it.
 
 ## Design Direction
 
-The selected visual direction is `Sunlit Gallery Archive`: the restraint of a
-contemporary gallery catalogue with the warmth and energy of an Istanbul street
-archive.
+The selected visual direction is `Sea-Glass Field Archive`: the restraint of a
+contemporary gallery catalogue with the cool clarity of an Istanbul street
+archive: ferry tile, sea air, and a private field notebook.
 
-- Pale mineral and limestone surfaces.
-- Ink and deep forest typography.
-- Warm apricot and cobalt details used sparingly.
+- Sea-glass and porcelain surfaces.
+- Pine ink typography with eucalyptus metadata.
+- Peacock action, rust warning, and moss success details used sparingly.
 - Personal notes alongside structured metadata.
 - Native Liquid Glass tab navigation with camera as the detached primary action.
 - Foil light and depth reserved for focused cards.
@@ -70,34 +70,36 @@ Use `CatLocalTheme` tokens instead of hardcoded colors.
 
 | Token                            | Light            | Dark                | Role                               |
 | -------------------------------- | ---------------- | ------------------- | ---------------------------------- |
-| `background` / `limestone`       | `#F6F2E8`        | `#101412`           | Warm field-journal background      |
-| `backgroundGlow`                 | `#FFF8EA`        | `#24312A`           | Soft sunlit glow                   |
-| `elevatedSurface` / `chalk`      | `#ECE4D3`        | `#1B241E`           | Empty states, image stages, inputs |
-| `cardSurface`                    | `#FFFDF7`        | `#202820`           | Card and settings surfaces         |
-| `primaryText` / `forest` / `ink` | `#1C241F`        | `#F4F0E6`           | Titles and primary content         |
-| `secondaryText`                  | `#5D665E`        | `#AEB7AD`           | Metadata and supporting text       |
-| `separator`                      | `#1C241F` at 10% | `#F4F0E6` at 13%    | Dividers                           |
-| `imageOutline`                   | `#1C241F` at 13% | `#F4F0E6` at 16%    | Image/card strokes                 |
-| `shadow`                         | `#1C241F` at 16% | black at 65%        | Depth                              |
-| `blueAction` / `cobalt`          | `#2457A6`        | `#82AFFF`           | Primary actions and selected state |
-| `warning` / `apricot`            | `#A64E2D`        | `#F29A6E`           | Warnings and warm card tones       |
-| `sage`                           | `#D9E1CF`        | `#1F2A22`           | Archive wash and quiet fill        |
-| `information`                    | `#2A6F8F`        | `#7DCAE0`           | Privacy and info symbols           |
-| `positive`                       | `#2F7C4F`        | `#91D7A9`           | Success, saved, and place states   |
+| `background` / `limestone`       | `#DCEAE5`        | `#061210`           | Sea-glass field background         |
+| `backgroundGlow`                 | `#F8FFFC`        | `#103B35`           | Porcelain glow                     |
+| `elevatedSurface` / `chalk`      | `#CBDDD6`        | `#142C27`           | Empty states, image stages, inputs |
+| `cardSurface`                    | `#FEFFFB`        | `#1C352F`           | Card and settings surfaces         |
+| `primaryText` / `forest` / `ink` | `#12211E`        | `#F4FFF7`           | Titles and primary content         |
+| `secondaryText`                  | `#3F5750`        | `#BCD1CA`           | Metadata and supporting text       |
+| `separator`                      | `#12211E` at 16% | `#F4FFF7` at 18%    | Dividers                           |
+| `imageOutline`                   | `#12211E` at 22% | `#F4FFF7` at 24%    | Image/card strokes                 |
+| `shadow`                         | `#12211E` at 22% | black at 78%        | Depth                              |
+| `blueAction` / `cobalt`          | `#005F68`        | `#84E0DC`           | Primary actions and selected state |
+| `warning` / `apricot`            | `#93440F`        | `#F2AF6D`           | Warnings and warm card tones       |
+| `sage`                           | `#BBD4CC`        | `#233C35`           | Archive wash and quiet fill        |
+| `information`                    | `#3458A6`        | `#B7C8FF`           | Privacy and info symbols           |
+| `positive`                       | `#236F45`        | `#A5E4B0`           | Success, saved, and place states   |
 
-The app background is layered: a limestone base, a soft top-left radial glow,
-and a subtle diagonal sage-to-apricot wash. Cobalt, terracotta, moss, and
-Aegean blue are intentionally distinct so actions, warnings, saved states, and
-privacy proof points do not compete with one another. Avoid flat single-color
-screens and avoid using green as the default action color.
+The app background is layered: a sea-glass base, a soft top-left porcelain glow,
+and a subtle diagonal eucalyptus-to-rust wash. Peacock, rust, moss, and azurite
+are intentionally distinct so actions, warnings, saved states, and privacy
+proof points do not compete with one another. Avoid flat single-color screens
+and avoid using green as the default action color. Preserve visible separation
+between the background, elevated surfaces, cards, and glass controls in both
+light and dark mode; clarity is part of the palette, not a later decoration.
 
 Color attention is semantic and restrained:
 
-- `CatAttentionRole.action`: cobalt for primary actions, selected states, focused interaction hints, and current choices.
-- `CatAttentionRole.info`: Aegean teal for privacy proof, on-device processing, storage, and manual/no-GPS education.
+- `CatAttentionRole.action`: peacock teal for primary actions, selected states, focused interaction hints, and current choices.
+- `CatAttentionRole.info`: azurite for privacy proof, on-device processing, storage, and manual/no-GPS education.
 - `CatAttentionRole.success`: moss green for saved states, safe privacy outcomes, and completed/place-labeled states.
-- `CatAttentionRole.warning`: terracotta for fallback paths, uncertain detection, and recoverable caution.
-- `CatAttentionRole.destructive`: red for deletion only. Do not use warning/apricot for permanent deletion.
+- `CatAttentionRole.warning`: rust for fallback paths, uncertain detection, and recoverable caution.
+- `CatAttentionRole.destructive`: rose red for deletion only. Do not use warning/rust for permanent deletion.
 
 Each role provides a strong fill, quiet wash, stroke, text color, and strong
 foreground color. Prefer those roles over one-off colors so important states
@@ -126,7 +128,7 @@ Shared screen rhythm:
 - Main scroll screens use 22pt horizontal padding.
 - Home uses 18pt top padding; Settings can sit slightly tighter beneath the native title.
 - Card grids use two flexible columns with 14pt column spacing and 18pt row spacing.
-- Empty states and settings panels are generous but should feel baked into the limestone surface, not stacked as bordered cards.
+- Empty states and settings panels are generous but should feel baked into the sea-glass surface, not stacked as bordered cards.
 
 Card geometry:
 

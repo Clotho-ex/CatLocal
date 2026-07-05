@@ -3,156 +3,156 @@ import UIKit
 
 enum CatLocalTheme {
     static let background = Color(
-        light: UIColor(hex: 0xF6F2E8),
-        dark: UIColor(hex: 0x101412)
+        light: UIColor(hex: 0xDCEAE5),
+        dark: UIColor(hex: 0x061210)
     )
     static let backgroundGlow = Color(
-        light: UIColor(hex: 0xFFF8EA),
-        dark: UIColor(hex: 0x24312A)
+        light: UIColor(hex: 0xF8FFFC),
+        dark: UIColor(hex: 0x103B35)
     )
     static let elevatedSurface = Color(
-        light: UIColor(hex: 0xECE4D3),
-        dark: UIColor(hex: 0x1B241E)
+        light: UIColor(hex: 0xCBDDD6),
+        dark: UIColor(hex: 0x142C27)
     )
     static let cardSurface = Color(
-        light: UIColor(hex: 0xFFFDF7),
-        dark: UIColor(hex: 0x202820)
+        light: UIColor(hex: 0xFEFFFB),
+        dark: UIColor(hex: 0x1C352F)
     )
     static let primaryText = Color(
-        light: UIColor(hex: 0x1C241F),
-        dark: UIColor(hex: 0xF4F0E6)
+        light: UIColor(hex: 0x12211E),
+        dark: UIColor(hex: 0xF4FFF7)
     )
     static let secondaryText = Color(
-        light: UIColor(hex: 0x5D665E),
-        dark: UIColor(hex: 0xAEB7AD)
+        light: UIColor(hex: 0x3F5750),
+        dark: UIColor(hex: 0xBCD1CA)
     )
     static let separator = Color(
-        light: UIColor(hex: 0x1C241F, alpha: 0.10),
-        dark: UIColor(hex: 0xF4F0E6, alpha: 0.13)
+        light: UIColor(hex: 0x12211E, alpha: 0.16),
+        dark: UIColor(hex: 0xF4FFF7, alpha: 0.18)
     )
     static let imageOutline = Color(
-        light: UIColor(hex: 0x1C241F, alpha: 0.13),
-        dark: UIColor(hex: 0xF4F0E6, alpha: 0.16)
+        light: UIColor(hex: 0x12211E, alpha: 0.22),
+        dark: UIColor(hex: 0xF4FFF7, alpha: 0.24)
     )
     static let shadow = Color(
-        light: UIColor(hex: 0x1C241F, alpha: 0.16),
-        dark: UIColor.black.withAlphaComponent(0.65)
+        light: UIColor(hex: 0x12211E, alpha: 0.22),
+        dark: UIColor.black.withAlphaComponent(0.78)
     )
     static let blueAction = Color(
-        light: UIColor(hex: 0x2457A6),
-        dark: UIColor(hex: 0x82AFFF)
+        light: UIColor(hex: 0x005F68),
+        dark: UIColor(hex: 0x84E0DC)
     )
     static let actionWash = Color(
-        light: UIColor(hex: 0xE5EDFB),
-        dark: UIColor(hex: 0x13243D)
+        light: UIColor(hex: 0xD3EAEC),
+        dark: UIColor(hex: 0x0D3D3C)
     )
     static let actionStroke = Color(
-        light: UIColor(hex: 0x7B99C9),
-        dark: UIColor(hex: 0x98BCFF)
+        light: UIColor(hex: 0x4FAAB0),
+        dark: UIColor(hex: 0x91EAE6)
     )
     static let actionText = Color(
-        light: UIColor(hex: 0x173F78),
-        dark: UIColor(hex: 0xC8D9FF)
+        light: UIColor(hex: 0x004E56),
+        dark: UIColor(hex: 0xC6F6F3)
     )
     static let actionForeground = Color(
         light: UIColor.white,
-        dark: UIColor(hex: 0x08131D)
+        dark: UIColor(hex: 0x021616)
     )
     static let warning = Color(
-        light: UIColor(hex: 0xA64E2D),
-        dark: UIColor(hex: 0xF29A6E)
+        light: UIColor(hex: 0x93440F),
+        dark: UIColor(hex: 0xF2AF6D)
     )
     static let warningWash = Color(
-        light: UIColor(hex: 0xF7E4D9),
-        dark: UIColor(hex: 0x3A2118)
+        light: UIColor(hex: 0xF1DDCD),
+        dark: UIColor(hex: 0x3B230F)
     )
     static let warningStroke = Color(
-        light: UIColor(hex: 0xCE8A6F),
-        dark: UIColor(hex: 0xF7B28D)
+        light: UIColor(hex: 0xC9844C),
+        dark: UIColor(hex: 0xFFC78B)
     )
     static let warningText = Color(
-        light: UIColor(hex: 0x6D321D),
-        dark: UIColor(hex: 0xFFD6C4)
+        light: UIColor(hex: 0x633006),
+        dark: UIColor(hex: 0xFFE2C2)
     )
     static let warningForeground = Color(
         light: UIColor.white,
-        dark: UIColor(hex: 0x22110A)
+        dark: UIColor(hex: 0x241002)
     )
     static let sage = Color(
-        light: UIColor(hex: 0xD9E1CF),
-        dark: UIColor(hex: 0x1F2A22)
+        light: UIColor(hex: 0xBBD4CC),
+        dark: UIColor(hex: 0x233C35)
     )
     static let information = Color(
-        light: UIColor(hex: 0x2A6F8F),
-        dark: UIColor(hex: 0x7DCAE0)
+        light: UIColor(hex: 0x3458A6),
+        dark: UIColor(hex: 0xB7C8FF)
     )
     static let informationWash = Color(
-        light: UIColor(hex: 0xE2F1F6),
-        dark: UIColor(hex: 0x12313A)
+        light: UIColor(hex: 0xDFE7FA),
+        dark: UIColor(hex: 0x172241)
     )
     static let informationStroke = Color(
-        light: UIColor(hex: 0x7CB4C6),
-        dark: UIColor(hex: 0x9ADBEA)
+        light: UIColor(hex: 0x7F96D0),
+        dark: UIColor(hex: 0xC2D0FF)
     )
     static let informationText = Color(
-        light: UIColor(hex: 0x175A75),
-        dark: UIColor(hex: 0xB9EAF4)
+        light: UIColor(hex: 0x24498F),
+        dark: UIColor(hex: 0xE0E8FF)
     )
     static let informationForeground = Color(
         light: UIColor.white,
-        dark: UIColor(hex: 0x061821)
+        dark: UIColor(hex: 0x07111F)
     )
     static let positive = Color(
-        light: UIColor(hex: 0x2F7C4F),
-        dark: UIColor(hex: 0x91D7A9)
+        light: UIColor(hex: 0x236F45),
+        dark: UIColor(hex: 0xA5E4B0)
     )
     static let positiveWash = Color(
-        light: UIColor(hex: 0xE2F2E8),
-        dark: UIColor(hex: 0x142A1D)
+        light: UIColor(hex: 0xD8EEE2),
+        dark: UIColor(hex: 0x12301F)
     )
     static let positiveStroke = Color(
-        light: UIColor(hex: 0x7FB994),
-        dark: UIColor(hex: 0xA9E6BB)
+        light: UIColor(hex: 0x6EAE86),
+        dark: UIColor(hex: 0xB7F0C0)
     )
     static let positiveText = Color(
-        light: UIColor(hex: 0x1F5E39),
-        dark: UIColor(hex: 0xC5F1D0)
+        light: UIColor(hex: 0x184F31),
+        dark: UIColor(hex: 0xD8F8DD)
     )
     static let positiveForeground = Color(
         light: UIColor.white,
-        dark: UIColor(hex: 0x07190F)
+        dark: UIColor(hex: 0x071A0C)
     )
     static let destructive = Color(
-        light: UIColor(hex: 0xB3261E),
-        dark: UIColor(hex: 0xFFB4AB)
+        light: UIColor(hex: 0xA51C34),
+        dark: UIColor(hex: 0xFFB2C0)
     )
     static let destructiveWash = Color(
-        light: UIColor(hex: 0xFCE8E6),
-        dark: UIColor(hex: 0x3B1918)
+        light: UIColor(hex: 0xF9E3E8),
+        dark: UIColor(hex: 0x3D151E)
     )
     static let destructiveStroke = Color(
-        light: UIColor(hex: 0xD4877E),
-        dark: UIColor(hex: 0xFFB4AB)
+        light: UIColor(hex: 0xC96F82),
+        dark: UIColor(hex: 0xFFB2C0)
     )
     static let destructiveText = Color(
-        light: UIColor(hex: 0x8C1D18),
-        dark: UIColor(hex: 0xFFDAD6)
+        light: UIColor(hex: 0x781025),
+        dark: UIColor(hex: 0xFFD9DF)
     )
     static let destructiveForeground = Color(
         light: UIColor.white,
-        dark: UIColor(hex: 0x230A08)
+        dark: UIColor(hex: 0x26070D)
     )
     static let neutralSymbol = secondaryText
     static let infoSymbol = information
     static let dangerSymbol = destructive
     static let successSymbol = positive
     static let memoryPlaceFill = Color(
-        light: UIColor(hex: 0xE1E8D6, alpha: 0.92),
-        dark: UIColor(hex: 0x263424, alpha: 0.94)
+        light: UIColor(hex: 0xCEE5D7, alpha: 0.94),
+        dark: UIColor(hex: 0x1A3A29, alpha: 0.96)
     )
     static let memoryPlaceStroke = Color(
-        light: UIColor(hex: 0x567A46, alpha: 0.30),
-        dark: UIColor(hex: 0x91D7A9, alpha: 0.28)
+        light: UIColor(hex: 0x236F45, alpha: 0.34),
+        dark: UIColor(hex: 0xA5E4B0, alpha: 0.34)
     )
 
     static let limestone = background
@@ -673,23 +673,23 @@ private struct CatGlassModifier: ViewModifier {
                 if interactive {
                     content
                         .glassEffect(
-                            .regular.tint(.white.opacity(0.08)).interactive(),
+                            .regular.tint(CatLocalTheme.cardSurface.opacity(0.16)).interactive(),
                             in: .rect(cornerRadius: cornerRadius)
                         )
                 } else {
                     content
                         .glassEffect(
-                            .regular.tint(.white.opacity(0.08)),
+                            .regular.tint(CatLocalTheme.cardSurface.opacity(0.16)),
                             in: .rect(cornerRadius: cornerRadius)
                         )
                 }
             } else {
                 content
                     .background(.ultraThinMaterial, in: shape)
-                    .overlay(shape.stroke(CatLocalTheme.imageOutline, lineWidth: 1))
-                    .shadow(color: CatLocalTheme.shadow.opacity(0.22), radius: 8, y: 3)
             }
         }
+        .overlay(shape.stroke(CatLocalTheme.imageOutline.opacity(0.72), lineWidth: 1))
+        .shadow(color: CatLocalTheme.shadow.opacity(0.16), radius: 7, y: 3)
     }
 }
 
@@ -704,15 +704,20 @@ extension View {
 
     nonisolated func catPanelSurface(
         cornerRadius: CGFloat = CatLocalTheme.panelRadius,
-        fillOpacity: Double = 0.86,
-        shadowOpacity: Double = 0.10
+        fillOpacity: Double = 0.94,
+        shadowOpacity: Double = 0.13
     ) -> some View {
-        frame(maxWidth: .infinity, alignment: .leading)
+        let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+
+        return frame(maxWidth: .infinity, alignment: .leading)
             .background(
                 CatLocalTheme.cardSurface.opacity(fillOpacity),
-                in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                in: shape
             )
-            .shadow(color: CatLocalTheme.shadow.opacity(shadowOpacity), radius: 12, y: 5)
+            .overlay(
+                shape.stroke(CatLocalTheme.imageOutline.opacity(0.72), lineWidth: 1)
+            )
+            .shadow(color: CatLocalTheme.shadow.opacity(shadowOpacity), radius: 10, y: 4)
     }
 
     nonisolated func catInputSurface() -> some View {
@@ -722,14 +727,14 @@ extension View {
             .padding(.horizontal, 16)
             .padding(.vertical, 14)
             .background(
-                CatLocalTheme.cardSurface.opacity(0.94),
+                CatLocalTheme.cardSurface.opacity(0.98),
                 in: RoundedRectangle(cornerRadius: CatLocalTheme.inputRadius, style: .continuous)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: CatLocalTheme.inputRadius, style: .continuous)
-                    .stroke(CatLocalTheme.imageOutline, lineWidth: 1)
+                    .stroke(CatLocalTheme.imageOutline.opacity(0.86), lineWidth: 1)
             )
-            .shadow(color: CatLocalTheme.shadow.opacity(0.08), radius: 8, y: 3)
+            .shadow(color: CatLocalTheme.shadow.opacity(0.11), radius: 7, y: 2)
     }
 
     nonisolated func catSingleActionIconSurface() -> some View {
@@ -855,9 +860,9 @@ extension View {
         return foregroundStyle(isDisabled ? CatLocalTheme.secondaryText : CatLocalTheme.primaryText)
             .frame(maxWidth: .infinity)
             .frame(minHeight: minHeight)
-            .background(CatLocalTheme.cardSurface.opacity(isDisabled ? 0.48 : 0.84), in: shape)
+            .background(CatLocalTheme.cardSurface.opacity(isDisabled ? 0.56 : 0.94), in: shape)
             .overlay(
-                shape.stroke(CatLocalTheme.imageOutline.opacity(isDisabled ? 0.36 : 0.58), lineWidth: 1)
+                shape.stroke(CatLocalTheme.imageOutline.opacity(isDisabled ? 0.44 : 0.76), lineWidth: 1)
             )
             .contentShape(shape)
     }
