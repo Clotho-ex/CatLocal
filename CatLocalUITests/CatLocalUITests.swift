@@ -12,7 +12,7 @@ final class CatLocalUITests: XCTestCase {
         app.launch()
 
         XCTAssertTrue(app.staticTexts["CatLocal"].waitForExistence(timeout: 8))
-        XCTAssertTrue(app.staticTexts["Meet Your First Cat"].exists)
+        XCTAssertTrue(app.staticTexts["Meet Your First Local"].exists)
         XCTAssertTrue(app.staticTexts["No Account"].exists)
         XCTAssertTrue(app.staticTexts["No Public Map"].exists)
         XCTAssertTrue(app.staticTexts["No Model Training"].exists)
@@ -30,6 +30,7 @@ final class CatLocalUITests: XCTestCase {
         cameraButton.tap()
         XCTAssertTrue(
             app.staticTexts["On-device only"].waitForExistence(timeout: 8)
+                || app.staticTexts["Camera access is off"].waitForExistence(timeout: 2)
                 || app.staticTexts["No camera is available on this device."].waitForExistence(timeout: 2)
                 || app.alerts.firstMatch.waitForExistence(timeout: 2)
         )
@@ -37,7 +38,7 @@ final class CatLocalUITests: XCTestCase {
         let closeCameraButton = app.buttons["Close camera"]
         if closeCameraButton.waitForExistence(timeout: 2) {
             closeCameraButton.tap()
-            XCTAssertTrue(app.staticTexts["Meet Your First Cat"].waitForExistence(timeout: 5))
+            XCTAssertTrue(app.staticTexts["Meet Your First Local"].waitForExistence(timeout: 5))
         }
     }
 
@@ -47,13 +48,13 @@ final class CatLocalUITests: XCTestCase {
         app.launch()
 
         XCTAssertTrue(app.staticTexts["CatLocal"].waitForExistence(timeout: 8))
-        XCTAssertTrue(app.buttons["Cats"].exists)
+        XCTAssertTrue(app.buttons["Cards"].exists)
 
         let atlasButton = app.buttons["Catlas"]
         XCTAssertTrue(atlasButton.waitForExistence(timeout: 5))
         atlasButton.tap()
 
-        XCTAssertTrue(app.staticTexts["A private index of the places you type yourself. No GPS, coordinates, or public map."].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["2 private places typed by you. No GPS or public map."].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["Ferry Steps, 1 cat"].exists)
         XCTAssertTrue(app.buttons["Garden Wall, 1 cat"].exists)
 
@@ -113,7 +114,7 @@ final class CatLocalUITests: XCTestCase {
 
         celebrationHomeButton.tap()
         XCTAssertTrue(app.staticTexts["CatLocal"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["4 cats"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["4 saved"].waitForExistence(timeout: 5))
     }
 
     func testValidationImportFallbackExplainsUnconfirmedCutout() {

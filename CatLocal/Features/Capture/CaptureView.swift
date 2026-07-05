@@ -9,6 +9,7 @@ struct CaptureView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.openURL) private var openURL
     @Query private var existingRecords: [CatRecord]
 
     @StateObject private var camera = CameraController()
@@ -37,7 +38,7 @@ struct CaptureView: View {
     @State private var isCardMintingDone = false
     @State private var captureSelectionFeedbackTrigger = 0
     @State private var captureWarningFeedbackTrigger = 0
-    @State private var captureSaveSuccessFeedbackTrigger = 0
+    @State private var captureSaveFeedbackTrigger = 0
     @FocusState private var focusedEditorField: EditorField?
 
     private let processor = CatVisionProcessor()
@@ -84,7 +85,7 @@ struct CaptureView: View {
         .interactiveDismissDisabled(stage != .camera)
         .sensoryFeedback(.selection, trigger: captureSelectionFeedbackTrigger)
         .sensoryFeedback(.warning, trigger: captureWarningFeedbackTrigger)
-        .sensoryFeedback(.success, trigger: captureSaveSuccessFeedbackTrigger)
+        .sensoryFeedback(.impact(flexibility: .soft, intensity: 0.65), trigger: captureSaveFeedbackTrigger)
     }
 
     private var cameraScreen: some View {
@@ -299,7 +300,7 @@ struct CaptureView: View {
     private var openCameraSettingsButton: some View {
         Button {
             guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
-            UIApplication.shared.open(url)
+            openURL(url)
         } label: {
             Label("Open Settings", systemImage: "gearshape")
                 .font(CatTypography.control)
@@ -431,21 +432,31 @@ struct CaptureView: View {
         ZStack {
             CatLocalBackground()
 
-            VStack(spacing: 14) {
-                editorTopBar
-                    .padding(.horizontal, CatLocalTheme.screenHorizontalPadding)
-                    .padding(.top, 12)
+            GeometryReader { proxy in
+                ScrollView {
+                    VStack(spacing: 14) {
+                        editorTopBar
+                            .padding(.horizontal, CatLocalTheme.screenHorizontalPadding)
+                            .padding(.top, 12)
 
-                Spacer(minLength: 0)
+                        Spacer(minLength: 0)
 
-                if let cutoutImage {
-                    draggableSticker(cutoutImage)
+                        if let cutoutImage {
+                            draggableSticker(
+                                cutoutImage,
+                                height: stickerInspectionStickerHeight(for: proxy.size.height)
+                            )
+                        }
+
+                        Spacer(minLength: 0)
+
+                        stickerInspectionActions
+                            .padding(.bottom, 18)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .frame(minHeight: proxy.size.height)
                 }
-
-                Spacer(minLength: 0)
-
-                stickerInspectionActions
-                    .padding(.bottom, 18)
+                .scrollIndicators(.hidden)
             }
         }
     }
@@ -490,7 +501,7 @@ struct CaptureView: View {
                         .font(CatTypography.metadata)
                         .foregroundStyle(CatLocalTheme.secondaryText)
                 }
-                .lineLimit(1)
+                .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
                 .minimumScaleFactor(0.82)
 
                 Spacer(minLength: 8)
@@ -530,7 +541,7 @@ struct CaptureView: View {
                         .font(CatTypography.metadata)
                         .foregroundStyle(CatLocalTheme.secondaryText)
                 }
-                .lineLimit(1)
+                .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
                 .minimumScaleFactor(0.86)
 
                 Spacer(minLength: 8)
@@ -553,7 +564,15 @@ struct CaptureView: View {
         .accessibilityHint("Opens card design, name, and Catlas controls before saving")
     }
 
-    private func draggableSticker(_ image: UIImage) -> some View {
+    private func stickerInspectionStickerHeight(for availableHeight: CGFloat) -> CGFloat {
+        let baseHeight: CGFloat = dynamicTypeSize.isAccessibilitySize ? 320 : 390
+        let fixedContentAllowance: CGFloat = dynamicTypeSize.isAccessibilitySize ? 360 : 286
+        let availableStickerHeight = max(220, availableHeight - fixedContentAllowance)
+
+        return min(baseHeight, availableStickerHeight)
+    }
+
+    private func draggableSticker(_ image: UIImage, height: CGFloat = 390) -> some View {
         GeometryReader { proxy in
             let activeOffset = CGSize(
                 width: stickerBaseOffset.width + stickerDragTranslation.width,
@@ -583,7 +602,7 @@ struct CaptureView: View {
             )
             .accessibilityLabel("Cat sticker preview")
         }
-        .frame(height: 390)
+        .frame(height: height)
     }
 
     private func clampedStickerOffset(_ offset: CGSize) -> CGSize {
@@ -1353,7 +1372,7 @@ struct CaptureView: View {
             isSaving = false
             focusedEditorField = nil
             isEditorSheetPresented = false
-            captureSaveSuccessFeedbackTrigger += 1
+            captureSaveFeedbackTrigger += 1
             if shouldCelebrateSave {
                 isCardMintingDone = true
                 stage = .cardCelebrating

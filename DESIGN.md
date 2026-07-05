@@ -60,7 +60,7 @@ CatLocal's native shape is a capture-to-card pipeline:
 - `Make it yours` turns the cutout into a collectible card.
 - `Add Cat` saves the cat privately.
 - Home presents saved cats sorted by sequence number.
-- `Edit Cat` keeps the focused-cat state editable without leaving the cat context.
+- `Edit Card` keeps the focused-card state editable without leaving the card context.
 - `Catlas` groups saved cats by manual place labels typed by the user.
 - Settings explains local-only behavior, Local Storage, and destructive data controls.
 
@@ -75,7 +75,7 @@ Use `CatLocalTheme` tokens instead of hardcoded colors.
 | `elevatedSurface` / `chalk`      | `#ECE4D3`        | `#1B241E`           | Empty states, image stages, inputs |
 | `cardSurface`                    | `#FFFDF7`        | `#202820`           | Card and settings surfaces         |
 | `primaryText` / `forest` / `ink` | `#1C241F`        | `#F4F0E6`           | Titles and primary content         |
-| `secondaryText`                  | `#687169`        | `#AEB7AD`           | Metadata and supporting text       |
+| `secondaryText`                  | `#5D665E`        | `#AEB7AD`           | Metadata and supporting text       |
 | `separator`                      | `#1C241F` at 10% | `#F4F0E6` at 13%    | Dividers                           |
 | `imageOutline`                   | `#1C241F` at 13% | `#F4F0E6` at 16%    | Image/card strokes                 |
 | `shadow`                         | `#1C241F` at 16% | black at 65%        | Depth                              |
@@ -145,12 +145,12 @@ uses `role: .search` (or `.prominent` where available) so the system renders it 
 
 ### Home
 
-The empty state leads with `Meet Your First Cat`, the line `Capture a cat
+The empty state leads with `Meet Your First Local`, the line `Capture an
 encounter and keep it private on this iPhone.`, and three proof points:
 `No Account`, `No Public Map`, and `No Model Training`.
 
-Saved cats appear under the `Cats` segmented mode and sort ascending by sequence
-number. `Catlas` groups the same saved cats by manual place labels without
+Saved cards appear under the `Cards` segmented mode and sort ascending by sequence
+number. `Catlas` groups the same saved records by manual place labels without
 requesting GPS or storing coordinates.
 
 Home grid thumbnails are intentionally muted with blur/material treatment. The
@@ -166,7 +166,8 @@ black gradient. Controls are icon-first and glass-backed.
 
 Cards are polished editorial surfaces with a finite theme set: `Archive`,
 `Sunstamp`, `Clear`, `Garden`, `Midnight`, `Apricot`, `Midnight Prism`,
-`Gold Leaf`, and `Topographic`.
+`Gold Leaf`, `Topographic`, `Topo Ember`, `Topo Lagoon`, `Topo Moss`, and
+`Topo Dusk`.
 
 Theme selection is exposed through a horizontal carousel in capture and editing.
 The carousel should feel endless by repeating the style set and recentering near

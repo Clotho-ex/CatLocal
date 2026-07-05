@@ -38,7 +38,8 @@ struct DustingRevealView: View {
                     .accessibilityHidden(true)
 
                     if !reduceMotion {
-                        StickerDustEmitterView(
+                        DustingBurstField(
+                            progress: sweepProgress,
                             anchorBounds: anchorBounds,
                             isActive: dustIsActive
                         )
@@ -165,6 +166,101 @@ private struct DustingSweepView: View, Animatable {
             }
         }
         .blendMode(.screen)
+    }
+}
+
+private struct DustingBurstField: View, Animatable {
+    var progress: Double
+    let anchorBounds: CGRect?
+    let isActive: Bool
+
+    nonisolated var animatableData: Double {
+        get { progress }
+        set { progress = newValue }
+    }
+
+    private let particles: [BurstParticle] = [
+        BurstParticle(edge: .leading, t: 0.18, dx: -34, dy: -24, size: 5, delay: 0.00, color: Color(red: 1.00, green: 0.93, blue: 0.76)),
+        BurstParticle(edge: .leading, t: 0.56, dx: -42, dy: 4, size: 4, delay: 0.05, color: Color(red: 0.97, green: 0.86, blue: 0.58)),
+        BurstParticle(edge: .trailing, t: 0.26, dx: 32, dy: -18, size: 4, delay: 0.03, color: Color(red: 1.00, green: 1.00, blue: 0.94)),
+        BurstParticle(edge: .trailing, t: 0.68, dx: 38, dy: 20, size: 5, delay: 0.10, color: Color(red: 0.92, green: 0.78, blue: 0.52)),
+        BurstParticle(edge: .top, t: 0.22, dx: -20, dy: -34, size: 4, delay: 0.08, color: Color(red: 1.00, green: 0.94, blue: 0.78)),
+        BurstParticle(edge: .top, t: 0.72, dx: 22, dy: -30, size: 3, delay: 0.14, color: .white),
+        BurstParticle(edge: .bottom, t: 0.32, dx: -20, dy: 32, size: 4, delay: 0.12, color: Color(red: 0.98, green: 0.88, blue: 0.58)),
+        BurstParticle(edge: .bottom, t: 0.78, dx: 24, dy: 30, size: 5, delay: 0.18, color: .white)
+    ]
+
+    var body: some View {
+        Canvas { context, size in
+            guard isActive, progress > 0 else { return }
+            let rect = resolvedRect(in: size)
+
+            for particle in particles {
+                let localProgress = min(max((progress - particle.delay) / 0.48, 0), 1)
+                guard localProgress > 0, localProgress < 1 else { continue }
+
+                let start = particle.startPoint(in: rect)
+                let alpha = pow(1 - localProgress, 1.08) * 0.82
+                let radius = particle.size * CGFloat(0.72 + localProgress * 1.12)
+                let position = CGPoint(
+                    x: start.x + particle.dx * CGFloat(localProgress),
+                    y: start.y + particle.dy * CGFloat(localProgress)
+                )
+
+                context.fill(
+                    Path(
+                        ellipseIn: CGRect(
+                            x: position.x - radius / 2,
+                            y: position.y - radius / 2,
+                            width: radius,
+                            height: radius
+                        )
+                    ),
+                    with: .color(particle.color.opacity(alpha))
+                )
+            }
+        }
+        .blendMode(.screen)
+    }
+
+    private func resolvedRect(in size: CGSize) -> CGRect {
+        let normalized = anchorBounds ?? CGRect(x: 0.2, y: 0.18, width: 0.6, height: 0.64)
+        return CGRect(
+            x: normalized.minX * size.width,
+            y: normalized.minY * size.height,
+            width: normalized.width * size.width,
+            height: normalized.height * size.height
+        ).insetBy(dx: -10, dy: -10)
+    }
+
+    private struct BurstParticle {
+        let edge: BurstEdge
+        let t: CGFloat
+        let dx: CGFloat
+        let dy: CGFloat
+        let size: CGFloat
+        let delay: Double
+        let color: Color
+
+        func startPoint(in rect: CGRect) -> CGPoint {
+            switch edge {
+            case .leading:
+                CGPoint(x: rect.minX, y: rect.minY + rect.height * t)
+            case .trailing:
+                CGPoint(x: rect.maxX, y: rect.minY + rect.height * t)
+            case .top:
+                CGPoint(x: rect.minX + rect.width * t, y: rect.minY)
+            case .bottom:
+                CGPoint(x: rect.minX + rect.width * t, y: rect.maxY)
+            }
+        }
+    }
+
+    private enum BurstEdge {
+        case leading
+        case trailing
+        case top
+        case bottom
     }
 }
 
@@ -390,137 +486,4 @@ enum DustingAnchorSampler {
             .prefix(maximumAnchors)
             .map(\.self)
     }
-}
-
-struct StickerDustEmitterView: UIViewRepresentable {
-    let anchorBounds: CGRect?
-    let isActive: Bool
-
-    func makeUIView(context: Context) -> DustEmitterUIView {
-        DustEmitterUIView()
-    }
-
-    func updateUIView(_ uiView: DustEmitterUIView, context: Context) {
-        uiView.configure(anchorBounds: anchorBounds, isActive: isActive)
-    }
-}
-
-final class DustEmitterUIView: UIView {
-    private let emitters = [CAEmitterLayer(), CAEmitterLayer(), CAEmitterLayer(), CAEmitterLayer()]
-    private var wantsActive = false
-    private var burstStarted = false
-    private var currentAnchorBounds: CGRect?
-
-    init() {
-        super.init(frame: .zero)
-        isUserInteractionEnabled = false
-        backgroundColor = .clear
-        emitters.forEach { emitter in
-            emitter.emitterShape = .point
-            emitter.renderMode = .additive
-            emitter.birthRate = 0
-            layer.addSublayer(emitter)
-        }
-    }
-
-    @available(*, unavailable)
-    required init?(coder: NSCoder) {
-        nil
-    }
-
-    override func layoutSubviews() {
-        super.layoutSubviews()
-        emitters.forEach { $0.frame = bounds }
-        layoutEmitters(anchorBounds: currentAnchorBounds)
-        if wantsActive, !burstStarted {
-            startBurstIfReady()
-        }
-    }
-
-    func configure(anchorBounds: CGRect?, isActive: Bool) {
-        currentAnchorBounds = anchorBounds
-        layoutEmitters(anchorBounds: anchorBounds)
-        if isActive {
-            wantsActive = true
-            startBurstIfReady()
-        } else {
-            wantsActive = false
-            burstStarted = false
-            stopBurst()
-        }
-    }
-
-    private func layoutEmitters(anchorBounds: CGRect?) {
-        let normalized = anchorBounds ?? CGRect(x: 0.2, y: 0.18, width: 0.6, height: 0.64)
-        let rect = CGRect(
-            x: normalized.minX * bounds.width,
-            y: normalized.minY * bounds.height,
-            width: normalized.width * bounds.width,
-            height: normalized.height * bounds.height
-        ).insetBy(dx: -10, dy: -10)
-
-        emitters[0].emitterPosition = CGPoint(x: rect.minX, y: rect.midY)
-        emitters[1].emitterPosition = CGPoint(x: rect.maxX, y: rect.midY)
-        emitters[2].emitterPosition = CGPoint(x: rect.midX, y: rect.minY)
-        emitters[3].emitterPosition = CGPoint(x: rect.midX, y: rect.maxY)
-    }
-
-    private func startBurstIfReady() {
-        guard bounds.width > 2, bounds.height > 2 else { return }
-        guard !burstStarted else { return }
-        burstStarted = true
-        for (index, emitter) in emitters.enumerated() {
-            emitter.emitterCells = [emitterCell(for: index)]
-            emitter.beginTime = CACurrentMediaTime()
-            emitter.birthRate = 0.8
-        }
-    }
-
-    private func stopBurst() {
-        emitters.forEach { $0.birthRate = 0 }
-    }
-
-    private func emitterCell(for index: Int) -> CAEmitterCell {
-        let cell = CAEmitterCell()
-        cell.contents = Self.particleImage.cgImage
-        cell.birthRate = 18
-        cell.duration = 0
-        cell.lifetime = 0.78
-        cell.lifetimeRange = 0.22
-        cell.velocity = 54
-        cell.velocityRange = 24
-        cell.yAcceleration = 0
-        cell.scale = 0.085
-        cell.scaleRange = 0.04
-        cell.scaleSpeed = -0.035
-        cell.alphaSpeed = -1.25
-        cell.spin = 1.8
-        cell.spinRange = 3.2
-        cell.emissionRange = .pi / 5
-        cell.color = particleColor(for: index).cgColor
-        cell.emissionLongitude = emissionLongitude(for: index)
-        return cell
-    }
-
-    private func emissionLongitude(for index: Int) -> CGFloat {
-        [CGFloat.pi, 0, -CGFloat.pi / 2, CGFloat.pi / 2][index]
-    }
-
-    private func particleColor(for index: Int) -> UIColor {
-        let colors: [UIColor] = [
-            UIColor(red: 1.00, green: 0.93, blue: 0.76, alpha: 1),
-            UIColor(red: 0.97, green: 0.86, blue: 0.58, alpha: 1),
-            UIColor(red: 1.00, green: 1.00, blue: 0.94, alpha: 1),
-            UIColor(red: 0.92, green: 0.78, blue: 0.52, alpha: 1)
-        ]
-        return colors[index % colors.count].withAlphaComponent(0.76)
-    }
-
-    private static let particleImage: UIImage = {
-        let renderer = UIGraphicsImageRenderer(size: CGSize(width: 18, height: 18))
-        return renderer.image { context in
-            UIColor.white.setFill()
-            context.cgContext.fillEllipse(in: CGRect(x: 2, y: 2, width: 14, height: 14))
-        }
-    }()
 }

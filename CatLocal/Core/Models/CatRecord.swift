@@ -148,6 +148,10 @@ enum CardStyle: String, Codable, CaseIterable, Identifiable, Hashable, Sendable 
     case prism
     case gold
     case topo
+    case topoEmber
+    case topoLagoon
+    case topoMoss
+    case topoDusk
 
     var id: String { rawValue }
 
@@ -160,7 +164,11 @@ enum CardStyle: String, Codable, CaseIterable, Identifiable, Hashable, Sendable 
         .apricot,
         .prism,
         .gold,
-        .topo
+        .topo,
+        .topoEmber,
+        .topoLagoon,
+        .topoMoss,
+        .topoDusk
     ]
 
     var displayIndex: Int {
@@ -187,6 +195,40 @@ enum CardStyle: String, Codable, CaseIterable, Identifiable, Hashable, Sendable 
             "Gold Leaf"
         case .topo:
             "Topographic"
+        case .topoEmber:
+            "Topo Ember"
+        case .topoLagoon:
+            "Topo Lagoon"
+        case .topoMoss:
+            "Topo Moss"
+        case .topoDusk:
+            "Topo Dusk"
+        }
+    }
+
+    var isTopographic: Bool {
+        switch self {
+        case .topo, .topoEmber, .topoLagoon, .topoMoss, .topoDusk:
+            true
+        default:
+            false
+        }
+    }
+
+    var topographicVariantIndex: Int {
+        switch self {
+        case .topo:
+            0
+        case .topoEmber:
+            1
+        case .topoLagoon:
+            2
+        case .topoMoss:
+            3
+        case .topoDusk:
+            4
+        default:
+            0
         }
     }
 

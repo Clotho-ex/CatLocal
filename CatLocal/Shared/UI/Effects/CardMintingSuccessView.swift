@@ -16,7 +16,7 @@ struct CardMintingSuccessView<Content: View>: View {
     @State private var buttonsVisible = false
     @State private var sheenVisible = false
     @State private var sheenTravelled = false
-    @State private var hapticTrigger = 0
+    @State private var revealSuccessFeedbackTrigger = 0
 
     init(
         isCustomizationDone: Binding<Bool>,
@@ -64,7 +64,7 @@ struct CardMintingSuccessView<Content: View>: View {
         .task(id: isCustomizationDone) {
             await runMintingSequence()
         }
-        .sensoryFeedback(.success, trigger: hapticTrigger)
+        .sensoryFeedback(.success, trigger: revealSuccessFeedbackTrigger)
     }
 
     private var mintedCard: some View {
@@ -101,7 +101,7 @@ struct CardMintingSuccessView<Content: View>: View {
                     .offset(y: -0.5)
             }
             .frame(width: 24, height: 24)
-            .symbolEffect(.bounce, value: hapticTrigger)
+            .symbolEffect(.bounce, value: revealSuccessFeedbackTrigger)
             .accessibilityHidden(true)
 
             Text("Saved Successfully")
@@ -158,9 +158,7 @@ struct CardMintingSuccessView<Content: View>: View {
         }
         .padding(.horizontal, 24)
         .padding(.bottom, 34)
-        .opacity(buttonsVisible || reduceMotion ? 1 : 0)
-        .offset(y: buttonsVisible || reduceMotion ? 0 : 12)
-        .allowsHitTesting(buttonsVisible || reduceMotion)
+        .offset(y: buttonsVisible || reduceMotion ? 0 : 6)
         .animation(.smooth(duration: 0.28, extraBounce: 0), value: buttonsVisible)
     }
 
@@ -214,7 +212,9 @@ struct CardMintingSuccessView<Content: View>: View {
             cardSettled = true
             badgeVisible = true
             buttonsVisible = true
-            hapticTrigger += 1
+            try? await Task.sleep(for: .milliseconds(360))
+            guard !Task.isCancelled else { return }
+            revealSuccessFeedbackTrigger += 1
             try? await Task.sleep(for: .milliseconds(2_000))
             guard !Task.isCancelled else { return }
             hideSavedBadge()
@@ -222,7 +222,6 @@ struct CardMintingSuccessView<Content: View>: View {
         }
 
         try? await Task.sleep(for: .milliseconds(80))
-        hapticTrigger += 1
 
         withAnimation(.smooth(duration: 0.52, extraBounce: 0)) {
             cardSettled = true
@@ -241,6 +240,7 @@ struct CardMintingSuccessView<Content: View>: View {
         withAnimation(.snappy(duration: 0.34, extraBounce: 0)) {
             badgeVisible = true
         }
+        revealSuccessFeedbackTrigger += 1
 
         try? await Task.sleep(for: .milliseconds(190))
         withAnimation(.smooth(duration: 0.28, extraBounce: 0)) {

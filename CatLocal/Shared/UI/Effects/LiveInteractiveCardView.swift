@@ -1,5 +1,4 @@
 import SwiftUI
-import UIKit
 
 /// Areas for Polish: While the custom procedural effects (like the Topographic
 /// card's TopoContourLayer) are impressive, they are computationally heavy.
@@ -24,6 +23,7 @@ struct LiveInteractiveCardView<Content: View>: View {
     @State private var lastHapticAngle: CGFloat = 0
     @State private var hasHitLimit = false
     @State private var selectionFeedbackTrigger = 0
+    @State private var limitFeedbackTrigger = 0
 
     init(
         width: CGFloat? = 350,
@@ -86,6 +86,7 @@ struct LiveInteractiveCardView<Content: View>: View {
                 onInteractionChanged?(isInteracting)
             }
             .sensoryFeedback(.selection, trigger: selectionFeedbackTrigger)
+            .sensoryFeedback(.impact(flexibility: .rigid, intensity: 1), trigger: limitFeedbackTrigger)
         }
         .frame(width: width, height: height)
     }
@@ -135,7 +136,7 @@ struct LiveInteractiveCardView<Content: View>: View {
                 }
 
                 if hapticsEnabled && tilt.isAtLimit && !hasHitLimit {
-                    UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
+                    limitFeedbackTrigger += 1
                     hasHitLimit = true
                 } else if !tilt.isAtLimit {
                     hasHitLimit = false
@@ -191,7 +192,7 @@ struct LiveInteractiveCardView<Content: View>: View {
         }
 
         if hapticsEnabled && tilt.isAtLimit {
-            UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
+            limitFeedbackTrigger += 1
         }
 
         withAnimation(.interactiveSpring(response: 0.25, dampingFraction: 0.65)) {

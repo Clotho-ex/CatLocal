@@ -478,14 +478,14 @@ private struct CatCardSurface<CatImage: View>: View {
     private var surface: some View {
         if thumbnail {
             thumbnailSurface
+        } else if cardStyle.isTopographic {
+            topoSurface
         } else {
             switch cardStyle {
             case .prism:
                 prismSurface
             case .gold:
                 goldSurface
-            case .topo:
-                topoSurface
             default:
                 standardSurface
             }
@@ -542,7 +542,7 @@ private struct CatCardSurface<CatImage: View>: View {
                 endRadius: 130
             )
 
-            if cardStyle == .topo {
+            if cardStyle.isTopographic {
                 topoThumbnailLayer
                     .opacity(0.48)
             }
@@ -681,8 +681,8 @@ private struct CatCardSurface<CatImage: View>: View {
                     .stroke(
                         LinearGradient(
                             colors: [
-                                Color.white.opacity(0.36),
-                                palette.accent.opacity(0.24)
+                                topoLineColors.first?.opacity(0.42) ?? Color.white.opacity(0.36),
+                                palette.accent.opacity(0.26)
                             ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
@@ -726,9 +726,9 @@ private struct CatCardSurface<CatImage: View>: View {
             }
             .overlay {
                 TopoContourLayer(
-                    seed: positiveSeed,
-                    lineCount: presentation == .thumbnail ? 10 : 16,
-                    lineWidth: presentation == .thumbnail ? 0.85 : 1.2,
+                    seed: positiveSeed + topoVariant * 97,
+                    lineCount: topoLineCount,
+                    lineWidth: topoLineWidth,
                     gradient: LinearGradient(
                         colors: topoLineColors,
                         startPoint: topoStartPoint,
@@ -780,19 +780,15 @@ private struct CatCardSurface<CatImage: View>: View {
     }
 
     private var topoMaskCenter: UnitPoint {
-        UnitPoint(
-            x: clampedUnit(0.5 + effectiveRotateY / 24),
-            y: clampedUnit(0.5 + (-effectiveRotateX / 24))
+        let base = topoBaseCenter
+        return UnitPoint(
+            x: clampedUnit(base.x + effectiveRotateY / 24),
+            y: clampedUnit(base.y + (-effectiveRotateX / 24))
         )
     }
 
     private var topoColors: [Color] {
-        let palettes: [[Color]] = [
-            [.red, .yellow, .green, .pink],
-            [.cyan, .yellow, .mint, .orange],
-            [.pink, .green, .yellow, .blue],
-            [.orange, .teal, .yellow, .red]
-        ]
+        let palettes = topoPalettes
         let palette = palettes[positiveSeed % palettes.count]
         let rotation = positiveSeed % palette.count
         return Array(palette[rotation...]) + Array(palette[..<rotation]) + [palette[rotation]]
@@ -816,21 +812,120 @@ private struct CatCardSurface<CatImage: View>: View {
     }
 
     private var topoAngle: Angle {
-        .degrees(Double(positiveSeed % 360) + Double(effectiveRotateY - effectiveRotateX) * 3.2)
+        .degrees(Double((positiveSeed + topoVariant * 41) % 360) + Double(effectiveRotateY - effectiveRotateX) * topoTiltResponse)
     }
 
     private var topoStartPoint: UnitPoint {
         UnitPoint(
-            x: clampedUnit(0.12 + CGFloat((positiveSeed % 17)) / 64 + effectiveRotateY / 36),
-            y: clampedUnit(0.1 + effectiveRotateX / 42)
+            x: clampedUnit(topoStartBase.x + CGFloat((positiveSeed % 17)) / 72 + effectiveRotateY / 36),
+            y: clampedUnit(topoStartBase.y + effectiveRotateX / 42)
         )
     }
 
     private var topoEndPoint: UnitPoint {
         UnitPoint(
-            x: clampedUnit(0.88 - CGFloat((positiveSeed % 13)) / 72 + effectiveRotateY / 36),
-            y: clampedUnit(0.92 + effectiveRotateX / 42)
+            x: clampedUnit(topoEndBase.x - CGFloat((positiveSeed % 13)) / 82 + effectiveRotateY / 36),
+            y: clampedUnit(topoEndBase.y + effectiveRotateX / 42)
         )
+    }
+
+    private var topoVariant: Int {
+        cardStyle.topographicVariantIndex
+    }
+
+    private var topoLineCount: Int {
+        let base = presentation == .thumbnail ? 9 : 15
+        return base + min(topoVariant, 4) * (presentation == .thumbnail ? 1 : 2)
+    }
+
+    private var topoLineWidth: CGFloat {
+        let base: CGFloat = presentation == .thumbnail ? 0.8 : 1.12
+        return base + CGFloat(topoVariant % 3) * 0.08
+    }
+
+    private var topoTiltResponse: Double {
+        2.7 + Double(topoVariant) * 0.18
+    }
+
+    private var topoBaseCenter: UnitPoint {
+        switch cardStyle {
+        case .topoEmber:
+            UnitPoint(x: 0.66, y: 0.36)
+        case .topoLagoon:
+            UnitPoint(x: 0.36, y: 0.42)
+        case .topoMoss:
+            UnitPoint(x: 0.58, y: 0.64)
+        case .topoDusk:
+            UnitPoint(x: 0.44, y: 0.30)
+        default:
+            UnitPoint(x: 0.5, y: 0.5)
+        }
+    }
+
+    private var topoStartBase: UnitPoint {
+        switch cardStyle {
+        case .topoEmber:
+            UnitPoint(x: 0.04, y: 0.18)
+        case .topoLagoon:
+            UnitPoint(x: 0.20, y: 0.04)
+        case .topoMoss:
+            UnitPoint(x: 0.10, y: 0.46)
+        case .topoDusk:
+            UnitPoint(x: 0.24, y: 0.10)
+        default:
+            UnitPoint(x: 0.12, y: 0.10)
+        }
+    }
+
+    private var topoEndBase: UnitPoint {
+        switch cardStyle {
+        case .topoEmber:
+            UnitPoint(x: 0.96, y: 0.82)
+        case .topoLagoon:
+            UnitPoint(x: 0.82, y: 0.96)
+        case .topoMoss:
+            UnitPoint(x: 0.88, y: 0.72)
+        case .topoDusk:
+            UnitPoint(x: 0.92, y: 0.90)
+        default:
+            UnitPoint(x: 0.88, y: 0.92)
+        }
+    }
+
+    private var topoPalettes: [[Color]] {
+        switch cardStyle {
+        case .topoEmber:
+            [
+                [.orange, .yellow, Color(red: 1.0, green: 0.35, blue: 0.24), .pink],
+                [Color(red: 1.0, green: 0.84, blue: 0.32), .orange, Color(red: 0.96, green: 0.18, blue: 0.18), .mint],
+                [Color(red: 0.92, green: 0.24, blue: 0.14), Color(red: 1.0, green: 0.72, blue: 0.20), .teal, .pink]
+            ]
+        case .topoLagoon:
+            [
+                [.cyan, .mint, Color(red: 0.16, green: 0.54, blue: 1.0), .yellow],
+                [Color(red: 0.28, green: 0.90, blue: 0.78), .blue, .cyan, Color(red: 0.92, green: 1.0, blue: 0.60)],
+                [.teal, Color(red: 0.36, green: 0.66, blue: 1.0), .mint, .white]
+            ]
+        case .topoMoss:
+            [
+                [.green, Color(red: 0.86, green: 0.92, blue: 0.34), .mint, .orange],
+                [Color(red: 0.44, green: 0.76, blue: 0.28), Color(red: 1.0, green: 0.78, blue: 0.24), .teal, Color(red: 0.82, green: 1.0, blue: 0.58)],
+                [Color(red: 0.22, green: 0.58, blue: 0.30), .yellow, .mint, Color(red: 0.92, green: 0.58, blue: 0.24)]
+            ]
+        case .topoDusk:
+            [
+                [Color(red: 0.64, green: 0.52, blue: 1.0), .cyan, Color(red: 1.0, green: 0.42, blue: 0.70), .yellow],
+                [.blue, Color(red: 0.86, green: 0.44, blue: 1.0), .mint, Color(red: 1.0, green: 0.72, blue: 0.36)],
+                [Color(red: 0.42, green: 0.36, blue: 1.0), .pink, .cyan, .white]
+            ]
+        default:
+            [
+                [.red, .yellow, .green, .pink],
+                [.cyan, .yellow, .mint, .orange],
+                [.pink, .green, .yellow, .blue],
+                [.orange, .teal, .yellow, .red]
+            ]
+        }
     }
 
     private var positiveSeed: Int {
@@ -949,6 +1044,46 @@ private struct CardStylePalette {
             secondaryAccent = Color(red: 0.28, green: 0.82, blue: 0.76)
             sheen = Color(red: 1.0, green: 0.84, blue: 0.36)
             primaryContent = .white
+        case .topoEmber:
+            surfaceColors = [
+                Color(red: 0.16, green: 0.06, blue: 0.04),
+                Color(red: 0.45, green: 0.13, blue: 0.08),
+                Color(red: 0.09, green: 0.04, blue: 0.03)
+            ]
+            accent = Color(red: 1.0, green: 0.55, blue: 0.18)
+            secondaryAccent = Color(red: 0.98, green: 0.22, blue: 0.24)
+            sheen = Color(red: 1.0, green: 0.84, blue: 0.42)
+            primaryContent = .white
+        case .topoLagoon:
+            surfaceColors = [
+                Color(red: 0.02, green: 0.10, blue: 0.15),
+                Color(red: 0.03, green: 0.24, blue: 0.29),
+                Color(red: 0.01, green: 0.06, blue: 0.11)
+            ]
+            accent = Color(red: 0.24, green: 0.88, blue: 0.86)
+            secondaryAccent = Color(red: 0.25, green: 0.52, blue: 1.0)
+            sheen = Color(red: 0.78, green: 1.0, blue: 0.86)
+            primaryContent = .white
+        case .topoMoss:
+            surfaceColors = [
+                Color(red: 0.05, green: 0.13, blue: 0.08),
+                Color(red: 0.16, green: 0.30, blue: 0.15),
+                Color(red: 0.03, green: 0.08, blue: 0.05)
+            ]
+            accent = Color(red: 0.78, green: 0.92, blue: 0.30)
+            secondaryAccent = Color(red: 0.34, green: 0.72, blue: 0.40)
+            sheen = Color(red: 0.92, green: 1.0, blue: 0.62)
+            primaryContent = .white
+        case .topoDusk:
+            surfaceColors = [
+                Color(red: 0.04, green: 0.04, blue: 0.15),
+                Color(red: 0.15, green: 0.08, blue: 0.24),
+                Color(red: 0.03, green: 0.02, blue: 0.09)
+            ]
+            accent = Color(red: 0.70, green: 0.58, blue: 1.0)
+            secondaryAccent = Color(red: 1.0, green: 0.38, blue: 0.66)
+            sheen = Color(red: 0.70, green: 0.92, blue: 1.0)
+            primaryContent = .white
         }
 
         secondaryContent = primaryContent.opacity(0.82)
@@ -1044,7 +1179,7 @@ struct CardStyleCarousel<Preview: View>: View {
     let titleMinHeight: CGFloat
     @State private var centeredItemID: Int?
     @State private var hapticStyle: CardStyle?
-    @State private var hapticGenerator = UISelectionFeedbackGenerator()
+    @State private var selectionFeedbackTrigger = 0
 
     @ViewBuilder let preview: (_ style: CardStyle) -> Preview
 
@@ -1094,7 +1229,6 @@ struct CardStyleCarousel<Preview: View>: View {
             .scrollPosition(id: $centeredItemID)
             .onAppear {
                 centeredItemID = centeredItemID(for: selectedStyle)
-                hapticGenerator.prepare()
             }
             .onChange(of: centeredItemID) { _, itemID in
                 guard let itemID, let item = carouselItems.first(where: { $0.id == itemID }) else { return }
@@ -1111,6 +1245,7 @@ struct CardStyleCarousel<Preview: View>: View {
                 }
             }
         }
+        .sensoryFeedback(.selection, trigger: selectionFeedbackTrigger)
     }
 
     private var styleCount: Int {
@@ -1164,57 +1299,63 @@ struct CardStyleCarousel<Preview: View>: View {
         let isSelected = style == selectedStyle
         let shape = RoundedRectangle(cornerRadius: itemCornerRadius, style: .continuous)
 
-        return VStack(spacing: 9) {
-            preview(style)
-                .aspectRatio(previewAspectRatio, contentMode: .fit)
-                .allowsHitTesting(false)
+        return Button {
+            selectStyle(style)
+        } label: {
+            VStack(spacing: 9) {
+                preview(style)
+                    .aspectRatio(previewAspectRatio, contentMode: .fit)
+                    .allowsHitTesting(false)
 
-            Text(style.title)
-                .font(CatTypography.badge)
-                .foregroundStyle(isSelected ? CatAttentionRole.action.text : CatLocalTheme.secondaryText)
-                .lineLimit(2)
-                .multilineTextAlignment(.center)
-                .frame(minHeight: titleMinHeight, alignment: .center)
-        }
-        .frame(width: itemWidth)
-        .padding(itemPadding)
-        .background {
-            shape
-                .fill(isSelected ? CatAttentionRole.action.wash : CatLocalTheme.cardSurface.opacity(0.36))
-                .shadow(
-                    color: CatLocalTheme.blueAction.opacity(isSelected ? 0.10 : 0),
-                    radius: isSelected ? 7 : 0,
-                    y: isSelected ? 3 : 0
-                )
-                .shadow(
-                    color: CatLocalTheme.shadow.opacity(isSelected ? 0.16 : 0),
-                    radius: isSelected ? 8 : 0,
-                    y: isSelected ? 4 : 0
-                )
-        }
-        .overlay {
-            shape
-                .stroke(isSelected ? CatAttentionRole.action.stroke : Color.clear, lineWidth: 1)
-        }
-        .scaleEffect(isSelected ? 1 : 0.96)
-        .contentShape(RoundedRectangle(cornerRadius: itemCornerRadius, style: .continuous))
-        .onTapGesture {
-            withAnimation(.snappy(duration: 0.24)) {
-                selectedStyle = style
-                centeredItemID = centeredItemID(for: style)
+                Text(style.title)
+                    .font(CatTypography.badge)
+                    .foregroundStyle(isSelected ? CatAttentionRole.action.text : CatLocalTheme.secondaryText)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.center)
+                    .frame(minHeight: titleMinHeight, alignment: .center)
             }
-            playSelectionHaptic(for: style)
+            .frame(width: itemWidth)
+            .padding(itemPadding)
+            .background {
+                shape
+                    .fill(isSelected ? CatAttentionRole.action.wash : CatLocalTheme.cardSurface.opacity(0.36))
+                    .shadow(
+                        color: CatLocalTheme.blueAction.opacity(isSelected ? 0.10 : 0),
+                        radius: isSelected ? 7 : 0,
+                        y: isSelected ? 3 : 0
+                    )
+                    .shadow(
+                        color: CatLocalTheme.shadow.opacity(isSelected ? 0.16 : 0),
+                        radius: isSelected ? 8 : 0,
+                        y: isSelected ? 4 : 0
+                    )
+            }
+            .overlay {
+                shape
+                    .stroke(isSelected ? CatAttentionRole.action.stroke : Color.clear, lineWidth: 1)
+            }
+            .scaleEffect(isSelected ? 1 : 0.96)
+            .contentShape(RoundedRectangle(cornerRadius: itemCornerRadius, style: .continuous))
         }
+        .buttonStyle(.plain)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Design \(style.displayIndex + 1), \(style.title) card design")
+        .accessibilityHint("Selects this card design")
         .accessibilityAddTraits(isSelected ? [.isSelected] : [])
+    }
+
+    private func selectStyle(_ style: CardStyle) {
+        withAnimation(.snappy(duration: 0.24)) {
+            selectedStyle = style
+            centeredItemID = centeredItemID(for: style)
+        }
+        playSelectionHaptic(for: style)
     }
 
     private func playSelectionHaptic(for style: CardStyle) {
         guard hapticStyle != style else { return }
         hapticStyle = style
-        hapticGenerator.selectionChanged()
-        hapticGenerator.prepare()
+        selectionFeedbackTrigger += 1
     }
 }
 
@@ -1352,28 +1493,102 @@ struct CardStyleSwatch: View {
             )
             .opacity(0.82)
             .blendMode(.hardLight)
-        case .topo:
-            ZStack {
-                AngularGradient(
-                    colors: [.orange, .teal, .yellow, .pink, .orange],
-                    center: .center
-                )
-                .opacity(0.35)
-                .blendMode(.plusLighter)
+        case .topo, .topoEmber, .topoLagoon, .topoMoss, .topoDusk:
+            topographicSwatchOverlay
+        }
+    }
 
-                TopoContourLayer(
-                    seed: 17,
-                    lineCount: 8,
-                    lineWidth: 0.8,
-                    gradient: LinearGradient(
-                        colors: [.white.opacity(0.72), .yellow.opacity(0.62)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
+    private var topographicSwatchOverlay: some View {
+        let variant = style.topographicVariantIndex
+
+        return ZStack {
+            AngularGradient(
+                colors: topographicSwatchColors,
+                center: topographicSwatchCenter,
+                angle: .degrees(Double(variant * 22))
+            )
+            .opacity(0.52)
+            .blendMode(.plusLighter)
+
+            LinearGradient(
+                colors: [
+                    palette.sheen.opacity(0.30),
+                    .clear,
+                    palette.secondaryAccent.opacity(0.24)
+                ],
+                startPoint: topographicSwatchStartPoint,
+                endPoint: topographicSwatchEndPoint
+            )
+            .blendMode(.screen)
+
+            TopoContourLayer(
+                seed: 17 + variant * 53,
+                lineCount: 8 + min(variant, 4),
+                lineWidth: 0.8 + CGFloat(variant % 3) * 0.08,
+                gradient: LinearGradient(
+                    colors: [
+                        Color.white.opacity(0.74),
+                        palette.sheen.opacity(0.66),
+                        palette.accent.opacity(0.58)
+                    ],
+                    startPoint: topographicSwatchStartPoint,
+                    endPoint: topographicSwatchEndPoint
                 )
-                .opacity(0.72)
-                .blendMode(.plusLighter)
-            }
+            )
+            .opacity(0.76)
+            .blendMode(.plusLighter)
+        }
+    }
+
+    private var topographicSwatchColors: [Color] {
+        switch style {
+        case .topoEmber:
+            [.orange, palette.sheen, palette.secondaryAccent, .pink, .orange]
+        case .topoLagoon:
+            [.cyan, palette.accent, .mint, palette.secondaryAccent, .cyan]
+        case .topoMoss:
+            [.green, palette.accent, .yellow, palette.secondaryAccent, .green]
+        case .topoDusk:
+            [palette.accent, .cyan, palette.secondaryAccent, palette.sheen, palette.accent]
+        default:
+            [.orange, .teal, .yellow, .pink, .orange]
+        }
+    }
+
+    private var topographicSwatchCenter: UnitPoint {
+        switch style {
+        case .topoEmber:
+            UnitPoint(x: 0.68, y: 0.34)
+        case .topoLagoon:
+            UnitPoint(x: 0.36, y: 0.42)
+        case .topoMoss:
+            UnitPoint(x: 0.58, y: 0.66)
+        case .topoDusk:
+            UnitPoint(x: 0.42, y: 0.28)
+        default:
+            .center
+        }
+    }
+
+    private var topographicSwatchStartPoint: UnitPoint {
+        switch style {
+        case .topoLagoon:
+            .top
+        case .topoMoss:
+            .leading
+        default:
+            .topLeading
+        }
+    }
+
+    private var topographicSwatchEndPoint: UnitPoint {
+        switch style {
+        case .topoLagoon:
+            .bottomTrailing
+        case .topoMoss:
+            .trailing
+        default:
+            .bottomTrailing
         }
     }
 

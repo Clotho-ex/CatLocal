@@ -251,9 +251,11 @@ struct SettingsView: View {
             let bytes = try await CatImageStore.shared.storageSize()
             storageByteCount = bytes
             storageText = ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)
+            errorMessage = nil
         } catch {
             storageByteCount = nil
             storageText = "Unavailable"
+            errorMessage = "CatLocal could not measure local storage. \(error.localizedDescription)"
         }
     }
 

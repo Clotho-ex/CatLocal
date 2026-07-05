@@ -18,8 +18,8 @@ specification. Native behavior, legibility, and accessibility take priority.
 
 - Card text is display-only on the card surface. Names, notes, and Catlas labels are edited in the capture/editor fields, not inline on the card.
 - Focused cards can react to touch through tilt, spotlight, foil, and haptics. Grid thumbnails must stay visually quiet and inexpensive to render.
-- `Midnight Prism`, `Gold Leaf`, and `Topographic` are premium foil styles. Their animated light should appear only while the focused card is being touched.
-- `Topographic` should read as visible contour lines over color, not a flat rainbow wash.
+- `Midnight Prism`, `Gold Leaf`, and the topographic family are premium foil styles. Their animated light should appear only while the focused card is being touched.
+- Topographic styles should read as visible contour lines over color, not flat rainbow washes.
 - The theme carousel should feel endless and should give a small selection haptic while scrolling between styles.
 - Typography is semantic and native-system through `CatTypography`. Use those roles for screen titles, page moments, panel titles, body copy, metadata, controls, field labels, and card text instead of adding one-off font sizes.
 

@@ -154,13 +154,14 @@ The card renderer now supports the expanded style set:
 - `archive`, `sunstamp`, `clear`
 - `garden`, `midnight`, `apricot`
 - `prism`, `gold`, `topo`
+- `topoEmber`, `topoLagoon`, `topoMoss`, `topoDusk`
 
 Implementation notes from the foil polish pass:
 
 - `LiveInteractiveCardView` passes `rotateX`, `rotateY`, and `isInteracting` into its content closure. Keep this signature when adding focused-card effects.
 - Focused foil and spotlight effects are intentionally hidden until touch. Static previews can show foil, but the focused baseline should stay calm.
 - `prism` and `gold` use permanent dark base surfaces so blend modes do not wash out in light or dark mode.
-- `topo` is procedural and asset-free: it uses seeded gradients plus lightweight `Shape` contour strokes. Do not replace it with a heavy per-frame `Canvas` in scrolling contexts.
+- The topographic family is procedural and asset-free: it uses seeded gradients plus lightweight `Shape` contour strokes. Do not replace it with a heavy per-frame `Canvas` in scrolling contexts.
 - `presentation == .thumbnail` must ignore live tilt and stay cheap. Home grid thumbnails are deliberately blurred/material-muted until a card is focused.
 - The home grid wraps card buttons in an explicit aspect-ratio hit box. Preserve that wrapper so cards do not steal touches from the `Catlas` segmented control.
 - Card style selection uses an infinite-feeling carousel by rendering repeated style cycles and recentering near the ends. Selection haptics fire when the centered style changes.

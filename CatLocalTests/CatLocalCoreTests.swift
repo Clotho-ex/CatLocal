@@ -14,6 +14,14 @@ struct CatLocalCoreTests {
     }
 
     @Test
+    func cardStyleCatalogIncludesTopographicVariants() {
+        let topographicStyles = CardStyle.orderedCases.filter(\.isTopographic)
+
+        #expect(topographicStyles == [.topo, .topoEmber, .topoLagoon, .topoMoss, .topoDusk])
+        #expect(Set(CardStyle.orderedCases.map(\.rawValue)).count == CardStyle.orderedCases.count)
+    }
+
+    @Test
     func compactSequencesKeepsRemainingCardNumbersContiguous() {
         let first = makeRecord(sequence: 1)
         let third = makeRecord(sequence: 3)

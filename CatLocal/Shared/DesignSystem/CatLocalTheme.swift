@@ -23,7 +23,7 @@ enum CatLocalTheme {
         dark: UIColor(hex: 0xF4F0E6)
     )
     static let secondaryText = Color(
-        light: UIColor(hex: 0x687169),
+        light: UIColor(hex: 0x5D665E),
         dark: UIColor(hex: 0xAEB7AD)
     )
     static let separator = Color(
@@ -171,13 +171,13 @@ enum CatLocalTheme {
         switch style {
         case .archive:
             sage
-        case .sunstamp, .apricot, .gold, .topo:
+        case .sunstamp, .apricot, .gold, .topo, .topoEmber:
             warning
-        case .clear:
+        case .clear, .topoLagoon:
             blueAction
-        case .garden:
+        case .garden, .topoMoss:
             positive
-        case .midnight, .prism:
+        case .midnight, .prism, .topoDusk:
             primaryText
         }
     }
@@ -190,7 +190,7 @@ enum CatLocalTheme {
             elevatedSurface
         case .garden:
             memoryPlaceFill
-        case .midnight, .topo:
+        case .midnight, .topo, .topoEmber, .topoLagoon, .topoMoss, .topoDusk:
             primaryText.opacity(0.92)
         case .prism:
             Color(red: 0.08, green: 0.09, blue: 0.12)
@@ -687,7 +687,7 @@ private struct CatGlassModifier: ViewModifier {
                 content
                     .background(.ultraThinMaterial, in: shape)
                     .overlay(shape.stroke(CatLocalTheme.imageOutline, lineWidth: 1))
-                    .shadow(color: CatLocalTheme.shadow.opacity(0.55), radius: 18, y: 8)
+                    .shadow(color: CatLocalTheme.shadow.opacity(0.22), radius: 8, y: 3)
             }
         }
     }
