@@ -1,215 +1,286 @@
-# CatLocal Design
+---
+name: CatLocal
+description: A private, local-first iPhone journal that turns real cat encounters into tactile collectible cards.
+colors:
+  sea-glass-bg: "#DCEAE5"
+  deep-forest-bg: "#061210"
+  porcelain-glow: "#F8FFFC"
+  dark-sea-glow: "#103B35"
+  chalk-surface: "#CBDDD6"
+  deep-chalk-surface: "#142C27"
+  card-surface: "#FEFFFB"
+  dark-card-surface: "#1C352F"
+  forest-ink: "#12211E"
+  porcelain-ink: "#F4FFF7"
+  eucalyptus-text: "#3F5750"
+  mist-text: "#BCD1CA"
+  cobalt-action: "#005F68"
+  cobalt-action-dark: "#84E0DC"
+  cobalt-wash: "#D3EAEC"
+  cobalt-wash-dark: "#0D3D3C"
+  apricot-warning: "#93440F"
+  apricot-warning-dark: "#F2AF6D"
+  apricot-wash: "#F1DDCD"
+  apricot-wash-dark: "#3B230F"
+  sage-archive: "#BBD4CC"
+  sage-archive-dark: "#233C35"
+  azurite-info: "#3458A6"
+  azurite-info-dark: "#B7C8FF"
+  moss-success: "#236F45"
+  moss-success-dark: "#A5E4B0"
+  rose-destructive: "#A51C34"
+  rose-destructive-dark: "#FFB2C0"
+typography:
+  display:
+    fontFamily: "SF Pro, -apple-system, BlinkMacSystemFont, system-ui, sans-serif"
+    fontSize: "34px"
+    fontWeight: 600
+    lineHeight: 1.12
+    letterSpacing: "0"
+  headline:
+    fontFamily: "SF Pro, -apple-system, BlinkMacSystemFont, system-ui, sans-serif"
+    fontSize: "22px"
+    fontWeight: 600
+    lineHeight: 1.18
+    letterSpacing: "0"
+  title:
+    fontFamily: "SF Pro, -apple-system, BlinkMacSystemFont, system-ui, sans-serif"
+    fontSize: "17px"
+    fontWeight: 600
+    lineHeight: 1.24
+    letterSpacing: "0"
+  body:
+    fontFamily: "SF Pro, -apple-system, BlinkMacSystemFont, system-ui, sans-serif"
+    fontSize: "17px"
+    fontWeight: 400
+    lineHeight: 1.35
+    letterSpacing: "0"
+  label:
+    fontFamily: "SF Pro, -apple-system, BlinkMacSystemFont, system-ui, sans-serif"
+    fontSize: "13px"
+    fontWeight: 600
+    lineHeight: 1.2
+    letterSpacing: "0"
+rounded:
+  input: "16px"
+  chip: "18px"
+  thumbnail-card: "22px"
+  action: "24px"
+  panel: "26px"
+  glass-action: "28px"
+  focused-card: "34px"
+spacing:
+  xs: "6px"
+  sm: "10px"
+  md: "14px"
+  lg: "18px"
+  screen-x: "22px"
+  xl: "32px"
+components:
+  button-primary:
+    backgroundColor: "{colors.cobalt-action}"
+    textColor: "#FFFFFF"
+    typography: "{typography.title}"
+    rounded: "{rounded.action}"
+    height: "56px"
+    padding: "0 18px"
+  button-secondary:
+    backgroundColor: "{colors.card-surface}"
+    textColor: "{colors.forest-ink}"
+    typography: "{typography.title}"
+    rounded: "{rounded.action}"
+    height: "52px"
+    padding: "0 18px"
+  button-commit:
+    backgroundColor: "{colors.cobalt-wash}"
+    textColor: "{colors.forest-ink}"
+    typography: "{typography.title}"
+    rounded: "{rounded.action}"
+    height: "64px"
+    padding: "0 16px"
+  input-field:
+    backgroundColor: "{colors.card-surface}"
+    textColor: "{colors.forest-ink}"
+    typography: "{typography.body}"
+    rounded: "{rounded.input}"
+    padding: "14px 16px"
+  card-thumbnail:
+    backgroundColor: "{colors.card-surface}"
+    textColor: "{colors.forest-ink}"
+    rounded: "{rounded.thumbnail-card}"
+    padding: "11px"
+  card-focused:
+    backgroundColor: "{colors.card-surface}"
+    textColor: "{colors.forest-ink}"
+    rounded: "{rounded.focused-card}"
+    padding: "16px"
+---
 
-This file extracts CatLocal's current product and visual design from the app
-source, README, and existing docs. It describes what is already true in
-the codebase, including iOS 26 native capabilities, accessibility, and dynamic type requirements.
+# Design System: CatLocal
 
-## Product Promise
+## 1. Overview
 
-CatLocal is a private, local-first iPhone journal that turns real cat
-encounters into tactile collectible cards.
+**Creative North Star: "Sea-Glass Field Archive"**
 
-The product is organized around this loop:
+CatLocal is a native iPhone product, not a marketing surface. The visual system should feel like a private field journal and a small sea-glass archive: cool, local, tactile, and careful with the user's photos. The product loop is the organizing spine: `capture/import -> on-device Vision -> transparent cutout -> card reveal/editor -> local collection`.
 
-1. Photograph a cat or choose a private photo.
-2. Detect and separate the cat with Apple Vision on-device.
-3. Reveal a card, choose a design, and add an optional name or note.
-4. Save the cat and its images locally with SwiftData and Application Support.
+The app earns delight through restraint. Everyday screens use native iOS structure, semantic color, quiet surfaces, and readable controls. The richer material effects - foil, spotlight, tilt, mascot motion, and stronger haptics - are reserved for focused card moments, recovery, and saved-card success.
 
-The first screen should privilege the collection and the camera path. Settings,
-storage, and privacy proof points support the loop, but they do not replace it.
+The system rejects public-map energy, social-feed patterns, generic camera utility chrome, fake sample data, over-glassy panels, and premium effects in scrolling grids. The user's real cat cards are the hero; CatLocal's interface should hold them carefully, not compete with them.
 
-## Design Direction
+**Key Characteristics:**
 
-The selected visual direction is `Sea-Glass Field Archive`: the restraint of a
-contemporary gallery catalogue with the cool clarity of an Istanbul street
-archive: ferry tile, sea air, and a private field notebook.
+- Local-first and private by default.
+- Editorial, tactile, and restrained.
+- Native SwiftUI controls before custom chrome.
+- Semantic state color: cobalt action, apricot warning, moss success, azurite privacy/info.
+- Motion and haptics mark state, intent, and completion only.
 
-- Sea-glass and porcelain surfaces.
-- Pine ink typography with eucalyptus metadata.
-- Peacock action, rust warning, and moss success details used sparingly.
-- Personal notes alongside structured metadata.
-- Native Liquid Glass tab navigation with camera as the detached primary action.
-- Foil light and depth reserved for focused cards.
+## 2. Colors
 
-Native behavior, legibility, and accessibility take priority over matching the
-reference image literally.
+CatLocal uses a restrained sea-glass palette with one primary action color and distinct semantic roles for privacy, success, warning, and destructive states.
 
-## Accessibility & Dynamic Type (CRITICAL)
+### Primary
 
-To meet Apple's editorial standards and ensure inclusive design, the UI must gracefully support VoiceOver and Dynamic Type.
+- **Cobalt Action**: The primary action and selected-state color. Use it for camera/import affordances, primary buttons, current choices, and focused interaction hints. It must stay rare enough to mean "act now".
+- **Cobalt Wash**: The quiet action wash for commit surfaces, selected chips, and low-pressure action panels.
 
-1. **Dynamic Type Scaling:**
-   - **No Fixed Heights:** Avoid using fixed `.frame(width:height:)` for cards containing text. Use `.frame(maxWidth:maxHeight:)` or `.minHeight` so elements can expand if the user increases system text size.
-   - **Relative Font Sizing:** When using custom fonts, bind them to a standard text style (e.g., `font(.custom("FontName", size: 32, relativeTo: .title))`).
-   - **Text Wrapping:** Ensure `lineLimit(nil)` or appropriate line wrapping is used on notes and descriptions so text does not clip.
+### Secondary
 
-2. **VoiceOver Grouping:**
-   - Cards must not be read as disconnected arrays of text. Wrap the `CatCardView` content in `.accessibilityElement(children: .ignore)` and provide a cohesive `.accessibilityLabel` (e.g., "Cat Record, Nori. ID number 013.").
-   - Add `.accessibilityHint("Double tap to open full gallery view.")` where appropriate.
-3. **Interactive Control Accessibility:**
-   - `LiveInteractiveCardView` utilizes `.accessibilityAdjustableAction`. This allows visually impaired users to swipe up/down to tilt the card and feel the haptic feedback, bypassing the visual `DragGesture`.
+- **Apricot Warning**: Warm attention for recoverable problems, camera emphasis, cutout uncertainty, and warning states. Never use apricot for permanent deletion.
+- **Azurite Info**: Privacy proof and on-device education. Use it for "on this iPhone" explanations, storage clarity, and no-GPS/no-cloud cues.
+- **Moss Success**: Saved, safe, complete, or manually placed states. Use moss for completion and privacy reassurance, not as the default action color.
 
-## Experience Shape
+### Tertiary
 
-CatLocal's native shape is a capture-to-card pipeline:
+- **Sage Archive**: Archive wash and calm fill. It supports the sea-glass mood without becoming a primary action.
+- **Rose Destructive**: Deletion only. It should be unmistakable and never softened into a generic warning.
 
-- `Camera` and `Choose private photo` start the experience.
-- `Looking for cats` and `Lifting the subject` make the on-device processing visible.
-- `Which cat should CatLocal save?` appears when multiple cats are detected.
-- `Make it yours` turns the cutout into a collectible card.
-- `Add Cat` saves the cat privately.
-- Home presents saved cats sorted by sequence number.
-- `Edit Card` keeps the focused-card state editable without leaving the card context.
-- `Catlas` groups saved cats by manual place labels typed by the user.
-- Settings explains local-only behavior, Local Storage, and destructive data controls.
+### Neutral
 
-## Color System
+- **Sea-Glass Background**: The light app base. It is cool and mineral, not beige paper.
+- **Deep Forest Background**: The dark app base. It should feel quiet and legible, not sci-fi black.
+- **Porcelain Glow**: Soft environmental light behind first-run and empty states.
+- **Chalk Surface**: Elevated panels, empty states, and grouped content.
+- **Card Surface**: Card faces, settings surfaces, input backgrounds, and tactile editorial panels.
+- **Forest Ink**: Primary text and card labels in light mode.
+- **Porcelain Ink**: Primary text in dark mode.
+- **Eucalyptus Text / Mist Text**: Supporting copy, metadata, timestamps, and secondary explanations.
 
-Use `CatLocalTheme` tokens instead of hardcoded colors.
+### Named Rules
 
-| Token                            | Light            | Dark                | Role                               |
-| -------------------------------- | ---------------- | ------------------- | ---------------------------------- |
-| `background` / `limestone`       | `#DCEAE5`        | `#061210`           | Sea-glass field background         |
-| `backgroundGlow`                 | `#F8FFFC`        | `#103B35`           | Porcelain glow                     |
-| `elevatedSurface` / `chalk`      | `#CBDDD6`        | `#142C27`           | Empty states, image stages, inputs |
-| `cardSurface`                    | `#FEFFFB`        | `#1C352F`           | Card and settings surfaces         |
-| `primaryText` / `forest` / `ink` | `#12211E`        | `#F4FFF7`           | Titles and primary content         |
-| `secondaryText`                  | `#3F5750`        | `#BCD1CA`           | Metadata and supporting text       |
-| `separator`                      | `#12211E` at 16% | `#F4FFF7` at 18%    | Dividers                           |
-| `imageOutline`                   | `#12211E` at 22% | `#F4FFF7` at 24%    | Image/card strokes                 |
-| `shadow`                         | `#12211E` at 22% | black at 78%        | Depth                              |
-| `blueAction` / `cobalt`          | `#005F68`        | `#84E0DC`           | Primary actions and selected state |
-| `warning` / `apricot`            | `#93440F`        | `#F2AF6D`           | Warnings and warm card tones       |
-| `sage`                           | `#BBD4CC`        | `#233C35`           | Archive wash and quiet fill        |
-| `information`                    | `#3458A6`        | `#B7C8FF`           | Privacy and info symbols           |
-| `positive`                       | `#236F45`        | `#A5E4B0`           | Success, saved, and place states   |
+**The Semantic Color Rule.** Cobalt means action, apricot means recoverable warning, moss means success or safety, azurite means privacy/info, and rose means destructive. Do not borrow one role to decorate another.
 
-The app background is layered: a sea-glass base, a soft top-left porcelain glow,
-and a subtle diagonal eucalyptus-to-rust wash. Peacock, rust, moss, and azurite
-are intentionally distinct so actions, warnings, saved states, and privacy
-proof points do not compete with one another. Avoid flat single-color screens
-and avoid using green as the default action color. Preserve visible separation
-between the background, elevated surfaces, cards, and glass controls in both
-light and dark mode; clarity is part of the palette, not a later decoration.
+**The Cards First Rule.** Background and panels stay quiet enough that real saved cards carry the emotional color.
 
-Color attention is semantic and restrained:
+**The No Beige Archive Rule.** The archive mood comes from sea-glass, porcelain, sage, and ink. Do not drift into cream, parchment, sand, or generic scrapbook beige.
 
-- `CatAttentionRole.action`: peacock teal for primary actions, selected states, focused interaction hints, and current choices.
-- `CatAttentionRole.info`: azurite for privacy proof, on-device processing, storage, and manual/no-GPS education.
-- `CatAttentionRole.success`: moss green for saved states, safe privacy outcomes, and completed/place-labeled states.
-- `CatAttentionRole.warning`: rust for fallback paths, uncertain detection, and recoverable caution.
-- `CatAttentionRole.destructive`: rose red for deletion only. Do not use warning/rust for permanent deletion.
+## 3. Typography
 
-Each role provides a strong fill, quiet wash, stroke, text color, and strong
-foreground color. Prefer those roles over one-off colors so important states
-stay recognizable across Home, Capture, Catlas, Settings, and card editing.
-Do not turn every semantic color into a bordered badge. CatLocal should use
-colored symbols, text, and soft washes first; strokes are reserved for selected,
-destructive, or genuinely separated states.
+**Display Font:** SF Pro system typography with native iOS Dynamic Type.
+**Body Font:** SF Pro system typography with native iOS Dynamic Type.
+**Label/Mono Font:** SF Pro for labels; rounded monospaced digits only for card sequence marks.
 
-## Typography
+**Character:** The type system is compact, native, and editorial. It should feel like a polished iOS journal, not a display-font brand campaign.
 
-The app uses native SwiftUI system typography through `CatTypography` in
-`CatLocalTheme.swift`. Do not introduce a new type family without updating the
-design system and this document.
+### Hierarchy
 
-- Screen title: large native SwiftUI title treatment for `CatLocal`.
-- Moment and page titles: semibold native title styles for capture, reveal, empty state, and failure states.
-- Panel and section titles: semibold headline styles for Settings, Catlas, and sheet sections.
-- Body, supporting text, metadata, field labels, and compact badges use distinct semantic roles instead of one-off font literals.
-- Card names, card dates, place labels, and sequence marks use card-specific roles; sequence marks stay rounded and monospaced.
-- Field labels stay quiet and title case. Avoid tiny uppercase tracked eyebrow labels unless a future design system explicitly reintroduces them.
+- **Display** (semibold, iOS large title, 34px default): App-level titles and the strongest first-run/empty-state moments only.
+- **Headline** (semibold, iOS title2/title3 range, 20-22px default): Capture moments, onboarding page titles, card reveal states, and failure recovery.
+- **Title** (semibold, iOS headline, 17px default): Section headers, buttons, sheet actions, and primary controls.
+- **Body** (regular, iOS body, 17px default): Explanatory copy, notes, settings text, and card details. Keep prose compact and allow Dynamic Type wrapping.
+- **Label** (semibold, iOS footnote/caption, 11-13px default): Field labels, badges, metadata, compact chips, and card place labels.
 
-## Layout
+### Named Rules
 
-Shared screen rhythm:
+**The Native Type Rule.** Use `CatTypography` and Dynamic Type. Do not introduce a new font family or fluid marketing scale for app UI.
 
-- Main scroll screens use 22pt horizontal padding.
-- Home uses 18pt top padding; Settings can sit slightly tighter beneath the native title.
-- Card grids use two flexible columns with 14pt column spacing and 18pt row spacing.
-- Empty states and settings panels are generous but should feel baked into the sea-glass surface, not stacked as bordered cards.
+**The No Eyebrow Reflex Rule.** Avoid tiny uppercase tracked labels as generic section decoration. Labels must identify a real field, chip, or metadata role.
 
-Card geometry:
+**The Card Text Rule.** Card text is display-only on the card surface. Names, notes, and Catlas labels are edited through fields or sheets.
 
-- Thumbnail cards use an aspect ratio of `0.72`.
-- Focused cards use an aspect ratio of `0.64`.
-- Thumbnail card corner radius is 22pt.
-- Focused card corner radius is 34pt.
+## 4. Elevation
 
-## Components
+CatLocal uses a hybrid of tonal layering, one-pixel strokes, and restrained shadows. Elevation should feel tactile and editorial rather than glassy. Shadows are real but quiet; they clarify layered cards, inputs, panels, and focused surfaces without making every object float.
 
-### Native Shell
+### Shadow Vocabulary
 
-`RootView` uses a native SwiftUI `TabView` with `.tabViewStyle(.sidebarAdaptable)`.
-Tabs are `Home`, `Settings`, and a camera tab. On iOS 26, the camera tab
-uses `role: .search` (or `.prominent` where available) so the system renders it as a detached Liquid Glass action.
+- **Glass Action Shadow** (`shadow.opacity(0.16), radius 7, y 3`): Compact glass action controls and icon buttons.
+- **Input Shadow** (`shadow.opacity(0.11), radius 7, y 2`): Text fields and user-editable surfaces.
+- **Panel Shadow** (`shadow.opacity(0.13), radius 10, y 4`): Settings panels, empty-state surfaces, and grouped content.
+- **Commit Shadow** (`role.accent.opacity(0.12), radius 9, y 3`): Save and commit surfaces only.
+- **Thumbnail Card Shadow** (`shadow.opacity(0.16), radius 8, y 4`): Cheap grid card depth.
+- **Focused Card Shadow** (`shadow.opacity(0.72), radius 22, y 14`): Full card focus and reveal moments.
+- **Skeleton Card Shadow** (`shadow.opacity(0.14), radius 14, y 8`): Decorative empty-state mock card depth.
 
-### Home
+### Named Rules
 
-The empty state leads with `Meet Your First Local`, the line `Capture an
-encounter and keep it private on this iPhone.`, and three proof points:
-`No Account`, `No Public Map`, and `No Model Training`.
+**The Focus Earns Depth Rule.** Strong shadows belong to focused cards and saved-card celebration. Scrolling grids stay cheap, muted, and calm.
 
-Saved cards appear under the `Cards` segmented mode and sort ascending by sequence
-number. `Catlas` groups the same saved records by manual place labels without
-requesting GPS or storing coordinates.
+**The One-Pixel Structure Rule.** Use hairline strokes for structure. Never use thick side stripes or decorative border accents.
 
-Home grid thumbnails are intentionally muted with blur/material treatment. The
-premium foil and full-fidelity card surface should be revealed in the focused
-card, not compete with Home navigation.
+## 5. Components
 
-### Capture
+CatLocal components should feel native, tactile, and restrained. Prefer `Button`, SwiftUI sheets, Dynamic Type, VoiceOver grouping, and semantic modifiers from `CatLocalTheme`.
 
-The camera is full-screen and dark, with camera preview underneath a vertical
-black gradient. Controls are icon-first and glass-backed.
+### Buttons
 
-### Cards
+- **Shape:** Action buttons use gently rounded rectangles (24px). Compact glass icon actions are circular or capsule-like (28px).
+- **Primary:** Cobalt or role-accent gradient, strong foreground, full-width, 56px minimum height.
+- **Commit:** Soft role wash to card-surface gradient, 1px role stroke, 64px minimum height, and a small accent shadow. Use for Save Cat / Add to Collection moments.
+- **Secondary:** Card-surface fill, forest ink text, 1px image-outline stroke, 52-56px minimum height.
+- **Hover / Focus / Press:** Native iOS focus plus `catTactile`: scale to 0.982, tiny brightness dip, 0.14s smooth animation. Haptics mark intent or completion; do not stack several pulses for the same save moment.
 
-Cards are polished editorial surfaces with a finite theme set: `Archive`,
-`Sunstamp`, `Clear`, `Garden`, `Midnight`, `Apricot`, `Midnight Prism`,
-`Gold Leaf`, `Topographic`, `Topo Ember`, `Topo Lagoon`, `Topo Moss`, and
-`Topo Dusk`.
+### Chips
 
-Theme selection is exposed through a horizontal carousel in capture and editing.
-The carousel should feel endless by repeating the style set and recentering near
-the ends. It should give a small selection haptic as the centered style changes.
+- **Style:** Attention chips use role wash, role text, 18px corners, 34-38px minimum height, and compact semibold labels.
+- **State:** Use chips for real option sets, proof points, status, or card anatomy. Do not turn every short phrase into a badge.
 
-Card text is display-only on the card surface. Names, notes, and Catlas labels
-are edited through capture/editor fields, not inline card `TextField`s.
+### Cards / Containers
 
-The card number is a plain sequence number, not a padded collectible ID.
+- **Corner Style:** Thumbnail cards use 22px, style previews use 24px, focused cards use 34px, image stages use 16-26px.
+- **Background:** `cardSurface` for tactile card faces, role-derived procedural surfaces for card styles, and `chalk` for elevated app panels.
+- **Shadow Strategy:** Thumbnail cards use cheap low shadows; focused cards use the strongest depth; card grids avoid live tilt and heavy foil.
+- **Border:** 1px `imageOutline` or style-derived separator only.
+- **Internal Padding:** Thumbnail card 11px, style preview 12px, focused card 16px.
 
-### Focused Card
+### Inputs / Fields
 
-Focused cards are full-screen, immersive, and interactive. They use
-`LiveInteractiveCardView` for drag tilt, spotlight, and one-shot boundary
-haptics. The supporting label is either `Drag to catch the light` or `Lighting
-motion is reduced` when Reduce Motion is enabled.
+- **Style:** `cardSurface` fill, forest ink text, cobalt tint, 16px corners, 14px vertical and 16px horizontal padding.
+- **Focus:** Native focus behavior plus cobalt caret/tint. Avoid custom focus rings that fight iOS.
+- **Error / Disabled:** Use semantic roles: warning for recoverable input/cutout issues, destructive for deletion only, secondary text for disabled.
 
-Premium foil light should be calm at rest and fade in while touched. `Prism`,
-`Gold`, and `Topographic` effects belong in focused cards and previews; grid
-thumbnails should remain cheap and muted. Topographic must retain visible
-contour lines, not just a rainbow gradient.
+### Navigation
 
-## Motion And Interaction
+- **Style:** Native SwiftUI tabs and sheets. `RootView` uses `TabView` with sidebar-adaptable behavior and iOS 26 Liquid Glass where the platform provides it.
+- **Active State:** Let native tabs own active state. The camera action is special because it starts capture, not because it is a custom floating element.
+- **Mobile Treatment:** This is an iPhone-first app. Respect safe areas, Dynamic Type, VoiceOver order, and native sheet behavior.
 
-- Stage transitions in capture use ease-in-out animation over 0.22s.
-- Draft card reveal uses scale from 0.9 combined with opacity.
-- Focused card tilt clamps at 12 degrees.
-- Drag tilt uses an interactive spring with response 0.25 and damping 0.65.
-- The spotlight is a screen-blended radial gradient using white, faint cyan, and clear.
-- Foil and spotlight opacity are tied to focused-card interaction state so the card has a quiet baseline before touch.
-- Tilt haptics use thresholded selection feedback based on rotation magnitude; avoid continuous buzzing.
-- Respect Reduce Motion by disabling tilt and showing the reduced-motion label.
-- Preserve the one-shot haptic gate at card tilt limits.
+### Signature Component: Cat Card
 
-## Privacy And Safety Language
+Cat cards are the product artifact. They render real local images, sequence numbers, dates, optional notes, manual Catlas labels, and a chosen card style. Card surfaces may use procedural material effects, but the card remains display-only; edit in fields and sheets. Focused cards can use foil, spotlight, tilt, and stronger depth. Grid thumbnails stay static and muted.
 
-Prefer existing language over new claims:
+### Signature Component: Loci Mascot
 
-- `On-device only`
-- `This happens entirely on your iPhone.`
-- `The selected photo stays on this iPhone`
-- `There is no account, public map, advertising identifier, GPS tracking, cloud AI, or model-training upload.`
-- `Manual label only. CatLocal does not request GPS or save coordinates.`
+Loci is a restrained guide, not a mascot overlay for every screen. Use Loci only for empty collection, recovery, warnings, saved-card success, first-time hint education, and explicit privacy education. Motion must respect Reduce Motion and use transform/opacity only.
+
+## 6. Do's and Don'ts
+
+### Do:
+
+- **Do** lead with `capture/import -> on-device Vision -> card reveal/editor -> local collection`.
+- **Do** use `CatLocalTheme`, `CatTypography`, `CatAttentionRole`, and shared surface modifiers before adding one-off styling.
+- **Do** make privacy visible through concrete behavior: no account, no map tracking, no cloud database, EXIF/GPS removal, and on-device Vision.
+- **Do** keep Home, Catlas, Settings, and edit fields legible and restrained so focused cards can feel special.
+- **Do** reserve foil, spotlight, tilt, mascot motion, and stronger haptics for moments that need emphasis.
+- **Do** respect Dynamic Type, VoiceOver, Reduce Motion, and native iOS interaction semantics.
+
+### Don't:
+
+- **Don't** build public cat maps, social feeds, follower graphs, leaderboards, discovery networks, or anything that implies shared location data.
+- **Don't** make CatLocal feel like a generic camera utility where card reveal is just file processing.
+- **Don't** create over-glassy interfaces where every card or panel becomes Liquid Glass and competes with the cat cards.
+- **Don't** use fake sample cats, invented social proof, placeholder metrics, or marketing claims not backed by the app.
+- **Don't** reintroduce inline card editing, repeated contextual labels, or redundant headers on already-scoped screens such as Catlas.
+- **Don't** put heavy premium effects in scrolling grids; foil, spotlight, and tilt are for focused cards and previews.
+- **Don't** use side-stripe borders, gradient text, decorative grid backgrounds, beige scrapbook palettes, or loud purple/blue gradients.

@@ -15,6 +15,7 @@ struct CollectionView: View {
     @State private var selectedRecord: CatRecord?
     @State private var selectedAtlasRecord: CatRecord?
     @State private var editingRecord: CatRecord?
+    @State private var editingIntent: CatRecordEditIntent = .card
     @State private var removalRecord: CatRecord?
     @State private var selectedAtlasRoute: AtlasRoute?
     @State private var collectionMode: CollectionMode = .cards
@@ -105,8 +106,13 @@ struct CollectionView: View {
                 atlasFilteredGrid(route)
             }
         }
-        .sheet(item: $editingRecord) { record in
-            CatRecordEditSheet(record: record)
+        .sheet(item: $editingRecord, onDismiss: {
+            editingIntent = .card
+        }) { record in
+            CatRecordEditSheet(
+                record: record,
+                initialFocusedField: editingIntent.initialFocusedField
+            )
                 .presentationBackground(CatLocalTheme.background)
         }
         .sheet(item: $removalRecord) { record in
@@ -187,7 +193,7 @@ struct CollectionView: View {
             }
         }
         .toolbar(hidesTabBar ? .hidden : .visible, for: .tabBar)
-        .animation(.snappy(duration: 0.24), value: isSelectionMode)
+        .animation(selectionModeAnimation, value: isSelectionMode)
         .sensoryFeedback(.success, trigger: collectionCountDelightTrigger)
         .sensoryFeedback(.selection, trigger: collectionModeDelightTrigger)
         .sensoryFeedback(.selection, trigger: collectionSelectionFeedbackTrigger)
@@ -214,6 +220,32 @@ struct CollectionView: View {
 
     private var collectionModeAnimation: Animation? {
         reduceMotion ? nil : .smooth(duration: 0.24, extraBounce: 0)
+    }
+
+    private var selectionModeAnimation: Animation? {
+        reduceMotion ? .easeOut(duration: 0.12) : .smooth(duration: 0.22, extraBounce: 0)
+    }
+
+    private var selectionModeLabelTransition: AnyTransition {
+        if reduceMotion {
+            return .opacity
+        }
+
+        return .asymmetric(
+            insertion: .opacity.combined(with: .offset(x: 8)),
+            removal: .opacity.combined(with: .offset(x: -8))
+        )
+    }
+
+    private var headerSortTransition: AnyTransition {
+        if reduceMotion {
+            return .opacity
+        }
+
+        return .asymmetric(
+            insertion: .opacity.combined(with: .offset(x: 8)),
+            removal: .opacity.combined(with: .offset(x: 8))
+        )
     }
 
     private var horizontalPadding: CGFloat {
@@ -431,10 +463,20 @@ struct CollectionView: View {
 
             Button {
                 deferContextMenuAction {
-                    editingRecord = record
+                    openCardEditor(for: record)
                 }
             } label: {
                 Label("Edit Card", systemImage: "pencil")
+            }
+
+            if record.memoryPlaceName == nil {
+                Button {
+                    deferContextMenuAction {
+                        openMemoryPlaceEditor(for: record)
+                    }
+                } label: {
+                    Label("Add Memory Place", systemImage: "mappin.and.ellipse")
+                }
             }
 
             Button(role: .destructive) {
@@ -481,7 +523,7 @@ struct CollectionView: View {
                 .fill(CatLocalTheme.separator.opacity(0.78))
                 .frame(height: 1)
 
-            Text("Needs Memory Place")
+            Text("Unplaced for now")
                 .font(CatTypography.badge)
                 .foregroundStyle(CatLocalTheme.secondaryText)
                 .lineLimit(1)
@@ -493,7 +535,7 @@ struct CollectionView: View {
         }
         .padding(.top, dynamicTypeSize.isAccessibilitySize ? 6 : 2)
         .padding(.bottom, dynamicTypeSize.isAccessibilitySize ? 2 : 0)
-        .accessibilityHidden(true)
+        .accessibilityElement(children: .combine)
     }
 
     private func atlasFilteredGrid(_ route: AtlasRoute) -> some View {
@@ -568,11 +610,11 @@ struct CollectionView: View {
     private var atlasIntroText: String {
         switch atlasPlaceCount {
         case 0:
-            "Add a Memory Place from Edit to build Catlas. No GPS or public map."
+            "Add a Memory Place to build Catlas."
         case 1:
-            "1 private place typed by you. No GPS or public map."
+            "1 place typed by you."
         default:
-            "\(atlasPlaceCount) private places typed by you. No GPS or public map."
+            "\(atlasPlaceCount) places typed by you."
         }
     }
 
@@ -621,10 +663,7 @@ struct CollectionView: View {
 
     private func atlasGroup(_ group: MemoryAtlasGroup) -> some View {
         Button {
-            withAnimation(focusTransitionAnimation) {
-                collectionSelectionFeedbackTrigger += 1
-                selectedAtlasRoute = AtlasRoute(group: group)
-            }
+            openAtlasGroup(group)
         } label: {
             AtlasFolderButton(
                 group: group,
@@ -673,19 +712,19 @@ struct CollectionView: View {
         Group {
             if dynamicTypeSize.isAccessibilitySize {
                 VStack(alignment: .leading, spacing: 12) {
-                    atlasRouteSummary(route, recordCount: recordCount)
+                    atlasRouteSummary(recordCount: recordCount)
                     cardGridHeaderActions
                 }
             } else {
                 ViewThatFits(in: .horizontal) {
                     HStack(alignment: .center, spacing: 12) {
-                        atlasRouteSummary(route, recordCount: recordCount)
+                        atlasRouteSummary(recordCount: recordCount)
                         Spacer(minLength: 10)
                         cardGridHeaderActions
                     }
 
                     VStack(alignment: .leading, spacing: 12) {
-                        atlasRouteSummary(route, recordCount: recordCount)
+                        atlasRouteSummary(recordCount: recordCount)
                         cardGridHeaderActions
                     }
                 }
@@ -695,18 +734,11 @@ struct CollectionView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private func atlasRouteSummary(_ route: AtlasRoute, recordCount: Int) -> some View {
+    private func atlasRouteSummary(recordCount: Int) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(catCountText(recordCount))
                 .font(CatTypography.supportingEmphasized)
                 .foregroundStyle(CatLocalTheme.primaryText)
-
-            if route.isUnplaced {
-                Text("No memory place yet.")
-                    .font(CatTypography.metadata)
-                    .foregroundStyle(CatLocalTheme.secondaryText)
-                    .lineLimit(nil)
-            }
         }
     }
 
@@ -723,13 +755,14 @@ struct CollectionView: View {
 
     private var cardGridHeaderActions: some View {
         HStack(alignment: .center, spacing: 8) {
-            if isSelectionMode {
-                selectionDoneButton
-            } else {
+            if !isSelectionMode {
                 cardGridSortMenu
-                selectionStartButton
+                    .transition(headerSortTransition)
             }
+
+            selectionModeButton
         }
+        .animation(selectionModeAnimation, value: isSelectionMode)
         .accessibilityElement(children: .contain)
     }
 
@@ -744,29 +777,47 @@ struct CollectionView: View {
         .accessibilityHint("Changes the card order")
     }
 
-    private var selectionStartButton: some View {
+    private var selectionModeButton: some View {
         Button {
-            beginSelectionMode()
+            if isSelectionMode {
+                endSelectionMode()
+            } else {
+                beginSelectionMode()
+            }
         } label: {
-            headerActionLabel(title: "Select", systemImage: "checkmark.circle")
+            selectionModeButtonLabel
         }
         .buttonStyle(.catTactile)
-        .accessibilityLabel("Select cards for deletion")
-        .accessibilityHint("Shows selection controls before deleting cards")
+        .accessibilityLabel(isSelectionMode ? "Done selecting cards" : "Select cards for deletion")
+        .accessibilityValue(isSelectionMode ? selectedSelectionText : "")
+        .accessibilityHint(isSelectionMode ? "Leaves selection mode" : "Shows selection controls before deleting cards")
     }
 
-    private var selectionDoneButton: some View {
-        Button {
-            endSelectionMode()
-        } label: {
-            headerActionLabel(title: "Done", systemImage: "checkmark.circle.fill")
+    private var selectionModeButtonLabel: some View {
+        ZStack {
+            selectionControlLabel(title: "Select", systemImage: "checkmark.circle")
+                .hidden()
+                .accessibilityHidden(true)
+
+            selectionControlLabel(title: "Done", systemImage: "checkmark.circle.fill")
+                .hidden()
+                .accessibilityHidden(true)
+
+            selectionControlLabel(
+                title: isSelectionMode ? "Done" : "Select",
+                systemImage: isSelectionMode ? "checkmark.circle.fill" : "checkmark.circle"
+            )
+            .id(isSelectionMode)
+            .transition(selectionModeLabelTransition)
         }
-        .buttonStyle(.catTactile)
-        .accessibilityLabel("Done selecting cards")
-        .accessibilityValue(selectedSelectionText)
+        .clipped()
     }
 
     private func headerActionLabel(title: String, systemImage: String) -> some View {
+        selectionControlLabel(title: title, systemImage: systemImage)
+    }
+
+    private func selectionControlLabel(title: String, systemImage: String) -> some View {
         HStack(alignment: .center, spacing: 7) {
             Image(systemName: systemImage)
                 .font(.system(size: 17, weight: .semibold))
@@ -1076,7 +1127,7 @@ struct CollectionView: View {
     }
 
     private func beginSelectionMode() {
-        withAnimation(.snappy(duration: 0.22)) {
+        withAnimation(selectionModeAnimation) {
             isSelectionMode = true
             selectedRecordIDs.removeAll()
         }
@@ -1084,7 +1135,7 @@ struct CollectionView: View {
     }
 
     private func beginSelection(with record: CatRecord) {
-        withAnimation(.snappy(duration: 0.22)) {
+        withAnimation(selectionModeAnimation) {
             isSelectionMode = true
             selectedRecordIDs = [record.id]
         }
@@ -1104,7 +1155,7 @@ struct CollectionView: View {
 
     private func endSelectionMode() {
         guard isSelectionMode || !selectedRecordIDs.isEmpty else { return }
-        withAnimation(.snappy(duration: 0.22)) {
+        withAnimation(selectionModeAnimation) {
             isSelectionMode = false
             selectedRecordIDs.removeAll()
         }
@@ -1136,6 +1187,24 @@ struct CollectionView: View {
     private func deferContextMenuAction(_ action: @escaping () -> Void) {
         DispatchQueue.main.async {
             action()
+        }
+    }
+
+    private func openCardEditor(for record: CatRecord) {
+        editingIntent = .card
+        editingRecord = record
+    }
+
+    private func openMemoryPlaceEditor(for record: CatRecord) {
+        editingIntent = .memoryPlace
+        editingRecord = record
+        collectionSelectionFeedbackTrigger += 1
+    }
+
+    private func openAtlasGroup(_ group: MemoryAtlasGroup) {
+        withAnimation(focusTransitionAnimation) {
+            collectionSelectionFeedbackTrigger += 1
+            selectedAtlasRoute = AtlasRoute(group: group)
         }
     }
 
@@ -1229,85 +1298,18 @@ struct CollectionView: View {
     }
 
     private var emptyState: some View {
-        VStack(spacing: 18) {
-            Image(systemName: "cat.fill")
-                .font(.system(size: 52, weight: .light))
-                .foregroundStyle(CatLocalTheme.primaryText)
-                .symbolRenderingMode(.hierarchical)
-                .accessibilityHidden(true)
-
-            VStack(spacing: 7) {
-                Text("Meet Your First Local")
-                    .font(CatTypography.pageTitle)
-                    .foregroundStyle(CatLocalTheme.primaryText)
-                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
-                    .minimumScaleFactor(dynamicTypeSize.isAccessibilitySize ? 1 : 0.82)
-
-                Text("Capture an encounter and keep it private on this iPhone.")
-                    .font(CatTypography.body)
-                    .multilineTextAlignment(.center)
-                    .foregroundStyle(CatLocalTheme.secondaryText)
-                    .frame(maxWidth: dynamicTypeSize.isAccessibilitySize ? .infinity : 300)
-            }
-
-            if let onCaptureRequested {
-                Button {
-                    onCaptureRequested()
-                } label: {
-                    Label("Capture or Import", systemImage: "camera.fill")
-                        .font(CatTypography.control)
-                        .frame(maxWidth: .infinity)
-                        .catPrimaryActionSurface(role: .action, cornerRadius: 28)
-                }
-                .buttonStyle(.catTactile)
-                .accessibilityHint("Starts the private capture and photo import flow")
-            }
-
-            privacyPoints
-                .padding(.top, 4)
-        }
+        LociStateView(
+            context: .emptyCollection,
+            showsCard: true,
+            mascotSize: dynamicTypeSize.isAccessibilitySize ? 112 : 120,
+            cardWidth: dynamicTypeSize.isAccessibilitySize ? 126 : 136,
+            buttonTitle: onCaptureRequested == nil ? nil : "Capture or Import",
+            buttonAction: onCaptureRequested
+        )
         .frame(maxWidth: .infinity)
         .padding(.horizontal, dynamicTypeSize.isAccessibilitySize ? 18 : 22)
-        .padding(.vertical, 46)
+        .padding(.vertical, dynamicTypeSize.isAccessibilitySize ? 30 : 36)
         .accessibilityIdentifier("empty-collection")
-    }
-
-    @ViewBuilder
-    private var privacyPoints: some View {
-        CatGlassGroup(spacing: 14) {
-            if dynamicTypeSize.isAccessibilitySize {
-                VStack(alignment: .leading, spacing: 12) {
-                    privacyPoint(icon: "person.crop.circle.badge.xmark", title: "No Account", role: .info)
-                    privacyPoint(icon: "map.fill", title: "No Public Map", role: .success)
-                    privacyPoint(icon: "brain.head.profile", title: "No Model Training", role: .success)
-                }
-            } else {
-                HStack(alignment: .top, spacing: 10) {
-                    privacyPoint(icon: "person.crop.circle.badge.xmark", title: "No Account", role: .info)
-                    privacyPoint(icon: "map.fill", title: "No Public Map", role: .success)
-                    privacyPoint(icon: "brain.head.profile", title: "No Model Training", role: .success)
-                }
-            }
-        }
-    }
-
-    private func privacyPoint(icon: String, title: String, role: CatAttentionRole) -> some View {
-        VStack(alignment: dynamicTypeSize.isAccessibilitySize ? .leading : .center, spacing: 7) {
-            Image(systemName: icon)
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(role.accent)
-                .frame(width: 30, height: 30)
-
-            Text(title)
-                .font(CatTypography.badge)
-                .foregroundStyle(role.text)
-                .multilineTextAlignment(dynamicTypeSize.isAccessibilitySize ? .leading : .center)
-                .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
-                .minimumScaleFactor(dynamicTypeSize.isAccessibilitySize ? 1 : 0.82)
-                .frame(maxWidth: .infinity)
-        }
-        .frame(maxWidth: .infinity)
-        .accessibilityElement(children: .combine)
     }
 }
 
@@ -1554,6 +1556,20 @@ private enum CardGridContext {
     }
 }
 
+private enum CatRecordEditIntent {
+    case card
+    case memoryPlace
+
+    var initialFocusedField: CatRecordEditSheet.FocusedField? {
+        switch self {
+        case .card:
+            nil
+        case .memoryPlace:
+            .location
+        }
+    }
+}
+
 private enum CatSortOption: String, CaseIterable, Identifiable {
     case number
     case place
@@ -1621,7 +1637,7 @@ private struct MemoryAtlasGroup: Identifiable {
     var id: String { title }
 
     var displayTitle: String {
-        isUnplaced ? "Unplaced cats" : title
+        isUnplaced ? "Unplaced" : title
     }
 
     var firstSequence: Int {

@@ -38,7 +38,8 @@ struct SettingsView: View {
         .sheet(isPresented: $showingDeleteConfirmation) {
             CatDeletionConfirmationSheet(
                 title: "Delete every cat?",
-                message: "Every stored photo, cutout, note, and cat will be permanently removed from this iPhone.",
+                message: "This permanently removes every saved cat from this iPhone.",
+                detail: storageDeletionDetail,
                 deleteTitle: "Delete All"
             ) {
                 showingDeleteConfirmation = false
@@ -64,7 +65,7 @@ struct SettingsView: View {
                     .catAttentionIconSurface(role: .info, size: 40)
                     .accessibilityHidden(true)
 
-                Text("On this iPhone, by Design")
+                Text("Privacy Receipt")
                     .font(CatTypography.panelTitle)
                     .foregroundStyle(CatLocalTheme.primaryText)
                     .lineLimit(nil)
@@ -95,7 +96,7 @@ struct SettingsView: View {
                 privacyRow(
                     icon: "network.slash",
                     title: "Network",
-                    detail: "The collection requires no account or upload.",
+                    detail: "The collection requires no account, upload, cloud AI, or model-training use.",
                     role: .success
                 )
             }
@@ -107,23 +108,8 @@ struct SettingsView: View {
     }
 
     private var storageCard: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            ViewThatFits(in: .horizontal) {
-                HStack(alignment: .center, spacing: 14) {
-                    storageIcon
-                    storageSummaryText
-                    Spacer(minLength: 10)
-                    storageSizePill
-                }
-
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack(alignment: .center, spacing: 14) {
-                        storageIcon
-                        storageSummaryText
-                    }
-                    storageSizePill
-                }
-            }
+        VStack(alignment: .leading, spacing: 20) {
+            storageHeader
 
             Button(role: .destructive) {
                 showingDeleteConfirmation = true
@@ -147,8 +133,27 @@ struct SettingsView: View {
             .accessibilityHint("Permanently removes every stored cat and local image")
         }
         .padding(.horizontal, 20)
-        .padding(.vertical, 22)
+        .padding(.vertical, 24)
         .catPanelSurface()
+    }
+
+    private var storageHeader: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .center, spacing: 14) {
+                storageIcon
+                storageSummaryText
+                Spacer(minLength: 10)
+                storageSizePill
+            }
+
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(alignment: .center, spacing: 14) {
+                    storageIcon
+                    storageSummaryText
+                }
+                storageSizePill
+            }
+        }
     }
 
     private var storageSummaryText: some View {
@@ -244,6 +249,10 @@ struct SettingsView: View {
         default:
             return .destructive
         }
+    }
+
+    private var storageDeletionDetail: String {
+        "Includes card details, notes, typed Catlas labels, originals, cutouts, and thumbnails."
     }
 
     private func refreshStorage() async {

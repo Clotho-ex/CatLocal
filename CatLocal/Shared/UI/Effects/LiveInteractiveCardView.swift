@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// Areas for Polish: While the custom procedural effects (like the Topographic
-/// card's TopoContourLayer) are impressive, they are computationally heavy.
+/// Areas for Polish: While custom procedural effects like contour-line cards are
+/// impressive, they are computationally heavy.
 /// The developer correctly mitigates this by restricting complex renders to
 /// focused states and utilizing drawingGroup(), but rendering performance on
 /// older devices should be continuously monitored.

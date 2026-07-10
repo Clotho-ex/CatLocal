@@ -7,6 +7,123 @@ import UIKit
 
 struct CatLocalCoreTests {
     @Test
+    func lociPoseRawValuesMatchAssetNames() {
+        #expect(LociPose.allCases.map(\.rawValue) == [
+            "loci_neutral",
+            "loci_presenting",
+            "loci_curious",
+            "loci_greeting",
+            "loci_icon",
+            "loci_noCatFound",
+            "loci_inspecting",
+            "loci_cardReady",
+            "loci_hint",
+            "loci_privacy"
+        ])
+    }
+
+    @Test
+    func lociAssetCatalogContainsEveryPose() throws {
+        let repository = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let lociRoot = repository
+            .appendingPathComponent("CatLocal")
+            .appendingPathComponent("Resources")
+            .appendingPathComponent("Assets.xcassets")
+            .appendingPathComponent("Loci")
+
+        for pose in LociPose.allCases {
+            let imageSet = lociRoot.appendingPathComponent("\(pose.rawValue).imageset", isDirectory: true)
+            let contents = imageSet.appendingPathComponent("Contents.json")
+            let image = imageSet.appendingPathComponent("\(pose.rawValue).png")
+
+            #expect(FileManager.default.fileExists(atPath: contents.path))
+            #expect(FileManager.default.fileExists(atPath: image.path))
+        }
+    }
+
+    @Test
+    func lociContextCatalogMatchesExpandedGuide() {
+        #expect(LociContext.allCases == [
+            .emptyCollection,
+            .cardSaved,
+            .recoverableWarning,
+            .failureRecovery,
+            .noCatFound,
+            .imageQualityWarning,
+            .glintHint,
+            .privacyEducation
+        ])
+    }
+
+    @Test
+    func lociContextsMapToExpectedPosesAndMotion() {
+        let expected: [(LociContext, LociPose, LociMascotAnimation)] = [
+            (.emptyCollection, .presenting, .idle),
+            (.cardSaved, .cardReady, .successPop),
+            (.recoverableWarning, .inspecting, .thinking),
+            (.failureRecovery, .curious, .errorTilt),
+            (.noCatFound, .noCatFound, .errorTilt),
+            (.imageQualityWarning, .inspecting, .thinking),
+            (.glintHint, .hint, .idle),
+            (.privacyEducation, .privacy, .none)
+        ]
+
+        for (context, pose, motion) in expected {
+            #expect(context.pose == pose)
+            #expect(context.motion == motion)
+            #expect(context.mascotAnimation == motion)
+        }
+    }
+
+    @Test
+    func lociMascotStateCarriesContextCopyAndMotion() {
+        let successState = LociMascotState.state(for: .cardSaved)
+        #expect(successState.context == .cardSaved)
+        #expect(successState.pose == .cardReady)
+        #expect(successState.motion == .successPop)
+        #expect(successState.title == "Card ready")
+        #expect(successState.subtitle == "Saved locally to your collection.")
+
+        let customState = LociMascotState(
+            context: .imageQualityWarning,
+            motion: .errorTilt,
+            title: "Try another photo",
+            subtitle: "Keep the whole cat in frame."
+        )
+        #expect(customState.pose == .inspecting)
+        #expect(customState.motion == .errorTilt)
+        #expect(customState.title == "Try another photo")
+        #expect(customState.subtitle == "Keep the whole cat in frame.")
+    }
+
+    @Test
+    func lociMotionCatalogIsStateDriven() {
+        #expect(LociMascotAnimation.allCases == [
+            .none,
+            .idle,
+            .thinking,
+            .successPop,
+            .errorTilt
+        ])
+        #expect(LociMascotAnimation.idle.isContinuous)
+        #expect(LociMascotAnimation.thinking.isContinuous)
+        #expect(!LociMascotAnimation.successPop.isContinuous)
+        #expect(!LociMascotAnimation.errorTilt.isContinuous)
+    }
+
+    @Test
+    func lociContextCopyUsesExistingCatLocalLanguage() {
+        #expect(LociContext.emptyCollection.title == "Meet Your First Local")
+        #expect(LociContext.emptyCollection.subtitle == "Capture an encounter and turn it into a local card.")
+        #expect(LociContext.noCatFound.title == "I couldn't find the cat clearly")
+        #expect(LociContext.imageQualityWarning.title == "This photo looks a little unclear")
+        #expect(LociContext.glintHint.subtitle == "Your cards react to touch.")
+        #expect(LociContext.privacyEducation.subtitle == "CatLocal processes your cat images on-device.")
+    }
+
+    @Test
     func cardStyleDefaultsToArchiveForLegacySeeds() {
         for seed in [0, 1, 2, 3, 77, 9_999] {
             #expect(CardStyle.deterministic(seed: seed) == .archive)
@@ -14,11 +131,42 @@ struct CatLocalCoreTests {
     }
 
     @Test
-    func cardStyleCatalogIncludesTopographicVariants() {
-        let topographicStyles = CardStyle.orderedCases.filter(\.isTopographic)
+    func cardStyleCatalogIncludesContourVariants() {
+        let contourStyles = CardStyle.orderedCases.filter(\.isTopographic)
 
-        #expect(topographicStyles == [.topo, .topoEmber, .topoLagoon, .topoMoss, .topoDusk])
+        #expect(contourStyles == [.topo, .topoEmber, .topoLagoon, .topoMoss, .topoDusk])
         #expect(Set(CardStyle.orderedCases.map(\.rawValue)).count == CardStyle.orderedCases.count)
+    }
+
+    @Test
+    func cardStyleCatalogIncludesArchiveMaterialVariants() {
+        let archiveMaterialStyles = CardStyle.orderedCases.filter(\.isArchiveMaterial)
+
+        #expect(archiveMaterialStyles == [.pineShadow, .cedarShade, .fernTrace, .mossVeil])
+        #expect(archiveMaterialStyles.map(\.archiveMaterialVariantIndex) == [0, 1, 2, 3])
+    }
+
+    @Test
+    func cardStyleCatalogIncludesLightEffectVariants() {
+        let lightEffectStyles = CardStyle.orderedCases.filter(\.isLightEffect)
+
+        #expect(lightEffectStyles == [.cobaltHalo, .apricotBeam, .auroraPool])
+        #expect(lightEffectStyles.map(\.lightEffectVariantIndex) == [0, 1, 2])
+    }
+
+    @Test
+    func visibleCardStyleTitlesAvoidRetiredNames() {
+        let titles = CardStyle.orderedCases.map(\.title)
+        let retiredTitles = ["Porcelain Tile", "Rain Glass", "Lantern Glow"]
+
+        for title in titles {
+            #expect(title.range(of: "topo", options: .caseInsensitive) == nil)
+            #expect(title.range(of: "topographic", options: .caseInsensitive) == nil)
+        }
+
+        for retiredTitle in retiredTitles {
+            #expect(!titles.contains(retiredTitle))
+        }
     }
 
     @Test

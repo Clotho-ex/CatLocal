@@ -1,6 +1,11 @@
 import SwiftData
 import SwiftUI
 
+enum CatLocalUserDefaults {
+    static let hasCompletedOnboardingKey = "catlocal.hasCompletedOnboarding"
+    static let hasSeenFocusedCardGlintHintKey = "catlocal.hasSeenFocusedCardGlintHint"
+}
+
 @main
 struct CatLocalApp: App {
     private let modelContainer: ModelContainer
@@ -12,7 +17,15 @@ struct CatLocalApp: App {
         do {
             let container = try ModelContainer(for: schema, configurations: [configuration])
             let arguments = CommandLine.arguments
+            if arguments.contains("-ui-testing-show-onboarding") {
+                UserDefaults.standard.set(false, forKey: CatLocalUserDefaults.hasCompletedOnboardingKey)
+            }
             if arguments.contains("-ui-testing-reset") {
+                UserDefaults.standard.set(
+                    !arguments.contains("-ui-testing-show-onboarding"),
+                    forKey: CatLocalUserDefaults.hasCompletedOnboardingKey
+                )
+                UserDefaults.standard.set(false, forKey: CatLocalUserDefaults.hasSeenFocusedCardGlintHintKey)
                 let context = ModelContext(container)
                 try context.delete(model: CatRecord.self)
                 if arguments.contains("-ui-testing-seed-atlas") {

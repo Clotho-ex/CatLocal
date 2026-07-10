@@ -23,7 +23,7 @@ and implementation decisions before adding secondary settings or metrics.
 
 - `CatLocal/App/CatLocalApp.swift`: app entry point and SwiftData container setup.
 - `CatLocal/App/RootView.swift`: native tab shell, camera sheet routing, and iOS 26 sidebar-adaptable tab behavior.
-- `CatLocal/Core/Models/CatRecord.swift`: SwiftData source of truth for card metadata, local image filenames, capture source, sequence, notes, optional Vision bounding box, and card styles (`Archive`, `Sunstamp`, `Clear`, `Garden`, `Midnight`, `Apricot`, `Midnight Prism`, `Gold Leaf`, `Topographic`).
+- `CatLocal/Core/Models/CatRecord.swift`: SwiftData source of truth for card metadata, local image filenames, capture source, sequence, notes, optional Vision bounding box, and card styles (`Archive`, `Sunstamp`, `Clear`, `Garden`, `Midnight`, `Apricot`, `Midnight Prism`, `Gold Leaf`, `Contour Light`, `Ember Lines`, `Lagoon Lines`, `Moss Lines`, `Dusk Lines`, `Pine Shadow`, `Cedar Shade`, `Fern Trace`, `Moss Veil`, `Cobalt Halo`, `Apricot Beam`, `Aurora Pool`).
 - `CatLocal/Core/Services/CameraController.swift`: camera permission, preview, capture session, and camera error copy.
 - `CatLocal/Core/Services/CatImageStore.swift`: Application Support storage, EXIF/GPS stripping, downsampling, HEIC/PNG encoding, thumbnails, storage size, and deletion cleanup.
 - `CatLocal/Core/Services/CatVisionProcessor.swift`: on-device Apple Vision cat recognition, foreground mask generation, cutout creation, and Vision error copy.
@@ -52,7 +52,7 @@ and implementation decisions before adding secondary settings or metrics.
 - Before designing UI, read `README.md`, `docs/architecture.md`, `docs/design/README.md`, and the relevant Swift files. The repo is the source of truth.
 - Pull product language from existing app strings and docs. Use real labels such as `CatLocal`, `YOUR COLLECTION`, `Meet Your First Local`, `Private import`, `Local storage`, `Edit Card`, `Delete Card`, and `A private field journal for the cats you meet`.
 - Do not invent taglines, features, metrics, social claims, map concepts, cloud behavior, testimonials, placeholder cats, or fake sample data that the repo does not already support.
-- Inherit the current visual identity: the design note is `Sunlit Gallery Archive`, with pale mineral/limestone surfaces, ink/deep forest typography, sparing warm apricot and cobalt details, personal notes beside structured metadata, native Liquid Glass tab navigation, and foil/depth reserved for focused cards.
+- Inherit the current visual identity: the design note is `Sea-Glass Field Archive`, with pale mineral/limestone surfaces, frosted sea-glass details, ink/deep forest typography, sparing warm apricot and cobalt accents, personal notes beside structured metadata, native Liquid Glass tab navigation, and foil/depth reserved for focused cards.
 - Use `CatLocalTheme` rather than hardcoded colors. Key tokens include limestone/background, chalk/elevated surface, card surface, forest/ink primary text, secondary text, separator, shadow, apricot/warning, and cobalt/blue action.
 - Let the product's shape organize screens: capture/import pipeline, Vision processing, transparent cutout, card reveal/editor, local collection, and privacy/storage settings.
 
@@ -88,7 +88,9 @@ Do not reintroduce a custom floating tab bar unless a native API cannot express 
 - Card text is display-only on the card surface. Keep name, note, and Catlas editing in capture/editor fields unless the editing model is intentionally redesigned.
 - Home grid thumbnails are deliberately muted with blur/material and wrapped in explicit aspect-ratio hit boxes so they do not steal touches from the `Catlas` segmented control.
 - Focused foil and spotlight effects should be calm at rest and fade in while touched. Thumbnail rendering must stay static and cheap.
-- The Topographic style is procedural and asset-free: use seeded gradients plus visible contour strokes, not a flat rainbow wash or a heavy per-frame Canvas in scrolling views.
+- The contour-line styles are procedural and asset-free: use seeded gradients plus visible contour strokes, not a flat rainbow wash or a heavy per-frame Canvas in scrolling views.
+- Botanical material styles are procedural and asset-free: use lightweight `Shape` strokes and gradients for pine, cedar, fern, and moss shadow effects rather than bitmap assets.
+- Light-effect styles can use gradients and moving glow bands, but should remain calm at rest and cheap in thumbnails.
 - The card style carousel repeats style cycles to feel infinite and fires a small selection haptic as the centered style changes.
 - Liquid Glass belongs on native navigation and compact actions.
 - `LiveInteractiveCardView` passes `rotateX`, `rotateY`, and `isInteracting` into card content. It preserves one-shot boundary haptics and thresholded tilt haptics; do not alter the haptic gate or spring constants casually.

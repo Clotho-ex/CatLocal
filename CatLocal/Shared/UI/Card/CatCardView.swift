@@ -55,8 +55,14 @@ struct CatCardView: View {
     }
 
     private var accessibilityLabel: String {
-        let place = showsThumbnailPlaceFooter ? record.memoryPlaceLabel.map { " Memory Place, \($0)." } ?? "" : ""
-        return "Cat, \(record.displayName). Cat number \(record.sequence.formatted()). Captured \(record.capturedAt.formatted(date: .abbreviated, time: .omitted)).\(place)"
+        let note = record.note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "" : " Note saved."
+        let place = if presentation == .thumbnail, showsThumbnailPlaceFooter {
+            record.memoryPlaceLabel.map { " Memory Place, \($0)." } ?? " No Memory Place yet."
+        } else {
+            showsThumbnailPlaceFooter ? record.memoryPlaceLabel.map { " Memory Place, \($0)." } ?? "" : ""
+        }
+
+        return "Cat, \(record.displayName). Cat number \(record.sequence.formatted()). Captured \(record.capturedAt.formatted(date: .abbreviated, time: .omitted)).\(place)\(note)"
     }
 }
 
@@ -316,7 +322,11 @@ private struct CatCardSurface<CatImage: View>: View {
     }
 
     private var hasFocusedTextContent: Bool {
-        !note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || placeName != nil || placeDetail != nil
+        hasNote || placeName != nil || placeDetail != nil
+    }
+
+    private var hasNote: Bool {
+        !note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     private var header: some View {
@@ -363,8 +373,8 @@ private struct CatCardSurface<CatImage: View>: View {
                 }
             }
         } else {
-            if showsThumbnailPlaceFooter, let placeName {
-                memoryPlacePill(placeName)
+            if showsThumbnailPlaceFooter {
+                thumbnailMetadataFooter
             } else {
                 Spacer(minLength: 0)
             }
@@ -440,29 +450,64 @@ private struct CatCardSurface<CatImage: View>: View {
         .foregroundStyle(metadataContentColor)
     }
 
-    private func memoryPlacePill(_ placeName: String) -> some View {
-        Label {
-            Text(placeName)
-                .lineLimit(dynamicTypeSize.isAccessibilitySize ? 3 : 1)
-                .minimumScaleFactor(0.76)
-        } icon: {
-            Image(systemName: "mappin.and.ellipse")
-                .font(CatTypography.cardPlace(focused: focused))
+    private var thumbnailMetadataFooter: some View {
+        let isPlaced = placeName != nil
+        let title = placeName ?? "Unplaced for now"
+        let symbolName = isPlaced ? "mappin.and.ellipse" : "tray"
+
+        return HStack(alignment: .center, spacing: 6) {
+            Image(systemName: symbolName)
+                .font(CatTypography.cardPlace(focused: false))
                 .imageScale(.small)
+                .accessibilityHidden(true)
+
+            Text(title)
+                .lineLimit(1)
+                .minimumScaleFactor(0.74)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            if hasNote {
+                Image(systemName: "note.text")
+                    .font(CatTypography.finePrint)
+                    .imageScale(.small)
+                    .accessibilityHidden(true)
+            }
         }
-        .font(CatTypography.cardPlace(focused: focused))
-        .foregroundStyle(primaryContentColor)
-        .padding(.horizontal, focused ? 12 : 9)
-        .padding(.vertical, focused ? 8 : 6)
+        .font(CatTypography.cardPlace(focused: false))
+        .foregroundStyle(isPlaced ? primaryContentColor : secondaryContentColor)
+        .padding(.horizontal, 9)
+        .padding(.vertical, 6)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(
-            pillFill,
-            in: Capsule(style: .continuous)
+            Capsule(style: .continuous)
+                .fill(isPlaced ? pillFill : separatorColor.opacity(0.18))
         )
         .overlay(
             Capsule(style: .continuous)
-                .stroke(pillStroke, lineWidth: 1)
+                .stroke(isPlaced ? pillStroke : separatorColor.opacity(0.62), lineWidth: 1)
         )
-        .accessibilityLabel("Memory Place, \(placeName)")
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(thumbnailMetadataAccessibilityLabel)
+    }
+
+    private var thumbnailMetadataAccessibilityLabel: String {
+        var parts: [String] = []
+
+        if let placeName {
+            if let placeDetail {
+                parts.append("Memory Place, \(placeName), \(placeDetail)")
+            } else {
+                parts.append("Memory Place, \(placeName)")
+            }
+        } else {
+            parts.append("No Memory Place yet")
+        }
+
+        if hasNote {
+            parts.append("Note saved")
+        }
+
+        return parts.joined(separator: ". ")
     }
 
     private var imageStage: some View {
@@ -480,6 +525,10 @@ private struct CatCardSurface<CatImage: View>: View {
             thumbnailSurface
         } else if cardStyle.isTopographic {
             topoSurface
+        } else if cardStyle.isArchiveMaterial {
+            archiveMaterialSurface
+        } else if cardStyle.isLightEffect {
+            lightEffectSurface
         } else {
             switch cardStyle {
             case .prism:
@@ -545,6 +594,16 @@ private struct CatCardSurface<CatImage: View>: View {
             if cardStyle.isTopographic {
                 topoThumbnailLayer
                     .opacity(0.48)
+            }
+
+            if cardStyle.isArchiveMaterial {
+                archiveMaterialThumbnailLayer
+                    .opacity(0.54)
+            }
+
+            if cardStyle.isLightEffect {
+                lightEffectThumbnailLayer
+                    .opacity(0.62)
             }
 
             thumbnailStyleGlint
@@ -641,6 +700,222 @@ private struct CatCardSurface<CatImage: View>: View {
             .blendMode(.screen)
             .animation(.easeInOut(duration: 0.18), value: premiumFoilOpacity)
         }
+    }
+
+    private var archiveMaterialSurface: some View {
+        ZStack {
+            standardSurface
+            archiveMaterialWash
+            archiveMaterialPatternLayer
+            archiveMaterialLightBand
+        }
+    }
+
+    @ViewBuilder
+    private var archiveMaterialWash: some View {
+        switch cardStyle {
+        case .pineShadow, .cedarShade, .fernTrace, .mossVeil:
+            ZStack {
+                RadialGradient(
+                    colors: [
+                        palette.accent.opacity(archiveMaterialAccentOpacity),
+                        palette.secondaryAccent.opacity(0.18),
+                        .clear
+                    ],
+                    center: archiveMaterialLightCenter,
+                    startRadius: 10,
+                    endRadius: 260
+                )
+
+                LinearGradient(
+                    colors: [
+                        .black.opacity(archiveMaterialShadowOpacity),
+                        .clear,
+                        palette.sheen.opacity(0.12)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            }
+            .blendMode(.screen)
+        default:
+            EmptyView()
+        }
+    }
+
+    private var archiveMaterialPatternLayer: some View {
+        CardMaterialPatternShape(style: cardStyle, seed: positiveSeed)
+            .stroke(
+                archiveMaterialPatternGradient,
+                style: StrokeStyle(
+                    lineWidth: focused ? 1.15 : 0.9,
+                    lineCap: .round,
+                    lineJoin: .round
+                )
+            )
+            .opacity(focused ? 0.76 : 0.64)
+            .blendMode(archiveMaterialPatternBlendMode)
+            .accessibilityHidden(true)
+    }
+
+    private var archiveMaterialThumbnailLayer: some View {
+        CardMaterialPatternShape(style: cardStyle, seed: positiveSeed)
+            .stroke(
+                LinearGradient(
+                    colors: [
+                        palette.primaryContent.opacity(0.36),
+                        palette.sheen.opacity(0.38),
+                        palette.accent.opacity(0.30)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                ),
+                style: StrokeStyle(lineWidth: 0.68, lineCap: .round, lineJoin: .round)
+            )
+            .blendMode(archiveMaterialPatternBlendMode)
+            .accessibilityHidden(true)
+    }
+
+    private var archiveMaterialLightBand: some View {
+        Rectangle()
+            .fill(
+                LinearGradient(
+                    colors: [
+                        .clear,
+                        palette.sheen.opacity(focused ? 0.28 : 0.18),
+                        palette.accent.opacity(focused ? 0.16 : 0.10),
+                        .clear
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            )
+            .frame(width: focused ? 92 : 68)
+            .rotationEffect(.degrees(archiveMaterialLightAngle))
+            .offset(x: effectiveRotateY * 0.9, y: -effectiveRotateX * 0.65)
+            .opacity(focused ? 0.72 : 0.54)
+            .blendMode(.screen)
+            .accessibilityHidden(true)
+    }
+
+    private var lightEffectSurface: some View {
+        ZStack {
+            LinearGradient(
+                colors: palette.surfaceColors,
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+
+            lightEffectAura
+            lightEffectBand
+        }
+    }
+
+    @ViewBuilder
+    private var lightEffectAura: some View {
+        switch cardStyle {
+        case .cobaltHalo:
+            ZStack {
+                RadialGradient(
+                    colors: [
+                        palette.accent.opacity(0.68),
+                        palette.secondaryAccent.opacity(0.24),
+                        .clear
+                    ],
+                    center: lightEffectCenter,
+                    startRadius: 0,
+                    endRadius: focused ? 260 : 180
+                )
+                .blendMode(.screen)
+
+                AngularGradient(
+                    colors: [
+                        Color.cyan.opacity(0.60),
+                        Color.blue.opacity(0.22),
+                        .clear,
+                        Color.mint.opacity(0.30),
+                        Color.cyan.opacity(0.60)
+                    ],
+                    center: lightEffectCenter,
+                    angle: .degrees(Double(effectiveRotateY - effectiveRotateX) * 1.7)
+                )
+                .opacity(focused ? 0.66 : 0.48)
+                .blendMode(.plusLighter)
+            }
+        case .apricotBeam:
+            ZStack {
+                RadialGradient(
+                    colors: [
+                        palette.sheen.opacity(0.72),
+                        palette.accent.opacity(0.26),
+                        .clear
+                    ],
+                    center: lightEffectCenter,
+                    startRadius: 0,
+                    endRadius: focused ? 220 : 150
+                )
+                .blendMode(.screen)
+
+                LinearGradient(
+                    colors: [
+                        Color.white.opacity(0.44),
+                        palette.accent.opacity(0.30),
+                        .clear
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                .blendMode(.softLight)
+            }
+        case .auroraPool:
+            AngularGradient(
+                colors: [
+                    Color(red: 0.32, green: 0.88, blue: 0.72),
+                    Color(red: 0.36, green: 0.46, blue: 1.0),
+                    Color(red: 0.95, green: 0.36, blue: 0.78),
+                    Color(red: 0.96, green: 0.78, blue: 0.36),
+                    Color(red: 0.32, green: 0.88, blue: 0.72)
+                ],
+                center: lightEffectCenter,
+                angle: .degrees(Double(effectiveRotateY - effectiveRotateX) * 2.2 + 24)
+            )
+            .opacity(focused ? 0.58 : 0.42)
+            .blendMode(.hardLight)
+        default:
+            EmptyView()
+        }
+    }
+
+    private var lightEffectBand: some View {
+        Rectangle()
+            .fill(
+                LinearGradient(
+                    colors: [
+                        .clear,
+                        palette.sheen.opacity(focused ? 0.42 : 0.28),
+                        palette.accent.opacity(focused ? 0.24 : 0.14),
+                        .clear
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            )
+            .frame(width: lightEffectBandWidth)
+            .rotationEffect(.degrees(lightEffectBandAngle))
+            .offset(x: effectiveRotateY * 1.05, y: -effectiveRotateX * 0.70)
+            .opacity(focused ? 0.78 : 0.56)
+            .blendMode(.screen)
+            .accessibilityHidden(true)
+    }
+
+    private var lightEffectThumbnailLayer: some View {
+        ZStack {
+            lightEffectAura
+
+            lightEffectBand
+                .opacity(0.58)
+        }
+        .accessibilityHidden(true)
     }
 
     private var topoSurface: some View {
@@ -777,6 +1052,151 @@ private struct CatCardSurface<CatImage: View>: View {
             x: clampedUnit(0.5 + effectiveRotateY / 30),
             y: clampedUnit(0.5 - effectiveRotateX / 30)
         )
+    }
+
+    private var archiveMaterialStartPoint: UnitPoint {
+        UnitPoint(
+            x: clampedUnit(0.12 + CGFloat(cardStyle.archiveMaterialVariantIndex) * 0.06 + effectiveRotateY / 38),
+            y: clampedUnit(0.08 + effectiveRotateX / 44)
+        )
+    }
+
+    private var archiveMaterialEndPoint: UnitPoint {
+        UnitPoint(
+            x: clampedUnit(0.92 - CGFloat(cardStyle.archiveMaterialVariantIndex) * 0.04 + effectiveRotateY / 38),
+            y: clampedUnit(0.88 + effectiveRotateX / 44)
+        )
+    }
+
+    private var archiveMaterialLightCenter: UnitPoint {
+        switch cardStyle {
+        case .cedarShade:
+            UnitPoint(
+                x: clampedUnit(0.72 + effectiveRotateY / 38),
+                y: clampedUnit(0.26 - effectiveRotateX / 38)
+            )
+        case .fernTrace:
+            UnitPoint(
+                x: clampedUnit(0.34 + effectiveRotateY / 38),
+                y: clampedUnit(0.30 - effectiveRotateX / 38)
+            )
+        case .mossVeil:
+            UnitPoint(
+                x: clampedUnit(0.54 + effectiveRotateY / 38),
+                y: clampedUnit(0.60 - effectiveRotateX / 38)
+            )
+        default:
+            UnitPoint(
+                x: clampedUnit(0.62 + effectiveRotateY / 38),
+                y: clampedUnit(0.34 - effectiveRotateX / 38)
+            )
+        }
+    }
+
+    private var archiveMaterialLightAngle: Double {
+        switch cardStyle {
+        case .pineShadow:
+            -42
+        case .cedarShade:
+            -28
+        case .fernTrace:
+            32
+        case .mossVeil:
+            -8
+        default:
+            -18
+        }
+    }
+
+    private var archiveMaterialAccentOpacity: Double {
+        switch cardStyle {
+        case .cedarShade:
+            0.34
+        case .fernTrace:
+            0.26
+        case .mossVeil:
+            0.38
+        default:
+            0.30
+        }
+    }
+
+    private var archiveMaterialShadowOpacity: Double {
+        switch cardStyle {
+        case .fernTrace:
+            0.24
+        case .mossVeil:
+            0.28
+        default:
+            0.34
+        }
+    }
+
+    private var archiveMaterialPatternGradient: LinearGradient {
+        LinearGradient(
+            colors: [
+                palette.primaryContent.opacity(0.42),
+                palette.sheen.opacity(0.62),
+                palette.accent.opacity(0.46)
+            ],
+            startPoint: archiveMaterialStartPoint,
+            endPoint: archiveMaterialEndPoint
+        )
+    }
+
+    private var archiveMaterialPatternBlendMode: BlendMode {
+        switch cardStyle {
+        case .pineShadow, .cedarShade, .fernTrace, .mossVeil:
+            .screen
+        default:
+            .softLight
+        }
+    }
+
+    private var lightEffectCenter: UnitPoint {
+        switch cardStyle {
+        case .cobaltHalo:
+            UnitPoint(
+                x: clampedUnit(0.66 + effectiveRotateY / 34),
+                y: clampedUnit(0.30 - effectiveRotateX / 34)
+            )
+        case .apricotBeam:
+            UnitPoint(
+                x: clampedUnit(0.26 + effectiveRotateY / 36),
+                y: clampedUnit(0.22 - effectiveRotateX / 36)
+            )
+        case .auroraPool:
+            UnitPoint(
+                x: clampedUnit(0.48 + effectiveRotateY / 32),
+                y: clampedUnit(0.52 - effectiveRotateX / 32)
+            )
+        default:
+            .center
+        }
+    }
+
+    private var lightEffectBandAngle: Double {
+        switch cardStyle {
+        case .cobaltHalo:
+            -16
+        case .apricotBeam:
+            24
+        case .auroraPool:
+            -34
+        default:
+            -18
+        }
+    }
+
+    private var lightEffectBandWidth: CGFloat {
+        switch cardStyle {
+        case .apricotBeam:
+            focused ? 114 : 82
+        case .auroraPool:
+            focused ? 92 : 70
+        default:
+            focused ? 78 : 60
+        }
     }
 
     private var topoMaskCenter: UnitPoint {
@@ -1084,6 +1504,76 @@ private struct CardStylePalette {
             secondaryAccent = Color(red: 1.0, green: 0.38, blue: 0.66)
             sheen = Color(red: 0.70, green: 0.92, blue: 1.0)
             primaryContent = .white
+        case .pineShadow:
+            surfaceColors = [
+                Color(red: 0.04, green: 0.13, blue: 0.10),
+                Color(red: 0.13, green: 0.30, blue: 0.22),
+                Color(red: 0.03, green: 0.09, blue: 0.07)
+            ]
+            accent = Color(red: 0.64, green: 0.82, blue: 0.35)
+            secondaryAccent = Color(red: 0.26, green: 0.62, blue: 0.46)
+            sheen = Color(red: 0.78, green: 0.96, blue: 0.62)
+            primaryContent = .white
+        case .cedarShade:
+            surfaceColors = [
+                Color(red: 0.05, green: 0.11, blue: 0.08),
+                Color(red: 0.18, green: 0.25, blue: 0.14),
+                Color(red: 0.07, green: 0.07, blue: 0.05)
+            ]
+            accent = Color(red: 0.72, green: 0.78, blue: 0.40)
+            secondaryAccent = Color(red: 0.32, green: 0.58, blue: 0.36)
+            sheen = Color(red: 0.86, green: 0.94, blue: 0.62)
+            primaryContent = .white
+        case .fernTrace:
+            surfaceColors = [
+                Color(red: 0.02, green: 0.12, blue: 0.12),
+                Color(red: 0.06, green: 0.28, blue: 0.22),
+                Color(red: 0.02, green: 0.08, blue: 0.08)
+            ]
+            accent = Color(red: 0.36, green: 0.86, blue: 0.62)
+            secondaryAccent = Color(red: 0.22, green: 0.62, blue: 0.76)
+            sheen = Color(red: 0.70, green: 1.0, blue: 0.78)
+            primaryContent = .white
+        case .mossVeil:
+            surfaceColors = [
+                Color(red: 0.08, green: 0.13, blue: 0.07),
+                Color(red: 0.24, green: 0.32, blue: 0.18),
+                Color(red: 0.05, green: 0.08, blue: 0.04)
+            ]
+            accent = Color(red: 0.84, green: 0.86, blue: 0.46)
+            secondaryAccent = Color(red: 0.52, green: 0.68, blue: 0.38)
+            sheen = Color(red: 0.96, green: 1.0, blue: 0.70)
+            primaryContent = .white
+        case .cobaltHalo:
+            surfaceColors = [
+                Color(red: 0.02, green: 0.06, blue: 0.14),
+                Color(red: 0.03, green: 0.18, blue: 0.28),
+                Color(red: 0.01, green: 0.03, blue: 0.09)
+            ]
+            accent = Color(red: 0.22, green: 0.80, blue: 1.0)
+            secondaryAccent = Color(red: 0.36, green: 0.50, blue: 1.0)
+            sheen = Color(red: 0.70, green: 0.94, blue: 1.0)
+            primaryContent = .white
+        case .apricotBeam:
+            surfaceColors = [
+                Color(red: 0.95, green: 0.64, blue: 0.38),
+                Color(red: 0.56, green: 0.22, blue: 0.16),
+                Color(red: 1.0, green: 0.83, blue: 0.56)
+            ]
+            accent = Color(red: 1.0, green: 0.54, blue: 0.22)
+            secondaryAccent = Color(red: 0.90, green: 0.24, blue: 0.20)
+            sheen = Color(red: 1.0, green: 0.92, blue: 0.68)
+            primaryContent = Color(red: 0.25, green: 0.08, blue: 0.05)
+        case .auroraPool:
+            surfaceColors = [
+                Color(red: 0.04, green: 0.05, blue: 0.14),
+                Color(red: 0.04, green: 0.16, blue: 0.18),
+                Color(red: 0.10, green: 0.06, blue: 0.22)
+            ]
+            accent = Color(red: 0.30, green: 0.88, blue: 0.74)
+            secondaryAccent = Color(red: 0.86, green: 0.34, blue: 0.86)
+            sheen = Color(red: 0.68, green: 0.92, blue: 1.0)
+            primaryContent = .white
         }
 
         secondaryContent = primaryContent.opacity(0.82)
@@ -1094,6 +1584,170 @@ private struct CardStylePalette {
         pillStroke = primaryContent.opacity(0.24)
         imageStageFill = sheen.opacity(0.42)
         imageStageStroke = primaryContent.opacity(0.14)
+    }
+}
+
+private struct CardMaterialPatternShape: Shape {
+    let style: CardStyle
+    let seed: Int
+
+    func path(in rect: CGRect) -> Path {
+        switch style {
+        case .pineShadow:
+            pineShadowPath(in: rect)
+        case .cedarShade:
+            cedarShadePath(in: rect)
+        case .fernTrace:
+            fernTracePath(in: rect)
+        case .mossVeil:
+            mossVeilPath(in: rect)
+        default:
+            Path()
+        }
+    }
+
+    private func pineShadowPath(in rect: CGRect) -> Path {
+        var path = Path()
+        let stems = 9
+
+        for index in 0..<stems {
+            let progress = CGFloat(index) / CGFloat(max(stems - 1, 1))
+            let baseX = rect.minX + rect.width * (-0.04 + progress * 1.10)
+            let baseY = rect.maxY + rect.height * 0.08
+            let tipX = baseX + rect.width * (-0.12 + CGFloat((seed + index * 5) % 9) * 0.028)
+            let tipY = rect.minY + rect.height * (0.10 + CGFloat((seed + index * 3) % 6) * 0.045)
+
+            path.move(to: CGPoint(x: baseX, y: baseY))
+            path.addLine(to: CGPoint(x: tipX, y: tipY))
+
+            for leaf in 0..<3 {
+                let leafProgress = CGFloat(leaf + 1) / 4
+                let anchorX = baseX + (tipX - baseX) * leafProgress
+                let anchorY = baseY + (tipY - baseY) * leafProgress
+                let reach = rect.width * (0.05 + CGFloat(leaf) * 0.014)
+                let rise = rect.height * (0.04 + CGFloat(leaf) * 0.010)
+
+                path.move(to: CGPoint(x: anchorX, y: anchorY))
+                path.addQuadCurve(
+                    to: CGPoint(x: anchorX + reach, y: anchorY - rise),
+                    control: CGPoint(x: anchorX + reach * 0.34, y: anchorY - rise * 1.24)
+                )
+
+                path.move(to: CGPoint(x: anchorX, y: anchorY))
+                path.addQuadCurve(
+                    to: CGPoint(x: anchorX - reach * 0.72, y: anchorY - rise * 0.78),
+                    control: CGPoint(x: anchorX - reach * 0.20, y: anchorY - rise * 1.12)
+                )
+            }
+        }
+
+        return path
+    }
+
+    private func cedarShadePath(in rect: CGRect) -> Path {
+        var path = Path()
+        let branches = 8
+
+        for index in 0..<branches {
+            let progress = CGFloat(index) / CGFloat(max(branches - 1, 1))
+            let start = CGPoint(
+                x: rect.minX + rect.width * (0.08 + progress * 0.82),
+                y: rect.maxY + rect.height * 0.06
+            )
+            let end = CGPoint(
+                x: start.x + rect.width * (-0.18 + CGFloat((seed + index * 7) % 13) * 0.025),
+                y: rect.minY + rect.height * (0.04 + CGFloat(index % 4) * 0.05)
+            )
+
+            path.move(to: start)
+            path.addCurve(
+                to: end,
+                control1: CGPoint(x: start.x - rect.width * 0.10, y: rect.midY * 1.08),
+                control2: CGPoint(x: end.x + rect.width * 0.08, y: rect.midY * 0.54)
+            )
+
+            for needle in 0..<4 {
+                let needleProgress = CGFloat(needle + 1) / 5
+                let anchor = CGPoint(
+                    x: start.x + (end.x - start.x) * needleProgress,
+                    y: start.y + (end.y - start.y) * needleProgress
+                )
+                let reach = rect.width * (0.036 + CGFloat(needle) * 0.006)
+                path.move(to: anchor)
+                path.addLine(to: CGPoint(x: anchor.x + reach, y: anchor.y - rect.height * 0.026))
+                path.move(to: anchor)
+                path.addLine(to: CGPoint(x: anchor.x - reach * 0.74, y: anchor.y - rect.height * 0.020))
+            }
+        }
+
+        return path
+    }
+
+    private func fernTracePath(in rect: CGRect) -> Path {
+        var path = Path()
+        let stemStart = CGPoint(x: rect.minX + rect.width * 0.20, y: rect.maxY + rect.height * 0.02)
+        let stemEnd = CGPoint(x: rect.minX + rect.width * 0.74, y: rect.minY + rect.height * 0.08)
+
+        path.move(to: stemStart)
+        path.addCurve(
+            to: stemEnd,
+            control1: CGPoint(x: rect.minX + rect.width * 0.34, y: rect.midY * 1.14),
+            control2: CGPoint(x: rect.minX + rect.width * 0.54, y: rect.midY * 0.50)
+        )
+
+        for leaflet in 0..<12 {
+            let progress = CGFloat(leaflet + 1) / 13
+            let anchor = CGPoint(
+                x: stemStart.x + (stemEnd.x - stemStart.x) * progress,
+                y: stemStart.y + (stemEnd.y - stemStart.y) * progress
+            )
+            let side: CGFloat = leaflet % 2 == 0 ? 1 : -1
+            let length = rect.width * (0.08 + CGFloat((seed + leaflet) % 4) * 0.008)
+            let lift = rect.height * (0.036 + CGFloat(leaflet % 3) * 0.008)
+
+            path.move(to: anchor)
+            path.addQuadCurve(
+                to: CGPoint(x: anchor.x + side * length, y: anchor.y - lift),
+                control: CGPoint(x: anchor.x + side * length * 0.42, y: anchor.y - lift * 1.32)
+            )
+        }
+
+        return path
+    }
+
+    private func mossVeilPath(in rect: CGRect) -> Path {
+        var path = Path()
+        let pockets = 13
+
+        for index in 0..<pockets {
+            let seedX = CGFloat((seed + index * 17) % 97) / 97
+            let seedY = CGFloat((seed + index * 29) % 89) / 89
+            let width = rect.width * (0.08 + CGFloat(index % 4) * 0.018)
+            let height = width * (0.46 + CGFloat((seed + index) % 3) * 0.14)
+            let origin = CGPoint(
+                x: rect.minX + rect.width * (0.06 + seedX * 0.84),
+                y: rect.minY + rect.height * (0.10 + seedY * 0.74)
+            )
+
+            path.addEllipse(
+                in: CGRect(
+                    x: origin.x - width / 2,
+                    y: origin.y - height / 2,
+                    width: width,
+                    height: height
+                )
+            )
+
+            if index % 3 == 0 {
+                path.move(to: CGPoint(x: origin.x - width * 0.62, y: origin.y))
+                path.addQuadCurve(
+                    to: CGPoint(x: origin.x + width * 0.62, y: origin.y - height * 0.12),
+                    control: CGPoint(x: origin.x, y: origin.y - height * 0.78)
+                )
+            }
+        }
+
+        return path
     }
 }
 
@@ -1495,6 +2149,233 @@ struct CardStyleSwatch: View {
             .blendMode(.hardLight)
         case .topo, .topoEmber, .topoLagoon, .topoMoss, .topoDusk:
             topographicSwatchOverlay
+        case .pineShadow, .cedarShade, .fernTrace, .mossVeil:
+            archiveMaterialSwatchOverlay
+        case .cobaltHalo, .apricotBeam, .auroraPool:
+            lightEffectSwatchOverlay
+        }
+    }
+
+    private var archiveMaterialSwatchOverlay: some View {
+        let variant = style.archiveMaterialVariantIndex
+
+        return ZStack {
+            archiveMaterialSwatchWash
+
+            CardMaterialPatternShape(style: style, seed: 23 + variant * 47)
+                .stroke(
+                    LinearGradient(
+                        colors: [
+                            contentColor.opacity(0.42),
+                            palette.sheen.opacity(0.66),
+                            palette.accent.opacity(0.50)
+                        ],
+                        startPoint: archiveMaterialSwatchStartPoint,
+                        endPoint: archiveMaterialSwatchEndPoint
+                    ),
+                    style: StrokeStyle(
+                        lineWidth: 0.86,
+                        lineCap: .round,
+                        lineJoin: .round
+                    )
+                )
+                .blendMode(.screen)
+                .opacity(0.82)
+
+            LinearGradient(
+                colors: [
+                    .clear,
+                    palette.sheen.opacity(0.30),
+                    .clear
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .frame(width: 34)
+            .rotationEffect(.degrees(archiveMaterialSwatchAngle))
+            .blendMode(.screen)
+            .opacity(0.74)
+        }
+    }
+
+    @ViewBuilder
+    private var archiveMaterialSwatchWash: some View {
+        switch style {
+        case .pineShadow:
+            RadialGradient(
+                colors: [
+                    palette.accent.opacity(0.28),
+                    palette.secondaryAccent.opacity(0.18),
+                    .clear
+                ],
+                center: .topLeading,
+                startRadius: 0,
+                endRadius: 120
+            )
+            .blendMode(.screen)
+        case .cedarShade:
+            RadialGradient(
+                colors: [
+                    palette.accent.opacity(0.34),
+                    palette.secondaryAccent.opacity(0.16),
+                    .clear
+                ],
+                center: .topTrailing,
+                startRadius: 0,
+                endRadius: 118
+            )
+            .blendMode(.screen)
+        case .fernTrace:
+            RadialGradient(
+                colors: [
+                    palette.sheen.opacity(0.30),
+                    palette.accent.opacity(0.20),
+                    .clear
+                ],
+                center: .leading,
+                startRadius: 0,
+                endRadius: 116
+            )
+            .blendMode(.screen)
+        case .mossVeil:
+            RadialGradient(
+                colors: [
+                    palette.accent.opacity(0.36),
+                    palette.secondaryAccent.opacity(0.18),
+                    .clear
+                ],
+                center: UnitPoint(x: 0.52, y: 0.62),
+                startRadius: 0,
+                endRadius: 128
+            )
+            .blendMode(.screen)
+        default:
+            EmptyView()
+        }
+    }
+
+    private var archiveMaterialSwatchStartPoint: UnitPoint {
+        switch style {
+        case .pineShadow:
+            .topTrailing
+        case .cedarShade:
+            .top
+        case .fernTrace:
+            .leading
+        case .mossVeil:
+            .topLeading
+        default:
+            .topLeading
+        }
+    }
+
+    private var archiveMaterialSwatchEndPoint: UnitPoint {
+        switch style {
+        case .pineShadow:
+            .bottomLeading
+        case .cedarShade:
+            .bottomTrailing
+        case .fernTrace:
+            .trailing
+        case .mossVeil:
+            .bottom
+        default:
+            .bottomTrailing
+        }
+    }
+
+    private var archiveMaterialSwatchAngle: Double {
+        switch style {
+        case .pineShadow:
+            -42
+        case .cedarShade:
+            -28
+        case .fernTrace:
+            32
+        case .mossVeil:
+            -8
+        default:
+            -18
+        }
+    }
+
+    private var lightEffectSwatchOverlay: some View {
+        let variant = style.lightEffectVariantIndex
+
+        return ZStack {
+            RadialGradient(
+                colors: [
+                    palette.accent.opacity(style == .apricotBeam ? 0.48 : 0.58),
+                    palette.secondaryAccent.opacity(0.22),
+                    .clear
+                ],
+                center: lightEffectSwatchCenter,
+                startRadius: 0,
+                endRadius: 108
+            )
+            .blendMode(.screen)
+
+            AngularGradient(
+                colors: lightEffectSwatchColors,
+                center: lightEffectSwatchCenter,
+                angle: .degrees(Double(variant * 34))
+            )
+            .opacity(style == .apricotBeam ? 0.36 : 0.54)
+            .blendMode(.hardLight)
+
+            LinearGradient(
+                colors: [
+                    .clear,
+                    palette.sheen.opacity(0.36),
+                    palette.accent.opacity(0.24),
+                    .clear
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .frame(width: style == .apricotBeam ? 42 : 34)
+            .rotationEffect(.degrees(lightEffectSwatchAngle))
+            .blendMode(.screen)
+            .opacity(0.80)
+        }
+    }
+
+    private var lightEffectSwatchColors: [Color] {
+        switch style {
+        case .cobaltHalo:
+            [.cyan, palette.accent, palette.secondaryAccent, .mint, .cyan]
+        case .apricotBeam:
+            [palette.sheen, palette.accent, palette.secondaryAccent, Color.white.opacity(0.82), palette.sheen]
+        case .auroraPool:
+            [.mint, .blue, .pink, .yellow, .mint]
+        default:
+            [palette.accent, palette.secondaryAccent, palette.sheen, palette.accent]
+        }
+    }
+
+    private var lightEffectSwatchCenter: UnitPoint {
+        switch style {
+        case .cobaltHalo:
+            UnitPoint(x: 0.66, y: 0.30)
+        case .apricotBeam:
+            UnitPoint(x: 0.24, y: 0.22)
+        case .auroraPool:
+            UnitPoint(x: 0.50, y: 0.52)
+        default:
+            .center
+        }
+    }
+
+    private var lightEffectSwatchAngle: Double {
+        switch style {
+        case .cobaltHalo:
+            -16
+        case .apricotBeam:
+            24
+        case .auroraPool:
+            -34
+        default:
+            -18
         }
     }
 

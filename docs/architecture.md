@@ -21,6 +21,8 @@ CatLocal/
       CaptureView.swift
     Collection/
       CollectionView.swift
+    Onboarding/
+      OnboardingView.swift
     Settings/
       SettingsView.swift
   Shared/
@@ -30,6 +32,7 @@ CatLocal/
       Card/
       Effects/
       Images/
+      Loci/
   Resources/
     Assets.xcassets
 ```
@@ -140,6 +143,7 @@ Reusable UI belongs under `CatLocal/Shared/UI`:
 - `Card`: card surfaces and focused-card presentation.
 - `Effects`: interaction effects such as live drag tilt and motion lighting.
 - `Images`: image loading/display helpers.
+- `Loci`: restrained mascot state, animation, and placement views.
 
 Keep Liquid Glass restrained:
 
@@ -155,13 +159,17 @@ The card renderer now supports the expanded style set:
 - `garden`, `midnight`, `apricot`
 - `prism`, `gold`, `topo`
 - `topoEmber`, `topoLagoon`, `topoMoss`, `topoDusk`
+- `pineShadow`, `cedarShade`, `fernTrace`, `mossVeil`
+- `cobaltHalo`, `apricotBeam`, `auroraPool`
 
 Implementation notes from the foil polish pass:
 
 - `LiveInteractiveCardView` passes `rotateX`, `rotateY`, and `isInteracting` into its content closure. Keep this signature when adding focused-card effects.
 - Focused foil and spotlight effects are intentionally hidden until touch. Static previews can show foil, but the focused baseline should stay calm.
 - `prism` and `gold` use permanent dark base surfaces so blend modes do not wash out in light or dark mode.
-- The topographic family is procedural and asset-free: it uses seeded gradients plus lightweight `Shape` contour strokes. Do not replace it with a heavy per-frame `Canvas` in scrolling contexts.
+- The contour-line family is procedural and asset-free: it uses seeded gradients plus lightweight `Shape` contour strokes. Do not replace it with a heavy per-frame `Canvas` in scrolling contexts. User-facing style titles should use names like `Contour Light`, `Ember Lines`, and `Lagoon Lines`, not implementation shorthand.
+- The botanical material family is also procedural and asset-free: `Pine Shadow`, `Cedar Shade`, `Fern Trace`, and `Moss Veil` use lightweight seeded `Shape` strokes plus gradients for branch, frond, and moss-shadow effects.
+- The light-effect family (`Cobalt Halo`, `Apricot Beam`, `Aurora Pool`) can lean on gradients, angular glow, and moving light bands without adding bitmap assets.
 - `presentation == .thumbnail` must ignore live tilt and stay cheap. Home grid thumbnails are deliberately blurred/material-muted until a card is focused.
 - The home grid wraps card buttons in an explicit aspect-ratio hit box. Preserve that wrapper so cards do not steal touches from the `Catlas` segmented control.
 - Card style selection uses an infinite-feeling carousel by rendering repeated style cycles and recentering near the ends. Selection haptics fire when the centered style changes.

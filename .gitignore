@@ -3,3 +3,14 @@ DerivedData/
 build/
 *.xcuserstate
 xcuserdata/
+
+# Local agent and design-tool state
+.agents/
+.claude/
+.claude-flow/
+.codex/
+.impeccable/
+.swarm/
+.mcp.json
+ruvector.db
+skills-lock.json

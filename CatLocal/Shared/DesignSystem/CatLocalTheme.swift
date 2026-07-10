@@ -173,12 +173,14 @@ enum CatLocalTheme {
             sage
         case .sunstamp, .apricot, .gold, .topo, .topoEmber:
             warning
-        case .clear, .topoLagoon:
+        case .clear, .topoLagoon, .cobaltHalo:
             blueAction
-        case .garden, .topoMoss:
+        case .garden, .topoMoss, .pineShadow, .cedarShade, .fernTrace, .mossVeil:
             positive
-        case .midnight, .prism, .topoDusk:
+        case .midnight, .prism, .topoDusk, .auroraPool:
             primaryText
+        case .apricotBeam:
+            warning
         }
     }
 
@@ -188,14 +190,16 @@ enum CatLocalTheme {
             cardSurface
         case .apricot:
             elevatedSurface
-        case .garden:
+        case .garden, .pineShadow, .cedarShade, .fernTrace, .mossVeil:
             memoryPlaceFill
-        case .midnight, .topo, .topoEmber, .topoLagoon, .topoMoss, .topoDusk:
+        case .midnight, .topo, .topoEmber, .topoLagoon, .topoMoss, .topoDusk, .cobaltHalo, .auroraPool:
             primaryText.opacity(0.92)
         case .prism:
             Color(red: 0.08, green: 0.09, blue: 0.12)
         case .gold:
             Color(red: 0.15, green: 0.11, blue: 0.07)
+        case .apricotBeam:
+            warningWash
         }
     }
 }
@@ -493,6 +497,7 @@ struct CatDeletionConfirmationSheet: View {
 
     let title: String
     let message: String
+    let detail: String?
     let deleteTitle: String
     let isDeleting: Bool
     let onDelete: () -> Void
@@ -501,6 +506,7 @@ struct CatDeletionConfirmationSheet: View {
     init(
         title: String,
         message: String,
+        detail: String? = nil,
         deleteTitle: String = "Delete",
         isDeleting: Bool = false,
         onDelete: @escaping () -> Void,
@@ -508,6 +514,7 @@ struct CatDeletionConfirmationSheet: View {
     ) {
         self.title = title
         self.message = message
+        self.detail = detail
         self.deleteTitle = deleteTitle
         self.isDeleting = isDeleting
         self.onDelete = onDelete
@@ -534,34 +541,63 @@ struct CatDeletionConfirmationSheet: View {
     }
 
     private var sheetContent: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack(alignment: .top, spacing: 13) {
-                deleteIcon
-
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(title)
-                        .font(CatTypography.panelTitle)
-                        .foregroundStyle(CatLocalTheme.primaryText)
-                        .lineLimit(nil)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    Text(message)
-                        .font(CatTypography.supporting)
-                        .foregroundStyle(CatLocalTheme.secondaryText)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
-
+        VStack(alignment: .leading, spacing: 20) {
+            sheetHeader
+            consequenceSummary
             actionButtons
         }
     }
 
+    private var sheetHeader: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            deleteIcon
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text(title)
+                    .font(CatTypography.momentTitle)
+                    .foregroundStyle(CatLocalTheme.primaryText)
+                    .lineLimit(nil)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Text(message)
+                    .font(CatTypography.supporting)
+                    .foregroundStyle(CatLocalTheme.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    private var consequenceSummary: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("This cannot be undone.")
+                .font(CatTypography.fieldLabel)
+                .foregroundStyle(CatAttentionRole.destructive.text)
+
+            if let detail {
+                Text(detail)
+                    .font(CatTypography.metadata)
+                    .foregroundStyle(CatLocalTheme.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .background(CatAttentionRole.destructive.wash.opacity(0.64), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(CatAttentionRole.destructive.stroke.opacity(0.32), lineWidth: 1)
+        )
+        .accessibilityElement(children: .combine)
+    }
+
     private var deleteIcon: some View {
         Image(systemName: "trash.fill")
-            .font(.system(size: 22, weight: .semibold))
-            .foregroundStyle(CatAttentionRole.destructive.strongForeground)
-            .frame(width: 44, height: 44)
-            .background(CatAttentionRole.destructive.accent, in: Circle())
+            .font(.system(size: 19, weight: .semibold))
+            .foregroundStyle(CatAttentionRole.destructive.accent)
+            .frame(width: 42, height: 42)
+            .background(CatAttentionRole.destructive.wash.opacity(0.82), in: Circle())
             .accessibilityHidden(true)
     }
 
@@ -628,7 +664,11 @@ struct CatDeletionConfirmationSheet: View {
     }
 
     private var presentationDetents: Set<PresentationDetent> {
-        dynamicTypeSize.isAccessibilitySize ? [.medium, .large] : [.height(232)]
+        if dynamicTypeSize.isAccessibilitySize {
+            return [.medium, .large]
+        }
+
+        return detail == nil ? [.height(300)] : [.height(348)]
     }
 }
 

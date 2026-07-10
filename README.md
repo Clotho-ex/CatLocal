@@ -33,4 +33,6 @@ Open `CatLocal.xcodeproj` and run the shared `CatLocal` scheme.
 - `CatLocal/Shared`: design system and reusable UI components.
 - `CatLocal/Resources`: asset catalog.
 - `docs/architecture.md`: implementation architecture and handoff notes.
+- `docs/design/README.md`: product, brand, visual system, and interaction guardrails.
+- `docs/loci-usage.md`: Loci mascot state, placement, animation, and asset rules.
 - `AGENTS.md`: working rules for future coding agents.

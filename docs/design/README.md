@@ -1,39 +1,130 @@
-# Sea-Glass Field Archive
+# CatLocal Design System
 
-The selected visual direction combines the restraint of a contemporary gallery
-catalogue with the cool clarity of an Istanbul street archive: ferry tile,
-sea air, and a private field notebook.
+## Sea-Glass Field Archive
 
-- Sea-glass and porcelain surfaces
-- Pine ink typography with eucalyptus metadata
-- Peacock action, rust warning, and moss success details used sparingly
-- Personal notes alongside structured metadata
-- Native Liquid Glass tab navigation with camera as the detached primary action
-- Foil light and depth reserved for focused cards, with a calm baseline until touch
-- Home grid card thumbnails intentionally muted by blur/material so focused cards remain the premium reveal
+CatLocal is a private, local-first iPhone journal that turns real cat
+encounters into tactile collectible cards. The product loop is:
 
-The reference image in this folder is a visual target, not a literal layout
-specification. Native behavior, legibility, and accessibility take priority.
+`capture/import -> on-device Vision -> transparent cutout -> card reveal/editor -> local collection`
 
-## Handoff Notes From Foil And Editing Polish
+Every screen should reinforce that loop before introducing secondary settings,
+proof points, or decorative detail. The user's cat cards remain the hero.
 
-- Card text is display-only on the card surface. Names, notes, and Catlas labels are edited in the capture/editor fields, not inline on the card.
-- Focused cards can react to touch through tilt, spotlight, foil, and haptics. Grid thumbnails must stay visually quiet and inexpensive to render.
-- `Midnight Prism`, `Gold Leaf`, and the topographic family are premium foil styles. Their animated light should appear only while the focused card is being touched.
-- Topographic styles should read as visible contour lines over color, not flat rainbow washes.
-- The theme carousel should feel endless and should give a small selection haptic while scrolling between styles.
-- Typography is semantic and native-system through `CatTypography`. Use those roles for screen titles, page moments, panel titles, body copy, metadata, controls, field labels, and card text instead of adding one-off font sizes.
+## Audience And Purpose
 
-## Palette Guardrails
+CatLocal is for iPhone users who notice real cats in daily life and want a
+private, tactile record of those encounters. It is not a social network, map,
+camera utility, cloud organizer, or novelty generator.
 
-- Use sea-glass and porcelain tones for the app background, cards, settings surfaces, and image staging.
-- Keep the background, elevated surfaces, cards, and glass controls visibly separated in both light and dark mode.
-- Use pine ink for primary text and eucalyptus gray-green for supporting metadata.
-- Use peacock teal for primary actions and selected states so controls read clearly against the cool surfaces.
-- Use azurite for privacy proof, local/on-device explanations, and storage/information cues.
-- Use rust for warnings and warm card accents, not as the default action color.
-- Use moss green for saved, success, and manual place states so success feedback stays distinct from actions and warnings.
-- Use destructive rose only for permanent deletion. Do not reuse rust warning colors for delete actions.
-- Apply color through `CatAttentionRole` washes, text, symbols, and strong fills instead of adding one-off colors in feature views.
-- Use strokes sparingly. A semantic role does not automatically need a bordered pill or outlined row.
-- Keep dark mode in the same role map: pine-charcoal foundations, porcelain text, peacock actions, rust warnings, and bright moss success.
+The app should feel like a small field archive: personal, local, quiet, and
+careful with the user's photos.
+
+## Product Principles
+
+- Lead with the capture-to-card loop: Camera, Choose private photo, Looking for
+  cats, Lifting the subject, Make it yours, and Add Cat.
+- Make privacy visible through behavior: on-device processing, EXIF/GPS removal,
+  local storage, no account, no public map, and no cloud database.
+- Keep the interface quiet enough that real saved cards carry the emotion.
+- Prefer native iOS controls, navigation, haptics, materials, and accessibility
+  behaviors over custom chrome.
+- Preserve CatLocal's real data shape: `CatRecord.displayName`, sequence
+  numbers, capture dates, optional notes, Catlas labels, and card styles.
+
+## Visual Direction
+
+- Restored archive materials: porcelain, limestone, frosted sea glass, aged
+  paper, and subtle ink.
+- Warm craft accents: apricot for attention, cobalt for action, restrained
+  green for privacy and safety.
+- Tactile cards: soft shadows, editorial labels, procedural material effects,
+  and calm depth only where the user focuses a card.
+- No sample cats, fake metrics, public-map language, account setup patterns, or
+  social-feed affordances.
+- No heavy glass blobs, dark sci-fi panels, loud gradients, or premium effects
+  in scrolling grids.
+
+The reference image `docs/design/sunlit-gallery-archive.png` is a mood target,
+not a literal layout spec.
+
+## Experience Shape
+
+- Home opens as the private collection. Empty Home should make the first action
+  clear without feeling like a marketing page.
+- Capture and private import are equal first-class starts.
+- Vision states should use the app's own language and transition explicitly:
+  Looking for cats, Lifting the subject, Make it yours, Add Cat.
+- Card editing happens in fields beside or around the card, not as inline text
+  editing on the card surface.
+- Settings explains privacy and storage plainly. It should stay dense,
+  practical, and Loci-free except where a future explicit education moment
+  warrants it elsewhere.
+
+## Color System
+
+Use `CatLocalTheme` semantic tokens instead of hardcoded colors.
+
+| Role | Use |
+| --- | --- |
+| `limestone` / app background | Warm page base for the archive feel. |
+| `chalk` / elevated surface | Quiet panels, empty states, and grouped content. |
+| `cardSurface` | Card faces and tactile collection surfaces. |
+| `forest` / `ink` | Primary text and editorial labels. |
+| `secondaryText` | Supporting copy, timestamps, and explanatory details. |
+| `separator` | Hairline structure and low-contrast borders. |
+| `apricot` / warning | Warm attention, camera emphasis, and recoverable warnings. |
+| `cobalt` / action | Primary actions and selected controls. |
+
+Attention roles should stay semantic. Use privacy/safety greens for trust,
+warning warmth for recoverable problems, and destructive styling only for
+explicit destructive actions.
+
+## Typography And Layout
+
+- Use CatLocal's established typography helpers and native Dynamic Type.
+- Keep editorial headings compact; reserve hero-scale type for onboarding or
+  truly empty states.
+- Keep collection and settings layouts scannable. Avoid card-inside-card
+  structures and decorative panels that add no product information.
+- Give fixed-format UI, card previews, and toolbar controls stable dimensions so
+  labels, icons, and motion states do not shift layout.
+
+## Component Guardrails
+
+- `RootView` uses native SwiftUI tabs and iOS 26 Liquid Glass behavior. Do not
+  reintroduce a custom floating tab bar without a platform limitation.
+- `CollectionView` should keep grid thumbnails cheap, static, and muted until a
+  card is focused.
+- `CaptureView` owns the first-use product loop and should preserve explicit
+  capture, processing, recovery, reveal, edit, and save states.
+- `CatCardView` renders display text. Use edit sheets or adjacent fields for
+  name, notes, Catlas, and style edits.
+- `LiveInteractiveCardView` is the home for focused tilt, foil, and haptics.
+  Keep those effects calm at rest and active only while focused or touched.
+- `Loci` belongs in targeted state moments: empty collection, recovery,
+  warnings, saved-card success, first-time hint education, and explicit privacy
+  education.
+
+## Motion And Feedback
+
+- Motion should feel native and meaningful: page transitions, card reveal,
+  subtle text transitions, focused-card tilt, and small haptics at important
+  moments.
+- Avoid continuous sensor work or per-frame effects in scrolling views.
+- Respect Reduce Motion and VoiceOver. Important state cannot be communicated by
+  animation, color, or mascot pose alone.
+- Haptics should mark intent or completion, not every decorative change.
+
+## Privacy Language
+
+Use concrete, behavioral privacy copy:
+
+- No Account
+- No Map Tracking
+- No Cloud Database
+- On-device only
+- Nothing leaves your iPhone
+- EXIF and GPS removed before storage
+
+Avoid abstract promises such as "secure by design" unless the surrounding copy
+names the actual local behavior.

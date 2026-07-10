@@ -7,6 +7,7 @@ struct CardMintingSuccessView<Content: View>: View {
 
     let cornerRadius: CGFloat
     let showsCustomizationPanel: Bool
+    let showsLociCompanion: Bool
     let onHome: () -> Void
     let onKeepEditing: () -> Void
     @ViewBuilder let card: (_ sheen: CardMintingSheenOverlay) -> Content
@@ -22,6 +23,7 @@ struct CardMintingSuccessView<Content: View>: View {
         isCustomizationDone: Binding<Bool>,
         cornerRadius: CGFloat = 34,
         showsCustomizationPanel: Bool = true,
+        showsLociCompanion: Bool = false,
         onHome: @escaping () -> Void,
         onKeepEditing: @escaping () -> Void,
         @ViewBuilder card: @escaping (_ sheen: CardMintingSheenOverlay) -> Content
@@ -29,6 +31,7 @@ struct CardMintingSuccessView<Content: View>: View {
         _isCustomizationDone = isCustomizationDone
         self.cornerRadius = cornerRadius
         self.showsCustomizationPanel = showsCustomizationPanel
+        self.showsLociCompanion = showsLociCompanion
         self.onHome = onHome
         self.onKeepEditing = onKeepEditing
         self.card = card
@@ -43,7 +46,11 @@ struct CardMintingSuccessView<Content: View>: View {
 
                 mintedCard
 
-                savedBadge
+                if showsLociCompanion {
+                    savedStateMarker
+                } else {
+                    savedBadge
+                }
 
                 Spacer(minLength: 116)
             }
@@ -82,6 +89,35 @@ struct CardMintingSuccessView<Content: View>: View {
             .accessibilityElement(children: .contain)
     }
 
+    private var savedStateMarker: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .center, spacing: 10) {
+                savedBadge
+                lociCompanion(size: 58)
+            }
+
+            VStack(spacing: 8) {
+                savedBadge
+                lociCompanion(size: 64)
+            }
+        }
+    }
+
+    private func lociCompanion(size: CGFloat) -> some View {
+        let motion: LociMascotAnimation = badgeVisible ? .successPop : .none
+        var state = LociMascotState.state(for: .cardSaved)
+        state.motion = motion
+
+        return LociMascotView(
+            state: state,
+            size: size
+        )
+        .opacity(badgeVisible ? 1 : 0)
+        .scaleEffect(badgeVisible || reduceMotion ? 1 : 0.94)
+        .animation(.snappy(duration: 0.32, extraBounce: 0), value: badgeVisible)
+        .accessibilityHidden(true)
+    }
+
     private var savedBadge: some View {
         let badgeFill = CatAttentionRole.success.wash
         let badgeBorder = CatAttentionRole.success.stroke
@@ -104,7 +140,7 @@ struct CardMintingSuccessView<Content: View>: View {
             .symbolEffect(.bounce, value: revealSuccessFeedbackTrigger)
             .accessibilityHidden(true)
 
-            Text("Saved Successfully")
+            Text("Card ready")
         }
         .font(CatTypography.supportingEmphasized)
         .foregroundStyle(badgeText)
@@ -126,7 +162,7 @@ struct CardMintingSuccessView<Content: View>: View {
         .scaleEffect(badgeVisible || reduceMotion ? 1 : 0.94)
         .offset(y: badgeVisible || reduceMotion ? 0 : 8)
         .animation(.snappy(duration: 0.34, extraBounce: 0), value: badgeVisible)
-        .accessibilityLabel("Saved successfully")
+        .accessibilityLabel("Card ready")
         .accessibilityHidden(!badgeVisible)
     }
 

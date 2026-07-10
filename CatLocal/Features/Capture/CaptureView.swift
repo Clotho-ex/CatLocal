@@ -30,15 +30,19 @@ struct CaptureView: View {
     @State private var persistedRecord: CatRecord?
     @State private var errorMessage: String?
     @State private var canUseForegroundFallback = false
+    @State private var failureContext: LociContext = .failureRecovery
     @State private var isProcessingCapture = false
     @State private var isSaving = false
     @State private var isEditorSheetPresented = false
+    @State private var isSavedCardDraftLoaded = false
+    @State private var pendingDiscardAction: CaptureDiscardAction?
+    @State private var isDiscardConfirmationPresented = false
     @State private var stickerBaseOffset: CGSize = .zero
     @GestureState private var stickerDragTranslation: CGSize = .zero
     @State private var isCardMintingDone = false
     @State private var captureSelectionFeedbackTrigger = 0
     @State private var captureWarningFeedbackTrigger = 0
-    @State private var captureSaveFeedbackTrigger = 0
+    @State private var captureSaveTapFeedbackTrigger = 0
     @FocusState private var focusedEditorField: EditorField?
 
     private let processor = CatVisionProcessor()
@@ -83,9 +87,30 @@ struct CaptureView: View {
         }
         .onDisappear { camera.stop() }
         .interactiveDismissDisabled(stage != .camera)
+        .confirmationDialog(
+            "Discard this draft?",
+            isPresented: $isDiscardConfirmationPresented,
+            titleVisibility: .visible,
+            presenting: pendingDiscardAction
+        ) { action in
+            Button(action.destructiveTitle, role: .destructive) {
+                performDiscardAction(action)
+            }
+            Button("Keep Draft") {
+                pendingDiscardAction = nil
+                isDiscardConfirmationPresented = false
+            }
+        } message: { action in
+            Text(action.message)
+        }
+        .onChange(of: isDiscardConfirmationPresented) { _, isPresented in
+            if !isPresented {
+                pendingDiscardAction = nil
+            }
+        }
         .sensoryFeedback(.selection, trigger: captureSelectionFeedbackTrigger)
         .sensoryFeedback(.warning, trigger: captureWarningFeedbackTrigger)
-        .sensoryFeedback(.impact(flexibility: .soft, intensity: 0.65), trigger: captureSaveFeedbackTrigger)
+        .sensoryFeedback(.impact(flexibility: .soft, intensity: 0.36), trigger: captureSaveTapFeedbackTrigger)
     }
 
     private var cameraScreen: some View {
@@ -198,7 +223,7 @@ struct CaptureView: View {
                     .buttonStyle(.catTactile)
                     .disabled(isProcessingCapture)
                     .opacity(isProcessingCapture ? 0.45 : 1)
-                    .accessibilityLabel("Add Photo")
+                    .accessibilityLabel("Choose Private Photo")
                     .accessibilityHint("The selected photo stays on this iPhone")
 
                     Spacer(minLength: 12)
@@ -328,6 +353,8 @@ struct CaptureView: View {
                 Image(systemName: stage == .analyzing ? "viewfinder" : "scissors")
                     .font(.system(size: 34, weight: .light))
                     .foregroundStyle(.white.opacity(0.8))
+                    .accessibilityHidden(true)
+
                 ProgressView()
                     .controlSize(.large)
                     .tint(.white)
@@ -349,7 +376,10 @@ struct CaptureView: View {
     private var stickerRevealScreen: some View {
         Group {
             if let cutoutImage {
-                DustingRevealView(image: cutoutImage) {
+                CutoutSpotlightRevealView(
+                    sourceImage: originalImage,
+                    cutoutImage: cutoutImage
+                ) {
                     guard stage == .stickerReveal else { return }
                     stage = .stickerInspecting
                 }
@@ -366,7 +396,7 @@ struct CaptureView: View {
             ScrollView {
                 VStack(spacing: 20) {
                     HStack {
-                        Button("Retake") { reset() }
+                        Button("Retake") { requestDiscardAction(.retake) }
                         Spacer()
                         Label("\(detections.count) cats found", systemImage: "checkmark.circle.fill")
                             .font(CatTypography.supportingEmphasized)
@@ -385,12 +415,12 @@ struct CaptureView: View {
                     }
 
                     VStack(spacing: 8) {
-                        Text("Which cat should CatLocal save?")
+                        Text("Which cat gets the card?")
                             .font(CatTypography.pageTitle)
                             .foregroundStyle(CatLocalTheme.primaryText)
                             .multilineTextAlignment(.center)
 
-                        Text("Choose one subject. The photo still stays private.")
+                        Text("Choose one. This photo stays private on this iPhone.")
                             .font(CatTypography.supporting)
                             .foregroundStyle(CatLocalTheme.secondaryText)
                             .multilineTextAlignment(.center)
@@ -472,6 +502,7 @@ struct CaptureView: View {
         let shape = RoundedRectangle(cornerRadius: 24, style: .continuous)
 
         return Button {
+            captureSaveTapFeedbackTrigger += 1
             Task { await finishCustomization() }
         } label: {
             HStack(spacing: 12) {
@@ -497,7 +528,7 @@ struct CaptureView: View {
                     Text(isSaving ? "Preparing card" : "Save Cat")
                         .font(CatTypography.control)
 
-                    Text(isSaving ? "Adding a little finish" : "Edit name, style, or Catlas after")
+                    Text(isSaving ? "Adding a little finish" : "Edit details later")
                         .font(CatTypography.metadata)
                         .foregroundStyle(CatLocalTheme.secondaryText)
                 }
@@ -517,7 +548,7 @@ struct CaptureView: View {
         .padding(.horizontal, CatLocalTheme.screenHorizontalPadding)
         .accessibilityIdentifier("save-cat-immediate")
         .accessibilityLabel(isSaving ? "Preparing Cat Card" : "Save Cat")
-        .accessibilityHint("Saves now. You can edit name, style, and Catlas details afterward.")
+        .accessibilityHint("Saves this card now. You can edit the name, design, and Catlas details later.")
     }
 
     private var customizeButton: some View {
@@ -533,11 +564,11 @@ struct CaptureView: View {
                     .accessibilityHidden(true)
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Customize First")
+                    Text("Edit Before Saving")
                         .font(CatTypography.control)
                         .foregroundStyle(CatLocalTheme.primaryText)
 
-                    Text("Style, name, and Catlas")
+                    Text("Design, name, and Catlas labels")
                         .font(CatTypography.metadata)
                         .foregroundStyle(CatLocalTheme.secondaryText)
                 }
@@ -560,8 +591,8 @@ struct CaptureView: View {
         .opacity(isSaving ? 0.55 : 1)
         .padding(.horizontal, CatLocalTheme.screenHorizontalPadding)
         .accessibilityIdentifier("tap-to-customize")
-        .accessibilityLabel("Customize first")
-        .accessibilityHint("Opens card design, name, and Catlas controls before saving")
+        .accessibilityLabel("Edit before saving")
+        .accessibilityHint("Opens design, name, note, and Catlas fields before saving.")
     }
 
     private func stickerInspectionStickerHeight(for availableHeight: CGFloat) -> CGFloat {
@@ -643,6 +674,7 @@ struct CaptureView: View {
 
         return Button {
             dismissEditorKeyboard()
+            captureSaveTapFeedbackTrigger += 1
             Task { await finishCustomization() }
         } label: {
             HStack(spacing: 12) {
@@ -668,7 +700,7 @@ struct CaptureView: View {
                     Text(isSaving ? "Preparing card" : "Save Cat")
                         .font(CatTypography.control)
 
-                    Text(isSaving ? "Adding a little finish" : "Add to Collection")
+                    Text(isSaving ? "Adding a little finish" : "Save to Collection")
                         .font(CatTypography.metadata)
                         .foregroundStyle(CatLocalTheme.secondaryText)
                 }
@@ -693,7 +725,7 @@ struct CaptureView: View {
             VStack(alignment: .leading, spacing: 14) {
                 makeItYoursHeading
 
-                Text("Optional: choose a design and add details now, or save and refine later.")
+                Text("Choose a card design now, or save first and edit later.")
                     .font(CatTypography.screenSubtitle)
                     .foregroundStyle(CatLocalTheme.secondaryText)
                     .lineLimit(nil)
@@ -720,30 +752,30 @@ struct CaptureView: View {
                     }
                 )
 
-                editorFieldHeading("Name the Cat")
+                editorFieldHeading("Name")
 
                 TextField("Nickname (optional)", text: $nickname)
                     .textInputAutocapitalization(.words)
                     .focused($focusedEditorField, equals: .nickname)
                     .catInputSurface()
 
-                editorFieldHeading("Catlas")
+                editorFieldHeading("Catlas Place")
 
-                TextField("Memory Place (optional)", text: $placeName)
+                TextField("Place label (optional)", text: $placeName)
                     .textInputAutocapitalization(.words)
                     .focused($focusedEditorField, equals: .placeName)
                     .catInputSurface()
                     .accessibilityHint("Adds a manual place label to the private Catlas")
 
-                TextField("Place Detail (optional)", text: $placeDetail, axis: .vertical)
+                TextField("Place detail (optional)", text: $placeDetail, axis: .vertical)
                     .lineLimit(1...3)
                     .textInputAutocapitalization(.sentences)
                     .focused($focusedEditorField, equals: .placeDetail)
                     .catInputSurface()
 
-                editorFieldHeading("Encounter Note")
+                editorFieldHeading("Note")
 
-                TextField("A note about this encounter", text: $note, axis: .vertical)
+                TextField("Add a note about this encounter", text: $note, axis: .vertical)
                     .lineLimit(2...5)
                     .focused($focusedEditorField, equals: .note)
                     .catInputSurface()
@@ -810,7 +842,7 @@ struct CaptureView: View {
 
     private var makeItYoursHeading: some View {
         (
-            Text("Make it ")
+            Text("Make It ")
                 .foregroundStyle(CatLocalTheme.primaryText)
             + Text("Yours")
                 .foregroundStyle(CatAttentionRole.action.text)
@@ -818,7 +850,7 @@ struct CaptureView: View {
         .font(CatTypography.pageTitle)
         .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
         .fixedSize(horizontal: false, vertical: true)
-        .accessibilityLabel("Make it Yours")
+        .accessibilityLabel("Make It Yours")
     }
 
     private var celebrationPreviewNote: String {
@@ -851,8 +883,9 @@ struct CaptureView: View {
                 CardMintingSuccessView(
                     isCustomizationDone: $isCardMintingDone,
                     showsCustomizationPanel: false,
+                    showsLociCompanion: true,
                     onHome: {
-                        dismiss()
+                        requestDiscardAction(.close)
                     },
                     onKeepEditing: {
                         editSavedCard()
@@ -900,18 +933,42 @@ struct CaptureView: View {
         CatGlassGroup(spacing: 12) {
             ViewThatFits(in: .horizontal) {
                 HStack {
-                    editorTopBarButton(accessibilityLabel: "Cancel", systemImage: "xmark", action: cancelCapture)
+                    editorTopBarButton(
+                        accessibilityIdentifier: "capture-editor-cancel",
+                        accessibilityLabel: "Cancel",
+                        systemImage: "xmark"
+                    ) {
+                        requestDiscardAction(.close)
+                    }
                     Spacer()
                     editorStageTitle
                     Spacer()
-                    editorTopBarButton(accessibilityLabel: "Retake", systemImage: "arrow.counterclockwise", action: reset)
+                    editorTopBarButton(
+                        accessibilityIdentifier: "capture-editor-retake",
+                        accessibilityLabel: "Retake",
+                        systemImage: "arrow.counterclockwise"
+                    ) {
+                        requestDiscardAction(.retake)
+                    }
                 }
 
                 VStack(spacing: 10) {
                     HStack {
-                        editorTopBarButton(accessibilityLabel: "Cancel", systemImage: "xmark", action: cancelCapture)
+                        editorTopBarButton(
+                            accessibilityIdentifier: "capture-editor-cancel",
+                            accessibilityLabel: "Cancel",
+                            systemImage: "xmark"
+                        ) {
+                            requestDiscardAction(.close)
+                        }
                         Spacer()
-                        editorTopBarButton(accessibilityLabel: "Retake", systemImage: "arrow.counterclockwise", action: reset)
+                        editorTopBarButton(
+                            accessibilityIdentifier: "capture-editor-retake",
+                            accessibilityLabel: "Retake",
+                            systemImage: "arrow.counterclockwise"
+                        ) {
+                            requestDiscardAction(.retake)
+                        }
                     }
                     editorStageTitle
                 }
@@ -920,6 +977,7 @@ struct CaptureView: View {
     }
 
     private func editorTopBarButton(
+        accessibilityIdentifier: String,
         accessibilityLabel: String,
         systemImage: String,
         action: @escaping () -> Void
@@ -932,6 +990,7 @@ struct CaptureView: View {
         }
         .buttonStyle(.catTactile)
         .accessibilityLabel(accessibilityLabel)
+        .accessibilityIdentifier(accessibilityIdentifier)
     }
 
     private var editorStageTitle: some View {
@@ -957,7 +1016,7 @@ struct CaptureView: View {
             .frame(width: 34, height: 34)
             .accessibilityHidden(true)
 
-            Text("Manual label only. CatLocal does not request GPS or save coordinates.")
+            Text("Typed labels only. No GPS is requested.")
                 .font(CatTypography.bodyEmphasized)
                 .foregroundStyle(CatAttentionRole.info.text)
                 .lineLimit(nil)
@@ -992,17 +1051,18 @@ struct CaptureView: View {
                 Spacer(minLength: 32)
 
                 VStack(spacing: 22) {
-                    Image(systemName: "viewfinder.circle")
-                        .font(.system(size: 64, weight: .ultraLight))
-                        .foregroundStyle(CatAttentionRole.warning.accent)
+                    LociMascotView(
+                        state: failureLociState,
+                        size: 136
+                    )
 
                     VStack(spacing: 8) {
-                        Text("That one was tricky")
+                        Text(failureTitle)
                             .font(CatTypography.pageTitle)
                             .foregroundStyle(CatLocalTheme.primaryText)
                             .multilineTextAlignment(.center)
                             .lineLimit(nil)
-                        Text(errorMessage ?? "CatLocal could not create a clean cat cutout from this photo.")
+                        Text(errorMessage ?? "CatLocal could not create a clean cutout from this photo. Try a photo with the whole cat in view.")
                             .font(CatTypography.body)
                             .multilineTextAlignment(.center)
                             .foregroundStyle(CatLocalTheme.secondaryText)
@@ -1057,7 +1117,7 @@ struct CaptureView: View {
             Button {
                 Task { await createCutout(for: nil) }
             } label: {
-                Label("Use Cutout Anyway", systemImage: "sparkles")
+                Label("Use Foreground Cutout", systemImage: "sparkles")
                     .font(CatTypography.control)
                     .frame(maxWidth: .infinity)
                     .contentShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
@@ -1065,7 +1125,7 @@ struct CaptureView: View {
             .buttonStyle(.catTactile)
             .catPrimaryActionSurface(role: .warning, cornerRadius: 26)
             .frame(maxWidth: 320)
-            .accessibilityHint("Uses the foreground cutout even though CatLocal could not confirm a cat")
+            .accessibilityHint("Uses the foreground subject even though CatLocal could not confirm a cat.")
 
             HStack(alignment: .top, spacing: 10) {
                 Image(systemName: "info.circle.fill")
@@ -1073,11 +1133,11 @@ struct CaptureView: View {
                     .foregroundStyle(CatAttentionRole.warning.accent)
 
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("CatLocal could not confirm a cat in this photo.")
+                    Text("No confirmed cat in this photo.")
                         .font(CatTypography.fieldLabel)
                         .foregroundStyle(CatAttentionRole.warning.text)
 
-                    Text("You can still use the foreground cutout and edit the card before saving.")
+                    Text("You can review the foreground cutout and save only if it looks right.")
                         .font(CatTypography.metadata)
                         .foregroundStyle(CatAttentionRole.warning.text.opacity(0.82))
                 }
@@ -1100,6 +1160,14 @@ struct CaptureView: View {
 
     private var canTakePhoto: Bool {
         camera.isConfigured && !isProcessingCapture && stage == .camera
+    }
+
+    private var failureTitle: String {
+        failureLociState.title
+    }
+
+    private var failureLociState: LociMascotState {
+        LociMascotState.state(for: failureContext)
     }
 
     private var activeSequence: Int {
@@ -1152,7 +1220,7 @@ struct CaptureView: View {
             await accept(image: image, source: .photoLibrary)
         } catch {
             finishCaptureInput()
-            fail(with: "The validation photo could not be opened. Copy it into Documents/CatLocalValidation/cat.png and try again.")
+            fail(with: "The validation photo could not be opened. Add cat.png to Documents/CatLocalValidation and try again.")
         }
     }
 
@@ -1221,7 +1289,7 @@ struct CaptureView: View {
             await accept(image: image, source: .photoLibrary)
         } catch {
             finishCaptureInput()
-            fail(with: "This photo could not be opened. Try another image.")
+            fail(with: "This photo could not be opened. Choose another photo.")
         }
     }
 
@@ -1236,10 +1304,12 @@ struct CaptureView: View {
         self.source = source
         draftSequence = nextSequence
         persistedRecord = nil
+        isSavedCardDraftLoaded = false
         detections = []
         selectedBoundingBox = nil
         errorMessage = nil
         canUseForegroundFallback = false
+        failureContext = .failureRecovery
         resetStickerTransform()
         stage = .analyzing
 
@@ -1247,7 +1317,7 @@ struct CaptureView: View {
             #if DEBUG
             if forcesForegroundFallbackForValidation {
                 canUseForegroundFallback = true
-                fail(with: CatVisionError.noCat.localizedDescription)
+                fail(with: CatVisionError.noCat)
                 return
             }
 
@@ -1270,7 +1340,7 @@ struct CaptureView: View {
             case .none:
                 detections = []
                 canUseForegroundFallback = true
-                fail(with: CatVisionError.noCat.localizedDescription)
+                fail(with: CatVisionError.noCat)
             case .single(let detection):
                 detections = [detection]
                 stage = .creatingCutout
@@ -1289,7 +1359,7 @@ struct CaptureView: View {
             }
         } catch {
             canUseForegroundFallback = false
-            fail(with: CatVisionError.processingUnavailable.localizedDescription)
+            fail(with: CatVisionError.processingUnavailable)
         }
     }
 
@@ -1306,6 +1376,7 @@ struct CaptureView: View {
         isEditorSheetPresented = false
         resetStickerTransform()
         isCardMintingDone = false
+        isSavedCardDraftLoaded = false
         persistedRecord = nil
         captureSelectionFeedbackTrigger += 1
         #if DEBUG
@@ -1339,7 +1410,7 @@ struct CaptureView: View {
 
     private func createCutout(for detection: CatDetection?) async {
         guard let originalImage else {
-            fail(with: CatVisionError.unreadableImage.localizedDescription)
+            fail(with: CatVisionError.unreadableImage)
             return
         }
 
@@ -1355,7 +1426,7 @@ struct CaptureView: View {
             )
         } catch {
             canUseForegroundFallback = false
-            fail(with: error.localizedDescription)
+            fail(with: error)
         }
     }
 
@@ -1363,16 +1434,15 @@ struct CaptureView: View {
         guard !isSaving else { return }
         let shouldCelebrateSave = isInitialCardDesignSave || stage == .cardCelebrating
         let saveStartedAt = Date()
-        captureSelectionFeedbackTrigger += 1
         isSaving = true
         do {
             let record = try await persistCard()
             await holdForSaveAnticipation(since: saveStartedAt)
             persistedRecord = record
             isSaving = false
+            isSavedCardDraftLoaded = false
             focusedEditorField = nil
             isEditorSheetPresented = false
-            captureSaveFeedbackTrigger += 1
             if shouldCelebrateSave {
                 isCardMintingDone = true
                 stage = .cardCelebrating
@@ -1381,7 +1451,7 @@ struct CaptureView: View {
             }
         } catch {
             isSaving = false
-            fail(with: error.localizedDescription)
+            fail(with: error)
         }
     }
 
@@ -1395,6 +1465,24 @@ struct CaptureView: View {
 
     private var isInitialCardDesignSave: Bool {
         persistedRecord == nil
+    }
+
+    private var hasDiscardableDraft: Bool {
+        if persistedRecord == nil {
+            return cutoutImage != nil
+        }
+
+        return hasUnsavedSavedCardDraft
+    }
+
+    private var hasUnsavedSavedCardDraft: Bool {
+        guard isSavedCardDraftLoaded, let persistedRecord else { return false }
+
+        return trimmedMemoryText(nickname) != trimmedMemoryText(persistedRecord.nickname)
+            || note != persistedRecord.note
+            || trimmedMemoryText(placeName) != trimmedMemoryText(persistedRecord.placeName)
+            || trimmedMemoryText(placeDetail) != trimmedMemoryText(persistedRecord.placeDetail)
+            || selectedStyle != persistedRecord.cardStyle
     }
 
     @discardableResult
@@ -1452,17 +1540,68 @@ struct CaptureView: View {
         record.cardStyle = selectedStyle
     }
 
-    private func fail(with message: String) {
+    private func fail(with message: String, context: LociContext = .failureRecovery) {
         isProcessingCapture = false
         errorMessage = message
+        failureContext = context
         captureWarningFeedbackTrigger += 1
         stage = .failure
+    }
+
+    private func fail(with error: Error) {
+        fail(
+            with: error.localizedDescription,
+            context: failureContext(for: error)
+        )
+    }
+
+    private func failureContext(for error: Error) -> LociContext {
+        guard let visionError = error as? CatVisionError else {
+            return .failureRecovery
+        }
+
+        switch visionError {
+        case .noCat:
+            return .noCatFound
+        case .unreadableImage:
+            return .imageQualityWarning
+        case .noForeground, .noMatchingForeground, .cutoutFailed:
+            return .recoverableWarning
+        case .processingUnavailable:
+            return .failureRecovery
+        }
     }
 
     private func closeCamera() {
         isProcessingCapture = false
         camera.stop()
         dismiss()
+    }
+
+    private func requestDiscardAction(_ action: CaptureDiscardAction) {
+        guard !isSaving else { return }
+
+        dismissEditorKeyboard()
+        guard hasDiscardableDraft else {
+            performDiscardAction(action)
+            return
+        }
+
+        pendingDiscardAction = action
+        captureWarningFeedbackTrigger += 1
+        isDiscardConfirmationPresented = true
+    }
+
+    private func performDiscardAction(_ action: CaptureDiscardAction) {
+        pendingDiscardAction = nil
+        isDiscardConfirmationPresented = false
+
+        switch action {
+        case .close:
+            cancelCapture()
+        case .retake:
+            reset()
+        }
     }
 
     private func cancelCapture() {
@@ -1488,7 +1627,7 @@ struct CaptureView: View {
                 }
             case .failure(let error):
                 finishCaptureInput()
-                fail(with: error.localizedDescription)
+                fail(with: error.localizedDescription, context: .failureRecovery)
             }
         }
     }
@@ -1546,9 +1685,13 @@ struct CaptureView: View {
         photoItem = nil
         errorMessage = nil
         canUseForegroundFallback = false
+        failureContext = .failureRecovery
         isProcessingCapture = false
         isSaving = false
         isEditorSheetPresented = false
+        isSavedCardDraftLoaded = false
+        pendingDiscardAction = nil
+        isDiscardConfirmationPresented = false
         resetStickerTransform()
         isCardMintingDone = false
         stage = .camera
@@ -1602,6 +1745,30 @@ struct CaptureView: View {
         placeName = persistedRecord.placeName
         placeDetail = persistedRecord.placeDetail
         selectedStyle = persistedRecord.cardStyle
+        isSavedCardDraftLoaded = true
+    }
+}
+
+private enum CaptureDiscardAction {
+    case close
+    case retake
+
+    var destructiveTitle: String {
+        switch self {
+        case .close:
+            "Discard Draft"
+        case .retake:
+            "Discard and Retake"
+        }
+    }
+
+    var message: String {
+        switch self {
+        case .close:
+            "Your cutout and unsaved details will be lost. Saved cats stay in your collection."
+        case .retake:
+            "Your cutout and unsaved details will be lost before the camera opens."
+        }
     }
 }
 

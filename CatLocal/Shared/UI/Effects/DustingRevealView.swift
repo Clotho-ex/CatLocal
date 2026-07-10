@@ -1,24 +1,41 @@
 import SwiftUI
 import UIKit
 
-struct DustingRevealView: View {
+struct CutoutSpotlightRevealView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    let image: UIImage
+    let sourceImage: UIImage?
+    let cutoutImage: UIImage
     var onCompleted: () -> Void
 
     @State private var hasStarted = false
     @State private var hasCompleted = false
     @State private var stickerScale: CGFloat
     @State private var stickerOpacity = 0.0
-    @State private var dustIsActive = false
-    @State private var sweepProgress = 0.0
+    @State private var sourceOpacity = 0.0
+    @State private var sourceBlur: CGFloat = 14
+    @State private var spotlightProgress = 0.0
+    @State private var moteProgress = 0.0
+    @State private var haloOpacity = 0.0
+    @State private var haloScale: CGFloat = 0.96
+    @State private var stickerYOffset: CGFloat = 28
+    @State private var stickerPeelTilt = -18.0
+    @State private var stickerRotation = -5.0
+    @State private var peelSheenProgress = 0.0
     @State private var anchorBounds: CGRect?
+    @State private var liftFeedbackTrigger = 0
+    @State private var edgeFeedbackTrigger = 0
+    @State private var landingFeedbackTrigger = 0
 
-    init(image: UIImage, onCompleted: @escaping () -> Void) {
-        self.image = image
+    init(
+        sourceImage: UIImage?,
+        cutoutImage: UIImage,
+        onCompleted: @escaping () -> Void
+    ) {
+        self.sourceImage = sourceImage
+        self.cutoutImage = cutoutImage
         self.onCompleted = onCompleted
-        _stickerScale = State(initialValue: 1.48)
+        _stickerScale = State(initialValue: 1.16)
     }
 
     var body: some View {
@@ -28,38 +45,8 @@ struct DustingRevealView: View {
             VStack(spacing: 18) {
                 Spacer(minLength: 72)
 
-                ZStack {
-                    StickerCutoutView(
-                        image: image,
-                        appliesMotion: false
-                    )
-                    .opacity(stickerOpacity)
-                    .scaleEffect(stickerScale)
-                    .accessibilityHidden(true)
-
-                    if !reduceMotion {
-                        DustingBurstField(
-                            progress: sweepProgress,
-                            anchorBounds: anchorBounds,
-                            isActive: dustIsActive
-                        )
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .allowsHitTesting(false)
-
-                        DustingSweepView(progress: sweepProgress)
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                            .allowsHitTesting(false)
-
-                        DustingParticleField(
-                            progress: sweepProgress,
-                            anchorBounds: anchorBounds
-                        )
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .allowsHitTesting(false)
-                    }
-                }
-                .frame(maxWidth: 270, maxHeight: 330)
-                .padding(.horizontal, 32)
+                revealStage
+                    .padding(.horizontal, 30)
 
                 Text("Lifting the subject")
                     .font(CatTypography.pageTitle)
@@ -76,9 +63,98 @@ struct DustingRevealView: View {
             .padding(.horizontal, CatLocalTheme.screenHorizontalPadding)
         }
         .task { await startRevealIfNeeded() }
+        .sensoryFeedback(.impact(flexibility: .soft, intensity: 0.42), trigger: liftFeedbackTrigger)
+        .sensoryFeedback(.selection, trigger: edgeFeedbackTrigger)
+        .sensoryFeedback(.success, trigger: landingFeedbackTrigger)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Creating cat sticker")
-        .accessibilityIdentifier("dusting-reveal")
+        .accessibilityLabel("Lifting the cat subject")
+        .accessibilityIdentifier("cutout-reveal")
+    }
+
+    private var revealStage: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 34, style: .continuous)
+                .fill(CatLocalTheme.cardSurface.opacity(0.64))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 34, style: .continuous)
+                        .stroke(CatLocalTheme.imageOutline.opacity(0.42), lineWidth: 1)
+                )
+
+            sourceBackdrop
+
+            if !reduceMotion {
+                CutoutSpotlightBeam(progress: spotlightProgress)
+                    .allowsHitTesting(false)
+            }
+
+            Image(uiImage: cutoutImage)
+                .resizable()
+                .scaledToFit()
+                .padding(20)
+                .opacity(haloOpacity)
+                .scaleEffect(haloScale)
+                .blur(radius: reduceMotion ? 0 : 15)
+                .blendMode(.screen)
+                .accessibilityHidden(true)
+
+            if !reduceMotion {
+                StickerPeelSheen(
+                    image: cutoutImage,
+                    progress: peelSheenProgress
+                )
+                .opacity(stickerOpacity)
+                .scaleEffect(stickerScale)
+                .rotationEffect(.degrees(stickerRotation))
+                .rotation3DEffect(
+                    .degrees(stickerPeelTilt),
+                    axis: (x: 1, y: -0.18, z: 0),
+                    perspective: 0.62
+                )
+                .offset(y: stickerYOffset)
+                .accessibilityHidden(true)
+            }
+
+            StickerCutoutView(
+                image: cutoutImage,
+                appliesMotion: false
+            )
+            .opacity(stickerOpacity)
+            .scaleEffect(stickerScale)
+            .rotationEffect(.degrees(stickerRotation))
+            .rotation3DEffect(
+                .degrees(stickerPeelTilt),
+                axis: (x: 1, y: -0.18, z: 0),
+                perspective: 0.62
+            )
+            .offset(y: stickerYOffset)
+            .accessibilityHidden(true)
+
+            if !reduceMotion {
+                CutoutMoteField(
+                    progress: moteProgress,
+                    anchorBounds: anchorBounds
+                )
+                .allowsHitTesting(false)
+            }
+        }
+        .frame(maxWidth: 290, maxHeight: 340)
+        .clipShape(RoundedRectangle(cornerRadius: 34, style: .continuous))
+        .shadow(color: CatLocalTheme.shadow.opacity(0.12), radius: 18, x: 0, y: 9)
+    }
+
+    @ViewBuilder
+    private var sourceBackdrop: some View {
+        if let sourceImage {
+            Image(uiImage: sourceImage)
+                .resizable()
+                .scaledToFill()
+                .blur(radius: sourceBlur)
+                .saturation(0.82)
+                .opacity(sourceOpacity)
+                .overlay(CatLocalTheme.primaryText.opacity(sourceOpacity * 0.16))
+                .clipped()
+                .accessibilityHidden(true)
+        }
     }
 
     private func startRevealIfNeeded() async {
@@ -86,28 +162,78 @@ struct DustingRevealView: View {
         hasStarted = true
 
         if reduceMotion {
-            stickerScale = 1
-            stickerOpacity = 1
-            try? await Task.sleep(for: .milliseconds(260))
+            withAnimation(.easeOut(duration: 0.22)) {
+                sourceOpacity = sourceImage == nil ? 0 : 0.18
+                stickerScale = 1
+                stickerOpacity = 1
+                stickerYOffset = 0
+                stickerPeelTilt = 0
+                stickerRotation = 0
+                haloOpacity = 0.18
+            }
+            try? await Task.sleep(for: .milliseconds(360))
             complete()
             return
         }
 
         Task { @MainActor in
-            anchorBounds = await Self.visibleBounds(for: SendableImage(value: image))
-        }
-        dustIsActive = true
-        withAnimation(.spring(response: 0.72, dampingFraction: 0.76)) {
-            stickerScale = 1
-            stickerOpacity = 1
-        }
-        withAnimation(.easeOut(duration: 1.8)) {
-            sweepProgress = 1
+            anchorBounds = await Self.visibleBounds(for: SendableImage(value: cutoutImage))
         }
 
-        try? await Task.sleep(for: .milliseconds(1_850))
-        dustIsActive = false
-        try? await Task.sleep(for: .milliseconds(450))
+        liftFeedbackTrigger += 1
+        withAnimation(.smooth(duration: 0.5, extraBounce: 0)) {
+            sourceOpacity = sourceImage == nil ? 0 : 0.34
+            sourceBlur = 9
+            spotlightProgress = 0.34
+            haloOpacity = 0.16
+            haloScale = 1.04
+            stickerYOffset = 18
+            stickerPeelTilt = -12
+        }
+
+        try? await Task.sleep(for: .milliseconds(700))
+        edgeFeedbackTrigger += 1
+        withAnimation(.smooth(duration: 1.0, extraBounce: 0)) {
+            moteProgress = 0.5
+            stickerScale = 1.04
+            stickerOpacity = 0.78
+            stickerYOffset = 7
+            stickerPeelTilt = -4
+            stickerRotation = -1.5
+            peelSheenProgress = 0.78
+            haloOpacity = 0.34
+            spotlightProgress = 0.74
+        }
+
+        try? await Task.sleep(for: .milliseconds(1_050))
+        withAnimation(.smooth(duration: 0.75, extraBounce: 0)) {
+            sourceOpacity = sourceImage == nil ? 0 : 0.18
+            sourceBlur = 12
+            spotlightProgress = 1
+            moteProgress = 1
+            stickerScale = 1
+            stickerOpacity = 1
+            stickerYOffset = 0
+            stickerPeelTilt = 0
+            stickerRotation = 0
+            peelSheenProgress = 1
+            haloOpacity = 0.42
+            haloScale = 1
+        }
+
+        try? await Task.sleep(for: .milliseconds(850))
+        landingFeedbackTrigger += 1
+        withAnimation(.spring(response: 0.48, dampingFraction: 0.84)) {
+            stickerScale = 0.985
+        }
+
+        try? await Task.sleep(for: .milliseconds(250))
+        withAnimation(.smooth(duration: 0.28, extraBounce: 0)) {
+            stickerScale = 1
+            haloOpacity = 0.24
+        }
+
+        try? await Task.sleep(for: .milliseconds(350))
         complete()
     }
 
@@ -125,7 +251,7 @@ struct DustingRevealView: View {
     }
 }
 
-private struct DustingSweepView: View, Animatable {
+private struct CutoutSpotlightBeam: View, Animatable {
     var progress: Double
 
     nonisolated var animatableData: Double {
@@ -134,137 +260,96 @@ private struct DustingSweepView: View, Animatable {
     }
 
     var body: some View {
-        TimelineView(.animation) { _ in
-            Canvas { context, size in
-                guard progress > 0 else { return }
+        GeometryReader { proxy in
+            let width = proxy.size.width
+            let height = proxy.size.height
 
-                let center = CGPoint(x: size.width / 2, y: size.height / 2)
-                let radius = min(size.width, size.height) * (0.24 + (0.2 * progress))
-                let alpha = sin(progress * .pi)
-                let rect = CGRect(
-                    x: center.x - radius,
-                    y: center.y - radius,
-                    width: radius * 2,
-                    height: radius * 2
-                )
-
-                var path = Path()
-                path.addEllipse(in: rect)
-                context.stroke(
-                    path,
-                    with: .color(Color.white.opacity(0.55 * alpha)),
-                    style: StrokeStyle(lineWidth: 7, lineCap: .round, dash: [22, 18])
-                )
-
-                var warmPath = Path()
-                warmPath.addEllipse(in: rect.insetBy(dx: -8, dy: -8))
-                context.stroke(
-                    warmPath,
-                    with: .color(CatLocalTheme.warning.opacity(0.32 * alpha)),
-                    style: StrokeStyle(lineWidth: 4, lineCap: .round, dash: [10, 20])
-                )
-            }
-        }
-        .blendMode(.screen)
-    }
-}
-
-private struct DustingBurstField: View, Animatable {
-    var progress: Double
-    let anchorBounds: CGRect?
-    let isActive: Bool
-
-    nonisolated var animatableData: Double {
-        get { progress }
-        set { progress = newValue }
-    }
-
-    private let particles: [BurstParticle] = [
-        BurstParticle(edge: .leading, t: 0.18, dx: -34, dy: -24, size: 5, delay: 0.00, color: Color(red: 1.00, green: 0.93, blue: 0.76)),
-        BurstParticle(edge: .leading, t: 0.56, dx: -42, dy: 4, size: 4, delay: 0.05, color: Color(red: 0.97, green: 0.86, blue: 0.58)),
-        BurstParticle(edge: .trailing, t: 0.26, dx: 32, dy: -18, size: 4, delay: 0.03, color: Color(red: 1.00, green: 1.00, blue: 0.94)),
-        BurstParticle(edge: .trailing, t: 0.68, dx: 38, dy: 20, size: 5, delay: 0.10, color: Color(red: 0.92, green: 0.78, blue: 0.52)),
-        BurstParticle(edge: .top, t: 0.22, dx: -20, dy: -34, size: 4, delay: 0.08, color: Color(red: 1.00, green: 0.94, blue: 0.78)),
-        BurstParticle(edge: .top, t: 0.72, dx: 22, dy: -30, size: 3, delay: 0.14, color: .white),
-        BurstParticle(edge: .bottom, t: 0.32, dx: -20, dy: 32, size: 4, delay: 0.12, color: Color(red: 0.98, green: 0.88, blue: 0.58)),
-        BurstParticle(edge: .bottom, t: 0.78, dx: 24, dy: 30, size: 5, delay: 0.18, color: .white)
-    ]
-
-    var body: some View {
-        Canvas { context, size in
-            guard isActive, progress > 0 else { return }
-            let rect = resolvedRect(in: size)
-
-            for particle in particles {
-                let localProgress = min(max((progress - particle.delay) / 0.48, 0), 1)
-                guard localProgress > 0, localProgress < 1 else { continue }
-
-                let start = particle.startPoint(in: rect)
-                let alpha = pow(1 - localProgress, 1.08) * 0.82
-                let radius = particle.size * CGFloat(0.72 + localProgress * 1.12)
-                let position = CGPoint(
-                    x: start.x + particle.dx * CGFloat(localProgress),
-                    y: start.y + particle.dy * CGFloat(localProgress)
-                )
-
-                context.fill(
-                    Path(
-                        ellipseIn: CGRect(
-                            x: position.x - radius / 2,
-                            y: position.y - radius / 2,
-                            width: radius,
-                            height: radius
+            ZStack {
+                Ellipse()
+                    .fill(
+                        RadialGradient(
+                            colors: [
+                                CatLocalTheme.warning.opacity(0.30 * progress),
+                                CatLocalTheme.backgroundGlow.opacity(0.30 * progress),
+                                CatLocalTheme.backgroundGlow.opacity(0)
+                            ],
+                            center: .center,
+                            startRadius: 8,
+                            endRadius: min(width, height) * 0.42
                         )
-                    ),
-                    with: .color(particle.color.opacity(alpha))
-                )
+                    )
+                    .frame(width: width * 0.82, height: height * 0.58)
+                    .blur(radius: 24)
+                    .offset(y: height * 0.07)
+
+                Rectangle()
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                .white.opacity(0),
+                                .white.opacity(0.16 * progress),
+                                .white.opacity(0)
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+                    .frame(width: width * 0.34, height: height * 0.82)
+                    .rotationEffect(.degrees(-7))
+                    .blur(radius: 20)
+                    .offset(y: -height * 0.05)
             }
+            .frame(width: width, height: height)
         }
         .blendMode(.screen)
     }
+}
 
-    private func resolvedRect(in size: CGSize) -> CGRect {
-        let normalized = anchorBounds ?? CGRect(x: 0.2, y: 0.18, width: 0.6, height: 0.64)
-        return CGRect(
-            x: normalized.minX * size.width,
-            y: normalized.minY * size.height,
-            width: normalized.width * size.width,
-            height: normalized.height * size.height
-        ).insetBy(dx: -10, dy: -10)
+private struct StickerPeelSheen: View, Animatable {
+    let image: UIImage
+    var progress: Double
+
+    nonisolated var animatableData: Double {
+        get { progress }
+        set { progress = newValue }
     }
 
-    private struct BurstParticle {
-        let edge: BurstEdge
-        let t: CGFloat
-        let dx: CGFloat
-        let dy: CGFloat
-        let size: CGFloat
-        let delay: Double
-        let color: Color
+    var body: some View {
+        Image(uiImage: image)
+            .resizable()
+            .scaledToFit()
+            .overlay {
+                GeometryReader { proxy in
+                    let travel = proxy.size.width * 1.3
 
-        func startPoint(in rect: CGRect) -> CGPoint {
-            switch edge {
-            case .leading:
-                CGPoint(x: rect.minX, y: rect.minY + rect.height * t)
-            case .trailing:
-                CGPoint(x: rect.maxX, y: rect.minY + rect.height * t)
-            case .top:
-                CGPoint(x: rect.minX + rect.width * t, y: rect.minY)
-            case .bottom:
-                CGPoint(x: rect.minX + rect.width * t, y: rect.maxY)
+                    LinearGradient(
+                        colors: [
+                            .white.opacity(0),
+                            .white.opacity(0.38),
+                            .white.opacity(0)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                    .frame(width: proxy.size.width * 0.34, height: proxy.size.height * 1.18)
+                    .rotationEffect(.degrees(-18))
+                    .blur(radius: 10)
+                    .offset(x: -travel * 0.55 + travel * progress)
+                }
+                .mask(
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFit()
+                )
+                .blendMode(.screen)
+                .opacity(sin(min(progress, 1) * .pi) * 0.7)
             }
-        }
-    }
-
-    private enum BurstEdge {
-        case leading
-        case trailing
-        case top
-        case bottom
+            .padding(16)
+            .allowsHitTesting(false)
     }
 }
 
-private struct DustingParticleField: View, Animatable {
+private struct CutoutMoteField: View, Animatable {
     var progress: Double
     let anchorBounds: CGRect?
 
@@ -273,30 +358,29 @@ private struct DustingParticleField: View, Animatable {
         set { progress = newValue }
     }
 
-    private let particles: [Particle] = [
-        Particle(x: 0.18, y: 0.50, dx: -26, dy: -18, size: 5, delay: 0.00, color: Color(red: 1.0, green: 0.92, blue: 0.68)),
-        Particle(x: 0.82, y: 0.46, dx: 24, dy: -24, size: 4, delay: 0.04, color: Color(red: 1.0, green: 0.78, blue: 0.32)),
-        Particle(x: 0.50, y: 0.18, dx: -10, dy: -34, size: 4, delay: 0.08, color: .white),
-        Particle(x: 0.50, y: 0.82, dx: 14, dy: 28, size: 5, delay: 0.12, color: Color(red: 0.96, green: 0.84, blue: 0.52)),
-        Particle(x: 0.26, y: 0.28, dx: -24, dy: -26, size: 3, delay: 0.18, color: .white),
-        Particle(x: 0.74, y: 0.72, dx: 26, dy: 22, size: 4, delay: 0.22, color: Color(red: 1.0, green: 0.88, blue: 0.44)),
-        Particle(x: 0.30, y: 0.72, dx: -22, dy: 20, size: 4, delay: 0.28, color: Color(red: 1.0, green: 0.95, blue: 0.72)),
-        Particle(x: 0.70, y: 0.25, dx: 20, dy: -30, size: 3, delay: 0.34, color: .white)
+    private let motes: [Mote] = [
+        Mote(x: 0.24, y: 0.30, dx: -12, dy: -24, size: 3, delay: 0.00, color: .white),
+        Mote(x: 0.74, y: 0.28, dx: 16, dy: -22, size: 4, delay: 0.08, color: Color(red: 1.0, green: 0.92, blue: 0.74)),
+        Mote(x: 0.18, y: 0.62, dx: -18, dy: 12, size: 3, delay: 0.18, color: CatLocalTheme.warning),
+        Mote(x: 0.78, y: 0.66, dx: 18, dy: 14, size: 3, delay: 0.26, color: .white),
+        Mote(x: 0.50, y: 0.16, dx: 4, dy: -28, size: 3, delay: 0.34, color: Color(red: 1.0, green: 0.96, blue: 0.82))
     ]
 
     var body: some View {
         Canvas { context, size in
             guard progress > 0 else { return }
-            let rect = resolvedRect(in: size)
-            for particle in particles {
-                let localProgress = min(max((progress - particle.delay) / 0.62, 0), 1)
+
+            let rect = resolvedRect(in: size).insetBy(dx: -16, dy: -16)
+            for mote in motes {
+                let localProgress = min(max((progress - mote.delay) / 0.62, 0), 1)
                 guard localProgress > 0 else { continue }
-                let alpha = pow(1 - localProgress, 0.8)
+
+                let alpha = pow(1 - localProgress, 0.9) * 0.68
+                let radius = mote.size * CGFloat(0.82 + localProgress * 0.6)
                 let position = CGPoint(
-                    x: rect.minX + rect.width * particle.x + particle.dx * CGFloat(localProgress),
-                    y: rect.minY + rect.height * particle.y + particle.dy * CGFloat(localProgress)
+                    x: rect.minX + rect.width * mote.x + mote.dx * CGFloat(localProgress),
+                    y: rect.minY + rect.height * mote.y + mote.dy * CGFloat(localProgress)
                 )
-                let radius = particle.size * CGFloat(0.7 + localProgress * 0.8)
                 let ellipse = CGRect(
                     x: position.x - radius / 2,
                     y: position.y - radius / 2,
@@ -305,7 +389,7 @@ private struct DustingParticleField: View, Animatable {
                 )
                 context.fill(
                     Path(ellipseIn: ellipse),
-                    with: .color(particle.color.opacity(0.9 * alpha))
+                    with: .color(mote.color.opacity(alpha))
                 )
             }
         }
@@ -313,16 +397,16 @@ private struct DustingParticleField: View, Animatable {
     }
 
     private func resolvedRect(in size: CGSize) -> CGRect {
-        let normalized = anchorBounds ?? CGRect(x: 0.2, y: 0.18, width: 0.6, height: 0.64)
+        let normalized = anchorBounds ?? CGRect(x: 0.22, y: 0.16, width: 0.56, height: 0.68)
         return CGRect(
             x: normalized.minX * size.width,
             y: normalized.minY * size.height,
             width: normalized.width * size.width,
             height: normalized.height * size.height
-        ).insetBy(dx: -18, dy: -18)
+        )
     }
 
-    private struct Particle {
+    private struct Mote {
         let x: CGFloat
         let y: CGFloat
         let dx: CGFloat

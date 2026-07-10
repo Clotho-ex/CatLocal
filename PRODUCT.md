@@ -16,7 +16,7 @@ CatLocal turns real cat encounters into local collectible cards. Its purpose is 
 
 Quiet, tactile, editorial.
 
-CatLocal should feel like a private field journal and a small gallery archive: warm but restrained, premium but not precious, playful in the card moments without turning the surrounding app into decoration. The app earns delight through native iOS behavior, tactile motion, local privacy proof, and collectible card craft.
+CatLocal should feel like a private field journal and a small sea-glass archive: warm but restrained, premium but not precious, playful in the card moments without turning the surrounding app into decoration. The app earns delight through native iOS behavior, tactile motion, local privacy proof, and collectible card craft.
 
 ## Anti-references
 

@@ -5,6 +5,7 @@ struct FocusedCardView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @AppStorage(CatLocalUserDefaults.hasSeenFocusedCardGlintHintKey) private var hasSeenFocusedCardGlintHint = false
 
     let record: CatRecord
     let onClose: (() -> Void)?
@@ -45,7 +46,7 @@ struct FocusedCardView: View {
         }
         .safeAreaInset(edge: .bottom) {
             if !dynamicTypeSize.isAccessibilitySize {
-                lightHintPill
+                lightGuidance
                     .padding(.horizontal, CatLocalTheme.screenHorizontalPadding)
                     .padding(.bottom, 18)
             }
@@ -89,7 +90,7 @@ struct FocusedCardView: View {
 
                 FocusedJournalEntryView(record: record)
 
-                lightHintPill
+                lightGuidance
             }
             .padding(.horizontal, 14)
             .padding(.top, 18)
@@ -119,6 +120,9 @@ struct FocusedCardView: View {
             cornerRadius: 34,
             onInteractionChanged: { isInteracting in
                 isCardInteracting = isInteracting
+                if isInteracting {
+                    hasSeenFocusedCardGlintHint = true
+                }
             }
         ) { rotateX, rotateY, isInteracting in
             CatCardView(
@@ -139,6 +143,45 @@ struct FocusedCardView: View {
         return CGSize(width: focusedCardMaxWidth, height: focusedCardMaxWidth / 0.64)
     }
 
+    private var showsFirstGlintMascot: Bool {
+        !hasSeenFocusedCardGlintHint && !reduceMotion && !isCardInteracting
+    }
+
+    private var lightGuidance: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 10) {
+                if showsFirstGlintMascot {
+                    glintHintMascot(size: 54)
+                }
+
+                lightHintPill
+            }
+
+            VStack(spacing: 8) {
+                if showsFirstGlintMascot {
+                    glintHintMascot(size: 62)
+                }
+
+                lightHintPill
+            }
+        }
+        .opacity(isCardInteracting && !reduceMotion ? 0 : 1)
+        .offset(y: isCardInteracting && !reduceMotion ? 8 : 0)
+        .animation(.easeInOut(duration: 0.16), value: isCardInteracting)
+        .animation(reduceMotion ? nil : .smooth(duration: 0.2, extraBounce: 0), value: showsFirstGlintMascot)
+        .allowsHitTesting(false)
+        .accessibilityHidden(isCardInteracting && !reduceMotion)
+    }
+
+    private func glintHintMascot(size: CGFloat) -> some View {
+        LociMascotView(
+            state: .state(for: .glintHint),
+            size: size
+        )
+        .transition(.scale(scale: 0.96).combined(with: .opacity))
+        .accessibilityHidden(true)
+    }
+
     private var lightHintPill: some View {
         Label {
             Text(reduceMotion ? "Lighting motion is reduced" : "Drag to catch the light")
@@ -156,11 +199,6 @@ struct FocusedCardView: View {
         .catAttentionPillSurface(role: .action, cornerRadius: 22)
         .lineLimit(dynamicTypeSize.isAccessibilitySize ? 3 : 2)
         .multilineTextAlignment(.center)
-        .opacity(isCardInteracting && !reduceMotion ? 0 : 1)
-        .offset(y: isCardInteracting && !reduceMotion ? 8 : 0)
-        .animation(.easeInOut(duration: 0.16), value: isCardInteracting)
-        .allowsHitTesting(false)
-        .accessibilityHidden(isCardInteracting && !reduceMotion)
     }
 
     private func closeFocusedCat() {
@@ -212,7 +250,7 @@ private struct FocusedJournalEntryView: View {
                 journalRow(
                     title: "Memory Place",
                     icon: "mappin.and.ellipse",
-                    value: "No memory place yet.",
+                    value: "Add when ready.",
                     isPlaceholder: true
                 )
             }
@@ -282,6 +320,7 @@ struct CatRecordEditSheet: View {
 
     let record: CatRecord
     let onDeleted: (() -> Void)?
+    let initialFocusedField: FocusedField?
 
     @State private var nickname: String
     @State private var note: String
@@ -290,11 +329,17 @@ struct CatRecordEditSheet: View {
     @State private var selectedStyle: CardStyle
     @State private var showingDeleteConfirmation = false
     @State private var errorMessage: String?
+    @State private var didApplyInitialFocus = false
     @FocusState private var focusedField: FocusedField?
 
-    init(record: CatRecord, onDeleted: (() -> Void)? = nil) {
+    init(
+        record: CatRecord,
+        initialFocusedField: FocusedField? = nil,
+        onDeleted: (() -> Void)? = nil
+    ) {
         self.record = record
         self.onDeleted = onDeleted
+        self.initialFocusedField = initialFocusedField
         _nickname = State(initialValue: record.nickname)
         _note = State(initialValue: record.note)
         _placeName = State(initialValue: record.placeName)
@@ -418,6 +463,9 @@ struct CatRecordEditSheet: View {
                 showingDeleteConfirmation = false
             }
         }
+        .task {
+            await applyInitialFocusIfNeeded()
+        }
     }
 
     private var editSheetActionButton: some View {
@@ -452,7 +500,7 @@ struct CatRecordEditSheet: View {
             .frame(width: 34, height: 34)
             .accessibilityHidden(true)
 
-            Text("Manual label only. CatLocal does not request GPS or save coordinates.")
+            Text("Typed labels only. No GPS is requested.")
                 .font(CatTypography.metadata)
                 .foregroundStyle(CatAttentionRole.info.text)
                 .lineLimit(nil)
@@ -473,6 +521,14 @@ struct CatRecordEditSheet: View {
         if focusedField != nil {
             focusedField = nil
         }
+    }
+
+    private func applyInitialFocusIfNeeded() async {
+        guard !didApplyInitialFocus, let initialFocusedField else { return }
+
+        didApplyInitialFocus = true
+        try? await Task.sleep(nanoseconds: 320_000_000)
+        focusedField = initialFocusedField
     }
 
     private func editSectionHeader(_ title: String) -> some View {

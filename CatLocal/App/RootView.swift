@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct RootView: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @AppStorage(CatLocalUserDefaults.hasCompletedOnboardingKey) private var hasCompletedOnboarding = false
     @State private var selectedTab: AppTab = .home
     @State private var lastContentTab: AppTab = .home
     @State private var presentedSheet: AppSheet?
@@ -8,14 +10,27 @@ struct RootView: View {
     @State private var contentTabFeedbackTrigger = 0
 
     var body: some View {
-        nativeTabs
-        .sensoryFeedback(.selection, trigger: contentTabFeedbackTrigger)
-        .fullScreenCover(item: $presentedSheet, onDismiss: restoreContentTabSelection) { sheet in
-            switch sheet {
-            case .capture:
-                CaptureView()
+        ZStack {
+            if hasCompletedOnboarding {
+                appShell
+                    .transition(.opacity.combined(with: .scale(scale: 0.99)))
+            } else {
+                OnboardingView(onComplete: completeOnboarding)
+                    .transition(.opacity)
             }
         }
+        .animation(reduceMotion ? nil : .smooth(duration: 0.24, extraBounce: 0), value: hasCompletedOnboarding)
+    }
+
+    private var appShell: some View {
+        nativeTabs
+            .sensoryFeedback(.selection, trigger: contentTabFeedbackTrigger)
+            .fullScreenCover(item: $presentedSheet, onDismiss: restoreContentTabSelection) { sheet in
+                switch sheet {
+                case .capture:
+                    CaptureView()
+                }
+            }
     }
 
     private var tabSelection: Binding<AppTab> {
@@ -122,6 +137,10 @@ struct RootView: View {
 
     private func restoreContentTabSelection() {
         selectedTab = lastContentTab
+    }
+
+    private func completeOnboarding() {
+        hasCompletedOnboarding = true
     }
 
     private func playContentTabHaptic(from oldTab: AppTab, to newTab: AppTab) {

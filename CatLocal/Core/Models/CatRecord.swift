@@ -152,6 +152,13 @@ enum CardStyle: String, Codable, CaseIterable, Identifiable, Hashable, Sendable 
     case topoLagoon
     case topoMoss
     case topoDusk
+    case pineShadow
+    case cedarShade
+    case fernTrace
+    case mossVeil
+    case cobaltHalo
+    case apricotBeam
+    case auroraPool
 
     var id: String { rawValue }
 
@@ -168,7 +175,14 @@ enum CardStyle: String, Codable, CaseIterable, Identifiable, Hashable, Sendable 
         .topoEmber,
         .topoLagoon,
         .topoMoss,
-        .topoDusk
+        .topoDusk,
+        .pineShadow,
+        .cedarShade,
+        .fernTrace,
+        .mossVeil,
+        .cobaltHalo,
+        .apricotBeam,
+        .auroraPool
     ]
 
     var displayIndex: Int {
@@ -194,15 +208,75 @@ enum CardStyle: String, Codable, CaseIterable, Identifiable, Hashable, Sendable 
         case .gold:
             "Gold Leaf"
         case .topo:
-            "Topographic"
+            "Contour Light"
         case .topoEmber:
-            "Topo Ember"
+            "Ember Lines"
         case .topoLagoon:
-            "Topo Lagoon"
+            "Lagoon Lines"
         case .topoMoss:
-            "Topo Moss"
+            "Moss Lines"
         case .topoDusk:
-            "Topo Dusk"
+            "Dusk Lines"
+        case .pineShadow:
+            "Pine Shadow"
+        case .cedarShade:
+            "Cedar Shade"
+        case .fernTrace:
+            "Fern Trace"
+        case .mossVeil:
+            "Moss Veil"
+        case .cobaltHalo:
+            "Cobalt Halo"
+        case .apricotBeam:
+            "Apricot Beam"
+        case .auroraPool:
+            "Aurora Pool"
+        }
+    }
+
+    var isArchiveMaterial: Bool {
+        switch self {
+        case .pineShadow, .cedarShade, .fernTrace, .mossVeil:
+            true
+        default:
+            false
+        }
+    }
+
+    var archiveMaterialVariantIndex: Int {
+        switch self {
+        case .pineShadow:
+            0
+        case .cedarShade:
+            1
+        case .fernTrace:
+            2
+        case .mossVeil:
+            3
+        default:
+            0
+        }
+    }
+
+    var isLightEffect: Bool {
+        switch self {
+        case .cobaltHalo, .apricotBeam, .auroraPool:
+            true
+        default:
+            false
+        }
+    }
+
+    var lightEffectVariantIndex: Int {
+        switch self {
+        case .cobaltHalo:
+            0
+        case .apricotBeam:
+            1
+        case .auroraPool:
+            2
+        default:
+            0
         }
     }
 

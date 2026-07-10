@@ -18,8 +18,17 @@
 		9137CE1F99BC861E1406F6A1 /* CatRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4BAC1D9BEDD36E357BB086E /* CatRecord.swift */; };
 		916D253087912F72BBC53ADC /* CatImageStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85591EB21ABD2F35EF504327 /* CatImageStore.swift */; };
 		A1069F8537A27BFAD0DCDFD1 /* CatLocalApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 683862D5532B40306057D2FC /* CatLocalApp.swift */; };
+		A10C1F000000000000000011 /* LociPose.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10C1F000000000000000001 /* LociPose.swift */; };
+		A10C1F000000000000000012 /* LociMascotAnimation.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10C1F000000000000000002 /* LociMascotAnimation.swift */; };
+		A10C1F000000000000000013 /* LociContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10C1F000000000000000003 /* LociContext.swift */; };
+		A10C1F000000000000000014 /* LociMascotView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10C1F000000000000000004 /* LociMascotView.swift */; };
+		A10C1F000000000000000015 /* LociCardHeroScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10C1F000000000000000005 /* LociCardHeroScene.swift */; };
+		A10C1F000000000000000016 /* LociStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10C1F000000000000000006 /* LociStateView.swift */; };
+		A10C1F000000000000000017 /* LociPreviews.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10C1F000000000000000007 /* LociPreviews.swift */; };
+		A10C1F000000000000000018 /* CatLocalCardSkeletonView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10C1F000000000000000008 /* CatLocalCardSkeletonView.swift */; };
 		A40767F8673B5D8FF238D313 /* FocusedCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D58C11AD2A0BE295FE2FDE73 /* FocusedCardView.swift */; };
 		A51BF322F9A811A7B3A601F0 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 967BEF2D565B94E8EC6F4EF3 /* Foundation.framework */; };
+		B00000000000000000000002 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000001 /* OnboardingView.swift */; };
 		BA93CEB9F3312E542294D25B /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B964E0402B2EFBC1640AA3 /* RootView.swift */; };
 		C22F46ED2FEBDC7400385C0F /* LiveInteractiveCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C22F46EC2FEBDC6F00385C0F /* LiveInteractiveCardView.swift */; };
 		C982ADF153B9B1AF278AD467 /* CatVisionProcessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEAFBCFBDEEE3B140EB0F707 /* CatVisionProcessor.swift */; };
@@ -61,7 +70,16 @@
 		967BEF2D565B94E8EC6F4EF3 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 		9F01F95B5EC6531850C07090 /* CatLocalUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CatLocalUITests.swift; path = CatLocalUITests/CatLocalUITests.swift; sourceTree = "<group>"; };
 		9F13918D6D9901DE5CBD9D7F /* CatLocalUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CatLocalUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		A10C1F000000000000000001 /* LociPose.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LociPose.swift; path = CatLocal/Shared/UI/Loci/LociPose.swift; sourceTree = "<group>"; };
+		A10C1F000000000000000002 /* LociMascotAnimation.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LociMascotAnimation.swift; path = CatLocal/Shared/UI/Loci/LociMascotAnimation.swift; sourceTree = "<group>"; };
+		A10C1F000000000000000003 /* LociContext.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LociContext.swift; path = CatLocal/Shared/UI/Loci/LociContext.swift; sourceTree = "<group>"; };
+		A10C1F000000000000000004 /* LociMascotView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LociMascotView.swift; path = CatLocal/Shared/UI/Loci/LociMascotView.swift; sourceTree = "<group>"; };
+		A10C1F000000000000000005 /* LociCardHeroScene.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LociCardHeroScene.swift; path = CatLocal/Shared/UI/Loci/LociCardHeroScene.swift; sourceTree = "<group>"; };
+		A10C1F000000000000000006 /* LociStateView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LociStateView.swift; path = CatLocal/Shared/UI/Loci/LociStateView.swift; sourceTree = "<group>"; };
+		A10C1F000000000000000007 /* LociPreviews.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LociPreviews.swift; path = CatLocal/Shared/UI/Loci/LociPreviews.swift; sourceTree = "<group>"; };
+		A10C1F000000000000000008 /* CatLocalCardSkeletonView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CatLocalCardSkeletonView.swift; path = CatLocal/Shared/UI/Card/CatLocalCardSkeletonView.swift; sourceTree = "<group>"; };
 		A2FC4E54CFCDDB8993A0999A /* StoredImageView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = StoredImageView.swift; path = CatLocal/Shared/UI/Images/StoredImageView.swift; sourceTree = "<group>"; };
+		B00000000000000000000001 /* OnboardingView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = OnboardingView.swift; path = CatLocal/Features/Onboarding/OnboardingView.swift; sourceTree = "<group>"; };
 		C22F46EC2FEBDC6F00385C0F /* LiveInteractiveCardView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LiveInteractiveCardView.swift; path = CatLocal/Shared/UI/Effects/LiveInteractiveCardView.swift; sourceTree = "<group>"; };
 		C8B964E0402B2EFBC1640AA3 /* RootView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = RootView.swift; path = CatLocal/App/RootView.swift; sourceTree = "<group>"; };
 		D1A7C0DE0000000000000002 /* DustingRevealView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DustingRevealView.swift; path = CatLocal/Shared/UI/Effects/DustingRevealView.swift; sourceTree = "<group>"; };
@@ -116,6 +134,14 @@
 			);
 			sourceTree = "<group>";
 		};
+		4D238D6D2E24B80F5C74FFA8 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				F8790464973781B4AE1B7030 /* iOS */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		A00000000000000000000001 /* App */ = {
 			isa = PBXGroup;
 			children = (
@@ -155,6 +181,7 @@
 		A00000000000000000000005 /* Features */ = {
 			isa = PBXGroup;
 			children = (
+				B00000000000000000000005 /* Onboarding */,
 				A00000000000000000000006 /* Capture */,
 				A00000000000000000000007 /* Collection */,
 				A00000000000000000000008 /* Settings */,
@@ -209,6 +236,7 @@
 				A00000000000000000000012 /* Card */,
 				A00000000000000000000013 /* Effects */,
 				A00000000000000000000016 /* Images */,
+				A10C1F000000000000000010 /* Loci */,
 			);
 			name = UI;
 			sourceTree = "<group>";
@@ -218,6 +246,7 @@
 			children = (
 				EFDD8B2A8E859982240AAF1B /* CatCardView.swift */,
 				D58C11AD2A0BE295FE2FDE73 /* FocusedCardView.swift */,
+				A10C1F000000000000000008 /* CatLocalCardSkeletonView.swift */,
 			);
 			name = Card;
 			sourceTree = "<group>";
@@ -230,14 +259,6 @@
 				D1A7C0DF0000000000000002 /* CardMintingSuccessView.swift */,
 			);
 			name = Effects;
-			sourceTree = "<group>";
-		};
-		A00000000000000000000016 /* Images */ = {
-			isa = PBXGroup;
-			children = (
-				A2FC4E54CFCDDB8993A0999A /* StoredImageView.swift */,
-			);
-			name = Images;
 			sourceTree = "<group>";
 		};
 		A00000000000000000000014 /* Resources */ = {
@@ -257,12 +278,34 @@
 			name = Tests;
 			sourceTree = "<group>";
 		};
-		4D238D6D2E24B80F5C74FFA8 /* Frameworks */ = {
+		A00000000000000000000016 /* Images */ = {
 			isa = PBXGroup;
 			children = (
-				F8790464973781B4AE1B7030 /* iOS */,
+				A2FC4E54CFCDDB8993A0999A /* StoredImageView.swift */,
 			);
-			name = Frameworks;
+			name = Images;
+			sourceTree = "<group>";
+		};
+		A10C1F000000000000000010 /* Loci */ = {
+			isa = PBXGroup;
+			children = (
+				A10C1F000000000000000001 /* LociPose.swift */,
+				A10C1F000000000000000002 /* LociMascotAnimation.swift */,
+				A10C1F000000000000000003 /* LociContext.swift */,
+				A10C1F000000000000000004 /* LociMascotView.swift */,
+				A10C1F000000000000000005 /* LociCardHeroScene.swift */,
+				A10C1F000000000000000006 /* LociStateView.swift */,
+				A10C1F000000000000000007 /* LociPreviews.swift */,
+			);
+			name = Loci;
+			sourceTree = "<group>";
+		};
+		B00000000000000000000005 /* Onboarding */ = {
+			isa = PBXGroup;
+			children = (
+				B00000000000000000000001 /* OnboardingView.swift */,
+			);
+			name = Onboarding;
 			sourceTree = "<group>";
 		};
 		CEFF255F458A45847CE5966D /* Products */ = {
@@ -427,9 +470,18 @@
 			files = (
 				A1069F8537A27BFAD0DCDFD1 /* CatLocalApp.swift in Sources */,
 				BA93CEB9F3312E542294D25B /* RootView.swift in Sources */,
+				B00000000000000000000002 /* OnboardingView.swift in Sources */,
 				4A31E0703AD4C8BD186596FE /* CatCardView.swift in Sources */,
 				C22F46ED2FEBDC7400385C0F /* LiveInteractiveCardView.swift in Sources */,
 				A40767F8673B5D8FF238D313 /* FocusedCardView.swift in Sources */,
+				A10C1F000000000000000011 /* LociPose.swift in Sources */,
+				A10C1F000000000000000012 /* LociMascotAnimation.swift in Sources */,
+				A10C1F000000000000000013 /* LociContext.swift in Sources */,
+				A10C1F000000000000000014 /* LociMascotView.swift in Sources */,
+				A10C1F000000000000000015 /* LociCardHeroScene.swift in Sources */,
+				A10C1F000000000000000016 /* LociStateView.swift in Sources */,
+				A10C1F000000000000000017 /* LociPreviews.swift in Sources */,
+				A10C1F000000000000000018 /* CatLocalCardSkeletonView.swift in Sources */,
 				D1A7C0DE0000000000000001 /* DustingRevealView.swift in Sources */,
 				D1A7C0DF0000000000000001 /* CardMintingSuccessView.swift in Sources */,
 				25EBED58CBB7EFA817A27B0D /* StoredImageView.swift in Sources */,
