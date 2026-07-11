@@ -106,16 +106,23 @@ Future storage changes should preserve these invariants:
 reveal, editor, and persistence. Small state mistakes here can produce duplicate
 saves or a stuck first-use flow.
 
-- Gate camera shutter, private import, and debug validation import with a single
-  in-flight capture flag. `CameraController` owns one photo completion, so
-  repeated taps must not be able to start overlapping captures or overwrite the
-  active completion.
-- Reset the in-flight flag on every exit path: successful Vision handoff,
+- Gate camera shutter, private import, debug validation import, and cutout retry
+  with one session-based in-flight coordinator. Each async operation keeps its
+  session ID; completion from a cancelled or superseded session must be a no-op
+  so it cannot clear or overwrite a newer retry.
+- Keep the active image-processing `Task` cancellable. Analyzing and cutout
+  screens expose `Stop and return`, invalidate the active session immediately,
+  and preserve the source photo in `processingStopped` with explicit retry and
+  retake actions. Vision's synchronous request may finish in the background, so
+  cancellation checks run before and after each request before UI state changes.
+- Reset the in-flight session on every exit path: successful Vision handoff,
   import/capture failure, user cancellation, close, and reset.
 - Keep expensive image preparation off the main actor. Decode and downsample
   imported/captured images before sending them into Vision or card rendering.
 - Preserve explicit stage transitions: `camera -> analyzing -> choosingCat` or
-  `creatingCutout -> stickerReveal -> stickerInspecting -> cardCelebrating`.
+  `creatingCutout -> stickerReveal -> stickerInspecting -> cardCelebrating`,
+  with `analyzing/creatingCutout -> processingStopped -> analyzing` as the
+  cancellation and retry path.
   Avoid implicit fallthrough that lets UI controls from an earlier stage remain
   active while async work is running.
 

@@ -309,6 +309,56 @@ enum CardStyle: String, Codable, CaseIterable, Identifiable, Hashable, Sendable 
     static func deterministic(seed: Int) -> CardStyle {
         .archive
     }
+
+    var family: CardStyleFamily {
+        CardStyleFamily.allCases.first(where: { $0.styles.contains(self) }) ?? .archive
+    }
+}
+
+enum CardStyleFamily: String, CaseIterable, Identifiable, Hashable, Sendable {
+    case archive
+    case contour
+    case botanical
+    case light
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .archive:
+            "Archive"
+        case .contour:
+            "Contour"
+        case .botanical:
+            "Botanical"
+        case .light:
+            "Light"
+        }
+    }
+
+    var styles: [CardStyle] {
+        switch self {
+        case .archive:
+            [.archive, .sunstamp, .clear, .midnight, .apricot, .prism, .gold]
+        case .contour:
+            [.topo, .topoEmber, .topoLagoon, .topoMoss, .topoDusk]
+        case .botanical:
+            [.garden, .pineShadow, .cedarShade, .fernTrace, .mossVeil]
+        case .light:
+            [.cobaltHalo, .apricotBeam, .auroraPool]
+        }
+    }
+
+    var recommendedStyle: CardStyle {
+        Self.recommendedStyles.first(where: { $0.family == self }) ?? .archive
+    }
+
+    static let recommendedStyles: [CardStyle] = [
+        .archive,
+        .topoLagoon,
+        .fernTrace,
+        .cobaltHalo
+    ]
 }
 
 enum CatNamePool {

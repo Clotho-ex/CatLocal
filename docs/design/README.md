@@ -49,6 +49,15 @@ not a literal layout spec.
 
 ## Experience Shape
 
+- Onboarding stays optional: Welcome and Privacy offer a quiet `Skip to Home`
+  action, while the full three-page path remains available. Privacy education
+  stays retrievable through the Settings privacy receipt. Keep onboarding
+  progress as a full-width linear bar in the top safe-area header, with the step
+  label leading and `Skip to Home` trailing. The header, fitted page content, and
+  transparent footer actions occupy separate layout regions so controls never
+  cover content or introduce a second surface over the background. Each page uses
+  one top-aligned rhythm: hero, title and detail, then supporting proof points.
+  Move those regions through layout spacing rather than visual-only offsets.
 - Home opens as the private collection. Empty Home should make the first action
   clear without feeling like a marketing page.
 - Capture and private import are equal first-class starts.
@@ -101,6 +110,11 @@ explicit destructive actions.
   name, notes, Catlas, and style edits.
 - `LiveInteractiveCardView` is the home for focused tilt, foil, and haptics.
   Keep those effects calm at rest and active only while focused or touched.
+- Card-style selection leads with four recommendations, then reveals Archive,
+  Contour, Botanical, and Light families. Keep the repeated tactile carousel
+  scoped to the active family so the full catalog remains understandable.
+  Recommendation tiles stack a clipped material swatch above a separate title
+  region; never squeeze the swatch and label into the same horizontal row.
 - `Loci` belongs in targeted state moments: empty collection, recovery,
   warnings, saved-card success, first-time hint education, and explicit privacy
   education.
@@ -113,6 +127,8 @@ explicit destructive actions.
 - Avoid continuous sensor work or per-frame effects in scrolling views.
 - Respect Reduce Motion and VoiceOver. Important state cannot be communicated by
   animation, color, or mascot pose alone.
+- Focused-card lighting exposes left, centered, and right VoiceOver values and
+  announces successful adjustable-action changes.
 - Haptics should mark intent or completion, not every decorative change.
 
 ## Privacy Language

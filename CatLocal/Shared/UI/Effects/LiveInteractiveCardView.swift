@@ -1,3 +1,4 @@
+import Accessibility
 import SwiftUI
 
 /// Areas for Polish: While custom procedural effects like contour-line cards are
@@ -19,6 +20,7 @@ struct LiveInteractiveCardView<Content: View>: View {
     @State private var rotateX: CGFloat = 0
     @State private var rotateY: CGFloat = 0
     @State private var spotlightLocation: CGPoint = .zero
+    @State private var lightingPosition: LiveInteractiveCardLightingPosition = .center
     @State private var isInteracting = false
     @State private var lastHapticAngle: CGFloat = 0
     @State private var hasHitLimit = false
@@ -74,8 +76,12 @@ struct LiveInteractiveCardView<Content: View>: View {
             .accessibilityAdjustableAction { direction in
                 adjustLighting(direction: direction, size: size)
             }
+            .accessibilityLabel("Card lighting")
+            .accessibilityValue(lightingPosition.accessibilityValue)
+            .accessibilityHint("Swipe up or down to move the light.")
             .onAppear {
                 spotlightLocation = CGPoint(x: size.width / 2, y: size.height / 2)
+                lightingPosition = .center
             }
             .onChange(of: reduceMotion) { _, isReduced in
                 if isReduced {
@@ -125,6 +131,10 @@ struct LiveInteractiveCardView<Content: View>: View {
                     maxTiltAngle: maxTiltAngle
                 )
                 spotlightLocation = tilt.location
+                lightingPosition = LiveInteractiveCardLightingPosition(
+                    locationX: tilt.location.x,
+                    width: size.width
+                )
                 let hapticMagnitude = abs(tilt.rotateX) + abs(tilt.rotateY)
                 if hapticsEnabled, abs(hapticMagnitude - lastHapticAngle) > 2.5 {
                     selectionFeedbackTrigger += 1
@@ -154,6 +164,7 @@ struct LiveInteractiveCardView<Content: View>: View {
                     rotateX = 0
                     rotateY = 0
                     spotlightLocation = CGPoint(x: size.width / 2, y: size.height / 2)
+                    lightingPosition = .center
                     isInteracting = false
                 }
             }
@@ -166,27 +177,30 @@ struct LiveInteractiveCardView<Content: View>: View {
         rotateX = 0
         rotateY = 0
         spotlightLocation = CGPoint(x: size.width / 2, y: size.height / 2)
+        lightingPosition = .center
     }
 
     private func adjustLighting(direction: AccessibilityAdjustmentDirection, size: CGSize) {
         guard !reduceMotion else { return }
 
-        let targetX: CGFloat
+        let nextPosition: LiveInteractiveCardLightingPosition?
         switch direction {
         case .increment:
-            targetX = size.width
+            nextPosition = lightingPosition.movingRight()
         case .decrement:
-            targetX = 0
+            nextPosition = lightingPosition.movingLeft()
         @unknown default:
-            targetX = size.width / 2
+            nextPosition = nil
         }
+        guard let nextPosition else { return }
 
         let tilt = LiveInteractiveCardMath.tilt(
-            for: CGPoint(x: targetX, y: size.height / 2),
+            for: CGPoint(x: nextPosition.locationX(in: size.width), y: size.height / 2),
             in: size,
             maxTiltAngle: maxTiltAngle
         )
         spotlightLocation = tilt.location
+        lightingPosition = nextPosition
         withAnimation(.easeInOut(duration: 0.16)) {
             isInteracting = true
         }
@@ -198,6 +212,60 @@ struct LiveInteractiveCardView<Content: View>: View {
         withAnimation(.interactiveSpring(response: 0.25, dampingFraction: 0.65)) {
             rotateX = tilt.rotateX
             rotateY = tilt.rotateY
+        }
+
+        AccessibilityNotification.Announcement(nextPosition.accessibilityValue).post()
+    }
+}
+
+enum LiveInteractiveCardLightingPosition: Int, CaseIterable, Sendable {
+    case left = -1
+    case center = 0
+    case right = 1
+
+    var accessibilityValue: String {
+        switch self {
+        case .left:
+            "Light left"
+        case .center:
+            "Light centered"
+        case .right:
+            "Light right"
+        }
+    }
+
+    init(locationX: CGFloat, width: CGFloat) {
+        guard width > 0 else {
+            self = .center
+            return
+        }
+
+        let normalizedX = min(max(locationX / width, 0), 1)
+        if normalizedX < 1 / 3 {
+            self = .left
+        } else if normalizedX > 2 / 3 {
+            self = .right
+        } else {
+            self = .center
+        }
+    }
+
+    func movingLeft() -> Self? {
+        Self(rawValue: rawValue - 1)
+    }
+
+    func movingRight() -> Self? {
+        Self(rawValue: rawValue + 1)
+    }
+
+    func locationX(in width: CGFloat) -> CGFloat {
+        switch self {
+        case .left:
+            0
+        case .center:
+            width / 2
+        case .right:
+            width
         }
     }
 }

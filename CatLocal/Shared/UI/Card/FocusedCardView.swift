@@ -357,9 +357,8 @@ struct CatRecordEditSheet: View {
 
                 Form {
                     Section {
-                        CardStyleCarousel(
+                        CardStylePicker(
                             selectedStyle: $selectedStyle,
-                            showsTitle: false,
                             itemWidth: 154,
                             previewAspectRatio: 1.28,
                             itemPadding: 6,

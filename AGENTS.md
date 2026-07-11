@@ -91,7 +91,7 @@ Do not reintroduce a custom floating tab bar unless a native API cannot express 
 - The contour-line styles are procedural and asset-free: use seeded gradients plus visible contour strokes, not a flat rainbow wash or a heavy per-frame Canvas in scrolling views.
 - Botanical material styles are procedural and asset-free: use lightweight `Shape` strokes and gradients for pine, cedar, fern, and moss shadow effects rather than bitmap assets.
 - Light-effect styles can use gradients and moving glow bands, but should remain calm at rest and cheap in thumbnails.
-- The card style carousel repeats style cycles to feel infinite and fires a small selection haptic as the centered style changes.
+- Card-style selection leads with four recommendations, reveals Archive, Contour, Botanical, and Light families, then repeats carousel cycles only within the active family. Keep the small selection haptic as the centered style changes.
 - Liquid Glass belongs on native navigation and compact actions.
 - `LiveInteractiveCardView` passes `rotateX`, `rotateY`, and `isInteracting` into card content. It preserves one-shot boundary haptics and thresholded tilt haptics; do not alter the haptic gate or spring constants casually.
 - Keep grid thumbnails cheap: static overlays, thumbnail image paths, no live tilt, no motion sensors, no full premium foil stack.

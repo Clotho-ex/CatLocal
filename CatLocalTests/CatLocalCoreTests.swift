@@ -155,6 +155,25 @@ struct CatLocalCoreTests {
     }
 
     @Test
+    func cardStyleFamiliesPartitionTheCatalog() {
+        let groupedStyles = CardStyleFamily.allCases.flatMap(\.styles)
+
+        #expect(CardStyleFamily.allCases.map(\.title) == ["Archive", "Contour", "Botanical", "Light"])
+        #expect(groupedStyles.count == CardStyle.orderedCases.count)
+        #expect(Set(groupedStyles) == Set(CardStyle.orderedCases))
+        #expect(Set(groupedStyles).count == groupedStyles.count)
+    }
+
+    @Test
+    func cardStyleRecommendationsLeadWithOneStylePerFamily() {
+        let recommendations = CardStyleFamily.recommendedStyles
+
+        #expect(recommendations == [.archive, .topoLagoon, .fernTrace, .cobaltHalo])
+        #expect(recommendations.count == 4)
+        #expect(Set(recommendations.map(\.family)) == Set(CardStyleFamily.allCases))
+    }
+
+    @Test
     func visibleCardStyleTitlesAvoidRetiredNames() {
         let titles = CardStyle.orderedCases.map(\.title)
         let retiredTitles = ["Porcelain Tile", "Rain Glass", "Lantern Glow"]
@@ -467,6 +486,35 @@ struct CatLocalCoreTests {
     }
 
     @Test
+    func catSelectionOverlayMapsVisionBoundsIntoAspectFitImage() {
+        let overlayRect = CatSelectionOverlayLayout.rect(
+            for: CGRect(x: 0.25, y: 0.6, width: 0.5, height: 0.2),
+            imageSize: CGSize(width: 400, height: 200),
+            containerSize: CGSize(width: 300, height: 300)
+        )
+
+        #expect(overlayRect == CGRect(x: 75, y: 105, width: 150, height: 30))
+    }
+
+    @Test
+    func captureProcessingGateIgnoresStaleCompletionAfterCancelAndRetry() throws {
+        var gate = CaptureProcessingSessionGate()
+        let firstSessionValue = gate.begin()
+        let firstSession = try #require(firstSessionValue)
+
+        gate.cancel()
+        let retrySessionValue = gate.begin()
+        let retrySession = try #require(retrySessionValue)
+        let staleSessionFinished = gate.finish(firstSession)
+
+        #expect(!staleSessionFinished)
+        #expect(gate.isCurrent(retrySession))
+        let retrySessionFinished = gate.finish(retrySession)
+        #expect(retrySessionFinished)
+        #expect(!gate.isActive)
+    }
+
+    @Test
     func visionCutoutUsesMaskLuminanceForTransparency() async throws {
         let original = renderedImage(size: CGSize(width: 80, height: 80), opaque: true) { context in
             UIColor.systemOrange.setFill()
@@ -560,6 +608,22 @@ struct CatLocalCoreTests {
         #expect(outOfBounds.rotateX == 12)
         #expect(outOfBounds.rotateY == 12)
         #expect(outOfBounds.isAtLimit)
+    }
+
+    @Test
+    func liveInteractiveCardLightingPositionsExposeVoiceOverValues() {
+        #expect(LiveInteractiveCardLightingPosition.left.accessibilityValue == "Light left")
+        #expect(LiveInteractiveCardLightingPosition.center.accessibilityValue == "Light centered")
+        #expect(LiveInteractiveCardLightingPosition.right.accessibilityValue == "Light right")
+    }
+
+    @Test
+    func liveInteractiveCardLightingAdjustmentsMoveOnePositionAtATime() {
+        #expect(LiveInteractiveCardLightingPosition.center.movingLeft() == .left)
+        #expect(LiveInteractiveCardLightingPosition.left.movingLeft() == nil)
+        #expect(LiveInteractiveCardLightingPosition.left.movingRight() == .center)
+        #expect(LiveInteractiveCardLightingPosition.center.movingRight() == .right)
+        #expect(LiveInteractiveCardLightingPosition.right.movingRight() == nil)
     }
 
     private func makeRecord(sequence: Int) -> CatRecord {

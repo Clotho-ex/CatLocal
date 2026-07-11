@@ -1822,8 +1822,207 @@ private struct TopoContourShape: Shape {
     }
 }
 
+struct CardStylePicker<Preview: View>: View {
+    @Binding var selectedStyle: CardStyle
+    let itemWidth: CGFloat
+    let previewAspectRatio: CGFloat
+    let itemPadding: CGFloat
+    let itemCornerRadius: CGFloat
+    let itemSpacing: CGFloat
+    let titleMinHeight: CGFloat
+    @State private var selectedFamily: CardStyleFamily
+    @State private var selectionFeedbackTrigger = 0
+
+    @ViewBuilder let preview: (_ style: CardStyle) -> Preview
+
+    init(
+        selectedStyle: Binding<CardStyle>,
+        itemWidth: CGFloat = 184,
+        previewAspectRatio: CGFloat = 0.64,
+        itemPadding: CGFloat = 8,
+        itemCornerRadius: CGFloat = 28,
+        itemSpacing: CGFloat = 14,
+        titleMinHeight: CGFloat = 34,
+        @ViewBuilder preview: @escaping (_ style: CardStyle) -> Preview
+    ) {
+        _selectedStyle = selectedStyle
+        self.itemWidth = itemWidth
+        self.previewAspectRatio = previewAspectRatio
+        self.itemPadding = itemPadding
+        self.itemCornerRadius = itemCornerRadius
+        self.itemSpacing = itemSpacing
+        self.titleMinHeight = titleMinHeight
+        _selectedFamily = State(initialValue: selectedStyle.wrappedValue.family)
+        self.preview = preview
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Recommended")
+                .font(CatTypography.badge)
+                .foregroundStyle(CatLocalTheme.secondaryText)
+
+            LazyVGrid(
+                columns: [
+                    GridItem(.flexible(), spacing: 8),
+                    GridItem(.flexible(), spacing: 8)
+                ],
+                spacing: 8
+            ) {
+                ForEach(CardStyleFamily.recommendedStyles) { style in
+                    recommendedStyleButton(style)
+                }
+            }
+
+            HStack(alignment: .firstTextBaseline) {
+                Text("All styles")
+                    .font(CatTypography.badge)
+                    .foregroundStyle(CatLocalTheme.primaryText)
+
+                Spacer(minLength: 12)
+
+                Text("\(CardStyle.orderedCases.count) in \(CardStyleFamily.allCases.count) families")
+                    .font(CatTypography.finePrint)
+                    .foregroundStyle(CatLocalTheme.secondaryText)
+            }
+
+            familySelector
+
+            HStack(alignment: .firstTextBaseline) {
+                Text(selectedFamily.title)
+                    .font(CatTypography.control)
+                    .foregroundStyle(CatLocalTheme.primaryText)
+
+                Spacer(minLength: 12)
+
+                Text("\(selectedFamily.styles.count) styles")
+                    .font(CatTypography.finePrint)
+                    .foregroundStyle(CatLocalTheme.secondaryText)
+            }
+
+            CardStyleCarousel(
+                selectedStyle: $selectedStyle,
+                styles: selectedFamily.styles,
+                showsTitle: false,
+                itemWidth: itemWidth,
+                previewAspectRatio: previewAspectRatio,
+                itemPadding: itemPadding,
+                itemCornerRadius: itemCornerRadius,
+                itemSpacing: itemSpacing,
+                titleMinHeight: titleMinHeight,
+                preview: preview
+            )
+        }
+        .onChange(of: selectedStyle) { _, style in
+            guard style.family != selectedFamily else { return }
+            selectedFamily = style.family
+        }
+        .sensoryFeedback(.selection, trigger: selectionFeedbackTrigger)
+    }
+
+    private var familySelector: some View {
+        ScrollView(.horizontal) {
+            HStack(spacing: 8) {
+                ForEach(CardStyleFamily.allCases) { family in
+                    familyButton(family)
+                }
+            }
+            .padding(.vertical, 1)
+        }
+        .scrollIndicators(.hidden)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Card style families")
+    }
+
+    private func recommendedStyleButton(_ style: CardStyle) -> some View {
+        let isSelected = style == selectedStyle
+        let shape = RoundedRectangle(cornerRadius: 14, style: .continuous)
+
+        return Button {
+            selectRecommendedStyle(style)
+        } label: {
+            VStack(alignment: .leading, spacing: 8) {
+                ZStack {
+                    preview(style)
+                        .allowsHitTesting(false)
+                }
+                .frame(maxWidth: .infinity)
+                .aspectRatio(1.55, contentMode: .fit)
+                .clipped()
+
+                Text(style.title)
+                    .font(CatTypography.badge)
+                    .foregroundStyle(isSelected ? CatAttentionRole.action.text : CatLocalTheme.primaryText)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, minHeight: 34, alignment: .topLeading)
+            }
+            .padding(8)
+            .frame(maxWidth: .infinity, minHeight: 132, alignment: .topLeading)
+            .background {
+                shape.fill(isSelected ? CatAttentionRole.action.wash : CatLocalTheme.cardSurface.opacity(0.44))
+            }
+            .overlay {
+                shape.stroke(isSelected ? CatAttentionRole.action.stroke : CatLocalTheme.separator, lineWidth: 1)
+            }
+            .contentShape(shape)
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("recommended-card-style-\(style.rawValue)")
+        .accessibilityLabel("Recommended, \(style.title)")
+        .accessibilityHint("Selects this card design")
+        .accessibilityAddTraits(isSelected ? [.isSelected] : [])
+    }
+
+    private func familyButton(_ family: CardStyleFamily) -> some View {
+        let isSelected = family == selectedFamily
+
+        return Button {
+            selectFamily(family)
+        } label: {
+            Text(family.title)
+                .font(CatTypography.badge)
+                .foregroundStyle(isSelected ? CatAttentionRole.action.text : CatLocalTheme.secondaryText)
+                .padding(.horizontal, 14)
+                .frame(minHeight: 44)
+                .background {
+                    Capsule(style: .continuous)
+                        .fill(isSelected ? CatAttentionRole.action.wash : Color.clear)
+                }
+                .overlay {
+                    Capsule(style: .continuous)
+                        .stroke(isSelected ? CatAttentionRole.action.stroke : CatLocalTheme.separator, lineWidth: 1)
+                }
+                .contentShape(Capsule(style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("card-style-family-\(family.rawValue)")
+        .accessibilityLabel("\(family.title) styles")
+        .accessibilityHint("Shows \(family.styles.count) styles")
+        .accessibilityAddTraits(isSelected ? [.isSelected] : [])
+    }
+
+    private func selectRecommendedStyle(_ style: CardStyle) {
+        withAnimation(.snappy(duration: 0.24)) {
+            selectedFamily = style.family
+            selectedStyle = style
+        }
+        selectionFeedbackTrigger += 1
+    }
+
+    private func selectFamily(_ family: CardStyleFamily) {
+        guard family != selectedFamily else { return }
+        withAnimation(.snappy(duration: 0.24)) {
+            selectedFamily = family
+            selectedStyle = family.recommendedStyle
+        }
+        selectionFeedbackTrigger += 1
+    }
+}
+
 struct CardStyleCarousel<Preview: View>: View {
     @Binding var selectedStyle: CardStyle
+    let styles: [CardStyle]
     let showsTitle: Bool
     let itemWidth: CGFloat
     let previewAspectRatio: CGFloat
@@ -1839,6 +2038,7 @@ struct CardStyleCarousel<Preview: View>: View {
 
     init(
         selectedStyle: Binding<CardStyle>,
+        styles: [CardStyle] = CardStyle.orderedCases,
         showsTitle: Bool = true,
         itemWidth: CGFloat = 184,
         previewAspectRatio: CGFloat = 0.64,
@@ -1849,6 +2049,7 @@ struct CardStyleCarousel<Preview: View>: View {
         @ViewBuilder preview: @escaping (_ style: CardStyle) -> Preview
     ) {
         _selectedStyle = selectedStyle
+        self.styles = styles
         self.showsTitle = showsTitle
         self.itemWidth = itemWidth
         self.previewAspectRatio = previewAspectRatio
@@ -1893,10 +2094,14 @@ struct CardStyleCarousel<Preview: View>: View {
                 recenterIfNeeded(item)
             }
             .onChange(of: selectedStyle) { _, style in
+                guard orderedStyles.contains(style) else { return }
                 guard currentCenteredStyle != style else { return }
                 withAnimation(.snappy(duration: 0.24)) {
                     centeredItemID = centeredItemID(for: style)
                 }
+            }
+            .onChange(of: orderedStyles) { _, _ in
+                centeredItemID = centeredItemID(for: selectedStyle)
             }
         }
         .sensoryFeedback(.selection, trigger: selectionFeedbackTrigger)
@@ -1907,7 +2112,7 @@ struct CardStyleCarousel<Preview: View>: View {
     }
 
     private var orderedStyles: [CardStyle] {
-        CardStyle.orderedCases
+        styles
     }
 
     private var carouselCycleCount: Int {
@@ -1935,7 +2140,7 @@ struct CardStyleCarousel<Preview: View>: View {
     }
 
     private func centeredItemID(for style: CardStyle) -> Int {
-        let styleIndex = orderedStyles.firstIndex(of: style) ?? style.displayIndex
+        let styleIndex = orderedStyles.firstIndex(of: style) ?? 0
         return centerCycle * styleCount + styleIndex
     }
 
@@ -1973,16 +2178,6 @@ struct CardStyleCarousel<Preview: View>: View {
             .background {
                 shape
                     .fill(isSelected ? CatAttentionRole.action.wash : CatLocalTheme.cardSurface.opacity(0.36))
-                    .shadow(
-                        color: CatLocalTheme.blueAction.opacity(isSelected ? 0.10 : 0),
-                        radius: isSelected ? 7 : 0,
-                        y: isSelected ? 3 : 0
-                    )
-                    .shadow(
-                        color: CatLocalTheme.shadow.opacity(isSelected ? 0.16 : 0),
-                        radius: isSelected ? 8 : 0,
-                        y: isSelected ? 4 : 0
-                    )
             }
             .overlay {
                 shape

@@ -15,6 +15,7 @@ actor CatVisionProcessor: CatAnalyzing {
     private let catCropExpansion: CGFloat = 0.28
 
     func detectCats(in image: SendableImage) async throws -> [CatDetection] {
+        try Task.checkCancellation()
         guard let cgImage = normalizedCGImage(from: image.value) else {
             throw CatVisionError.unreadableImage
         }
@@ -22,6 +23,7 @@ actor CatVisionProcessor: CatAnalyzing {
         let request = VNRecognizeAnimalsRequest()
         let handler = VNImageRequestHandler(cgImage: cgImage)
         try handler.perform([request])
+        try Task.checkCancellation()
 
         return (request.results ?? [])
             .compactMap { observation in
@@ -42,6 +44,7 @@ actor CatVisionProcessor: CatAnalyzing {
         from image: SendableImage,
         detection: CatDetection?
     ) async throws -> SendableImage {
+        try Task.checkCancellation()
         guard let cgImage = normalizedCGImage(from: image.value) else {
             throw CatVisionError.unreadableImage
         }
@@ -56,6 +59,7 @@ actor CatVisionProcessor: CatAnalyzing {
         let handler = VNImageRequestHandler(cgImage: cgImage)
         let request = VNGenerateForegroundInstanceMaskRequest()
         try handler.perform([request])
+        try Task.checkCancellation()
 
         guard let observation = request.results?.first else {
             throw CatVisionError.noForeground
@@ -70,6 +74,7 @@ actor CatVisionProcessor: CatAnalyzing {
             forInstances: instances,
             from: handler
         )
+        try Task.checkCancellation()
         let mask = CIImage(cvPixelBuffer: maskBuffer)
         let output = try makeTransparentCutout(from: cgImage, mask: mask)
         return SendableImage(value: UIImage(cgImage: output))
@@ -79,6 +84,7 @@ actor CatVisionProcessor: CatAnalyzing {
         from image: CGImage,
         detection: CatDetection
     ) throws -> CGImage {
+        try Task.checkCancellation()
         let cropRect = expandedCatCropRect(
             for: detection.boundingBox,
             imageWidth: image.width,
@@ -96,6 +102,7 @@ actor CatVisionProcessor: CatAnalyzing {
         let handler = VNImageRequestHandler(cgImage: croppedImage)
         let request = VNGenerateForegroundInstanceMaskRequest()
         try handler.perform([request])
+        try Task.checkCancellation()
 
         guard let observation = request.results?.first else {
             throw CatVisionError.noForeground
@@ -108,6 +115,7 @@ actor CatVisionProcessor: CatAnalyzing {
             forInstances: IndexSet(integer: selected),
             from: handler
         )
+        try Task.checkCancellation()
         return try makeTransparentCutout(
             from: croppedImage,
             mask: CIImage(cvPixelBuffer: maskBuffer)

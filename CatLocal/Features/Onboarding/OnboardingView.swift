@@ -16,26 +16,24 @@ struct OnboardingView: View {
     var body: some View {
         ZStack {
             CatLocalBackground()
-            onboardingScroll
-        }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            footer
+
+            VStack(spacing: 0) {
+                progressHeader
+                onboardingContent
+                footer
+            }
         }
         .sensoryFeedback(.impact(flexibility: .soft, intensity: 0.48), trigger: forwardFeedbackTrigger)
         .sensoryFeedback(.selection, trigger: backwardFeedbackTrigger)
         .sensoryFeedback(.success, trigger: completionFeedbackTrigger)
     }
 
-    private var onboardingScroll: some View {
-        ScrollView {
-            pageStage
-                .padding(.horizontal, horizontalPadding)
-                .padding(.top, pageTopPadding)
-                .padding(.bottom, pageBottomPadding)
-                .frame(maxWidth: .infinity)
-        }
-        .scrollIndicators(dynamicTypeSize.isAccessibilitySize ? .visible : .hidden)
+    private var onboardingContent: some View {
+        pageStage
+            .padding(.horizontal, horizontalPadding)
+            .padding(.vertical, pageVerticalPadding)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .layoutPriority(1)
     }
 
     private var pageStage: some View {
@@ -43,17 +41,14 @@ struct OnboardingView: View {
             OnboardingPageScreen(page: selectedPage)
                 .id(selectedPage)
                 .transition(pageTransition)
-                .frame(maxWidth: .infinity)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .animation(pageAnimation, value: selectedPage)
     }
 
     private var footer: some View {
-        VStack(spacing: dynamicTypeSize.isAccessibilitySize ? 12 : 14) {
-            OnboardingProgressDots(selectedPage: selectedPage)
-
-            actionButtons
-        }
+        actionButtons
         .padding(.horizontal, horizontalPadding)
         .padding(.top, footerTopPadding)
         .padding(.bottom, footerBottomPadding)
@@ -61,16 +56,55 @@ struct OnboardingView: View {
         .animation(actionAnimation, value: selectedPage)
     }
 
+    private var progressHeader: some View {
+        VStack(spacing: 8) {
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 12) {
+                    progressStepLabel
+                    Spacer(minLength: 12)
+
+                    if selectedPage.canSkipToHome {
+                        skipButton
+                            .transition(.opacity)
+                    }
+                }
+
+                VStack(alignment: .leading, spacing: 0) {
+                    progressStepLabel
+
+                    if selectedPage.canSkipToHome {
+                        skipButton
+                            .frame(maxWidth: .infinity, alignment: .trailing)
+                            .transition(.opacity)
+                    }
+                }
+            }
+
+            OnboardingProgressBar(selectedPage: selectedPage)
+        }
+        .padding(.horizontal, horizontalPadding)
+        .padding(.top, dynamicTypeSize.isAccessibilitySize ? 8 : 12)
+        .padding(.bottom, dynamicTypeSize.isAccessibilitySize ? 8 : 10)
+        .frame(maxWidth: .infinity)
+        .animation(actionAnimation, value: selectedPage)
+    }
+
+    private var progressStepLabel: some View {
+        Text("Step \(selectedPage.stepNumber) of \(OnboardingPage.totalCount)")
+            .font(CatTypography.finePrint)
+            .foregroundStyle(CatLocalTheme.secondaryText)
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
+            .accessibilityLabel("Onboarding step \(selectedPage.stepNumber) of \(OnboardingPage.totalCount)")
+            .accessibilityIdentifier("onboarding-step")
+    }
+
     private var horizontalPadding: CGFloat {
         dynamicTypeSize.isAccessibilitySize ? 18 : CatLocalTheme.screenHorizontalPadding
     }
 
-    private var pageTopPadding: CGFloat {
-        dynamicTypeSize.isAccessibilitySize ? 18 : 32
-    }
-
-    private var pageBottomPadding: CGFloat {
-        dynamicTypeSize.isAccessibilitySize ? 24 : 38
+    private var pageVerticalPadding: CGFloat {
+        dynamicTypeSize.isAccessibilitySize ? 4 : 8
     }
 
     private var footerTopPadding: CGFloat {
@@ -138,6 +172,21 @@ struct OnboardingView: View {
         .accessibilityIdentifier("onboarding-primary-action")
     }
 
+    private var skipButton: some View {
+        Button(action: skipToHome) {
+            Text("Skip to Home")
+                .font(CatTypography.finePrint)
+                .foregroundStyle(CatLocalTheme.secondaryText.opacity(0.78))
+                .lineLimit(1)
+                .frame(minWidth: 44, minHeight: 44)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(isCompleting)
+        .accessibilityHint("Ends onboarding. Privacy details remain available in Settings.")
+        .accessibilityIdentifier("onboarding-skip-home")
+    }
+
     private var pageTransition: AnyTransition {
         guard !reduceMotion else { return .opacity }
 
@@ -200,6 +249,13 @@ struct OnboardingView: View {
             onComplete()
         }
     }
+
+    private func skipToHome() {
+        guard !isCompleting else { return }
+
+        isCompleting = true
+        onComplete()
+    }
 }
 
 private enum OnboardingTransitionDirection {
@@ -245,6 +301,7 @@ private enum OnboardingPage: Int, CaseIterable, Identifiable {
     var stepNumber: Int { rawValue + 1 }
     static var totalCount: Int { allCases.count }
     var isFinalPage: Bool { next == nil }
+    var canSkipToHome: Bool { !isFinalPage }
     var next: OnboardingPage? { OnboardingPage(rawValue: rawValue + 1) }
     var previous: OnboardingPage? { OnboardingPage(rawValue: rawValue - 1) }
 
@@ -363,7 +420,7 @@ private struct OnboardingPageScreen: View {
     let page: OnboardingPage
 
     var body: some View {
-        VStack(alignment: .center, spacing: verticalSpacing) {
+        VStack(alignment: .center, spacing: 0) {
             OnboardingHeroVisual(page: page, didReveal: isRevealed(.hero))
                 .opacity(revealOpacity(.hero))
                 .offset(y: revealOffset(for: .hero))
@@ -376,13 +433,15 @@ private struct OnboardingPageScreen: View {
             }
             .opacity(revealOpacity(.copy))
             .offset(y: revealOffset(for: .copy))
+            .padding(.top, heroToCopySpacing)
 
             supportingContent
                 .opacity(revealOpacity(.supporting))
                 .offset(y: revealOffset(for: .supporting))
-                .padding(.top, supportingTopPadding)
+                .padding(.top, copyToSupportingSpacing)
         }
-        .frame(maxWidth: .infinity)
+        .padding(.top, pageTopInset)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .onAppear(perform: reveal)
         .onDisappear {
             revealGeneration += 1
@@ -392,16 +451,16 @@ private struct OnboardingPageScreen: View {
         }
     }
 
-    private var verticalSpacing: CGFloat {
-        guard !dynamicTypeSize.isAccessibilitySize else { return 18 }
+    private var pageTopInset: CGFloat {
+        guard !dynamicTypeSize.isAccessibilitySize else { return 4 }
 
         switch page {
         case .welcome:
-            return 32
+            return 20
         case .privacy:
-            return 30
+            return 16
         case .firstCard:
-            return 22
+            return 12
         }
     }
 
@@ -409,16 +468,18 @@ private struct OnboardingPageScreen: View {
         dynamicTypeSize.isAccessibilitySize ? 9 : 11
     }
 
-    private var supportingTopPadding: CGFloat {
-        guard !dynamicTypeSize.isAccessibilitySize else { return 0 }
+    private var heroToCopySpacing: CGFloat {
+        dynamicTypeSize.isAccessibilitySize ? 12 : 24
+    }
+
+    private var copyToSupportingSpacing: CGFloat {
+        guard !dynamicTypeSize.isAccessibilitySize else { return 12 }
 
         switch page {
-        case .welcome:
-            return 10
-        case .privacy:
-            return 0
+        case .welcome, .privacy:
+            return 24
         case .firstCard:
-            return 4
+            return 20
         }
     }
 
@@ -644,8 +705,8 @@ private struct OnboardingHeroVisual: View {
 
 private struct OnboardingCollectionHero: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @ScaledMetric(relativeTo: .largeTitle) private var cardWidth: CGFloat = 158
-    @ScaledMetric(relativeTo: .largeTitle) private var cardHeight: CGFloat = 190
+    @ScaledMetric(relativeTo: .largeTitle) private var cardWidth: CGFloat = 152
+    @ScaledMetric(relativeTo: .largeTitle) private var cardHeight: CGFloat = 184
 
     let didReveal: Bool
 
@@ -660,7 +721,7 @@ private struct OnboardingCollectionHero: View {
     }
 
     private var dynamicHeroHeight: CGFloat {
-        max(cardHeight + 34, 228)
+        max(cardHeight + 30, 214)
     }
 
     private func archiveCard(rotation: Double, offset: CGSize, opacity: Double) -> some View {
@@ -725,7 +786,7 @@ private struct OnboardingCollectionHero: View {
 
 private struct OnboardingPrivacyHero: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @ScaledMetric(relativeTo: .largeTitle) private var mascotSize: CGFloat = 96
+    @ScaledMetric(relativeTo: .largeTitle) private var mascotSize: CGFloat = 92
     @State private var backlightBreathes = false
 
     let didReveal: Bool
@@ -783,7 +844,7 @@ private struct OnboardingPrivacyHero: View {
             .accessibilityElement(children: .combine)
             .accessibilityIdentifier("onboarding-privacy-pill")
         }
-        .frame(height: 226)
+        .frame(height: 214)
         .onAppear {
             backlightBreathes = !reduceMotion
         }
@@ -848,7 +909,7 @@ private struct OnboardingPrivacyHero: View {
 private struct OnboardingFirstCardHero: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    @ScaledMetric(relativeTo: .largeTitle) private var stageWidth: CGFloat = 268
+    @ScaledMetric(relativeTo: .largeTitle) private var stageWidth: CGFloat = 258
 
     let didReveal: Bool
 
@@ -866,13 +927,13 @@ private struct OnboardingFirstCardHero: View {
                 .scaleEffect(didReveal && !reduceMotion ? 1 : 0.94)
                 .offset(y: didReveal && !reduceMotion ? -4 : 10)
         }
-        .frame(width: effectiveStageWidth, height: dynamicTypeSize.isAccessibilitySize ? 184 : 214)
+        .frame(width: effectiveStageWidth, height: dynamicTypeSize.isAccessibilitySize ? 176 : 204)
         .frame(maxWidth: .infinity)
         .animation(reduceMotion ? nil : .smooth(duration: 0.42, extraBounce: 0), value: didReveal)
     }
 
     private var effectiveStageWidth: CGFloat {
-        dynamicTypeSize.isAccessibilitySize ? 236 : stageWidth
+        dynamicTypeSize.isAccessibilitySize ? 228 : stageWidth
     }
 
     private var sourcePhoto: some View {
@@ -893,7 +954,7 @@ private struct OnboardingFirstCardHero: View {
                         .foregroundStyle(CatLocalTheme.secondaryText)
                 }
             }
-            .frame(width: effectiveStageWidth * 0.44, height: dynamicTypeSize.isAccessibilitySize ? 112 : 132)
+            .frame(width: effectiveStageWidth * 0.44, height: dynamicTypeSize.isAccessibilitySize ? 108 : 126)
             .shadow(color: CatLocalTheme.shadow.opacity(0.08), radius: 8, y: 4)
     }
 
@@ -925,7 +986,7 @@ private struct OnboardingFirstCardHero: View {
                 }
                 .padding(13)
             }
-            .frame(width: effectiveStageWidth * 0.54, height: dynamicTypeSize.isAccessibilitySize ? 136 : 160)
+            .frame(width: effectiveStageWidth * 0.54, height: dynamicTypeSize.isAccessibilitySize ? 130 : 150)
             .shadow(color: CatLocalTheme.shadow.opacity(0.13), radius: 12, y: 6)
     }
 
@@ -1002,23 +1063,14 @@ private struct OnboardingActivationTrail: View {
     ]
 
     var body: some View {
-        VStack(spacing: 0) {
+        HStack(alignment: .top, spacing: 8) {
             ForEach(items) { item in
                 OnboardingProcessStepRow(item: item)
-
-                if item.id != items.last?.id {
-                    Divider()
-                        .overlay(CatLocalTheme.separator.opacity(0.48))
-                        .padding(.leading, 56)
-                }
             }
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 12)
-        .catPanelSurface(cornerRadius: 20, fillOpacity: 0.56, shadowOpacity: 0.035)
-            .frame(maxWidth: .infinity)
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel("Capture or Import. Lift On Device. Make It Yours.")
+        .frame(maxWidth: .infinity)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Capture or Import. Lift On Device. Make It Yours.")
     }
 }
 
@@ -1026,32 +1078,24 @@ private struct OnboardingProcessStepRow: View {
     let item: OnboardingTrailItem
 
     var body: some View {
-        HStack(alignment: .center, spacing: 12) {
+        VStack(spacing: 8) {
             Image(systemName: item.systemImage)
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(item.role.accent)
-                .frame(width: 36, height: 36)
+                .frame(width: 40, height: 40)
                 .background(item.role.wash.opacity(0.86), in: Circle())
                 .accessibilityHidden(true)
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(item.title)
-                    .font(CatTypography.bodyEmphasized)
-                    .foregroundStyle(CatLocalTheme.primaryText)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                if let detail = item.detail {
-                    Text(detail)
-                        .font(CatTypography.metadata)
-                        .foregroundStyle(CatLocalTheme.secondaryText)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
-
-            Spacer(minLength: 0)
+            Text(item.title)
+                .font(CatTypography.metadata)
+                .foregroundStyle(CatLocalTheme.primaryText)
+                .multilineTextAlignment(.center)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.vertical, 8)
+        .frame(maxWidth: .infinity, alignment: .top)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel([item.title, item.detail].compactMap { $0 }.joined(separator: ". "))
     }
 }
 
@@ -1059,52 +1103,38 @@ private struct OnboardingPrivacyCueList: View {
     let cues: [OnboardingPrivacyCue]
 
     var body: some View {
-        VStack(spacing: 0) {
+        HStack(alignment: .top, spacing: 8) {
             ForEach(cues) { cue in
                 OnboardingPrivacyCueRow(cue: cue)
-
-                if cue.id != cues.last?.id {
-                    Divider()
-                        .overlay(CatLocalTheme.separator.opacity(0.46))
-                        .padding(.leading, 56)
-                }
             }
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 11)
-        .catPanelSurface(cornerRadius: 20, fillOpacity: 0.56, shadowOpacity: 0.035)
+        .frame(maxWidth: .infinity)
         .accessibilityIdentifier("onboarding-privacy-cues")
     }
 }
 
 private struct OnboardingPrivacyCueRow: View {
-    @ScaledMetric(relativeTo: .body) private var iconFrame: CGFloat = 38
     @ScaledMetric(relativeTo: .body) private var iconSize: CGFloat = 16
 
     let cue: OnboardingPrivacyCue
 
     var body: some View {
-        HStack(spacing: 12) {
+        VStack(spacing: 8) {
             Image(systemName: cue.systemImage)
                 .font(.system(size: iconSize, weight: .semibold))
                 .foregroundStyle(cue.role.accent)
-                .frame(width: iconFrame, height: iconFrame)
+                .frame(width: 40, height: 40)
                 .background(cue.role.wash, in: Circle())
                 .accessibilityHidden(true)
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(cue.title)
-                    .font(CatTypography.bodyEmphasized)
-                    .foregroundStyle(CatLocalTheme.primaryText)
-
-                Text(cue.detail)
-                    .font(CatTypography.metadata)
-                    .foregroundStyle(CatLocalTheme.secondaryText)
-            }
-
-            Spacer(minLength: 0)
+            Text(cue.title)
+                .font(CatTypography.metadata)
+                .foregroundStyle(CatLocalTheme.primaryText)
+                .multilineTextAlignment(.center)
+                .lineLimit(3)
+                .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(.vertical, 9)
+        .frame(maxWidth: .infinity, alignment: .top)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(cue.title). \(cue.detail)")
     }
@@ -1129,29 +1159,16 @@ private struct OnboardingFinalPrompt: View {
     ]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 13) {
-            HStack(spacing: 12) {
-                Image(systemName: "rectangle.stack.fill")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(CatAttentionRole.info.accent)
-                    .frame(width: 42, height: 42)
-                    .background(CatAttentionRole.info.wash, in: Circle())
-                    .accessibilityHidden(true)
-
-                Text("Your first card keeps the lifted cutout, design, notes, and typed place together.")
-                    .font(CatTypography.supporting)
-                    .foregroundStyle(CatLocalTheme.secondaryText)
-                    .multilineTextAlignment(.leading)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                Spacer(minLength: 0)
-            }
+        VStack(spacing: 14) {
+            Text("Your first card keeps the lifted cutout, design, notes, and typed place together.")
+                .font(CatTypography.supporting)
+                .foregroundStyle(CatLocalTheme.secondaryText)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: 320)
 
             anatomyRail
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 15)
-        .catPanelSurface(cornerRadius: 18, fillOpacity: 0.58, shadowOpacity: 0.025)
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("onboarding-first-card-anatomy")
     }
@@ -1214,7 +1231,7 @@ private struct OnboardingCardDetailItem: View {
             icon
             textStack(alignment: .center, detailAlignment: .center)
         }
-        .frame(maxWidth: .infinity, minHeight: 82, alignment: .center)
+        .frame(maxWidth: .infinity, minHeight: 68, alignment: .center)
     }
 
     private var icon: some View {
@@ -1248,40 +1265,30 @@ private struct OnboardingCardDetailItem: View {
     }
 }
 
-private struct OnboardingProgressDots: View {
+private struct OnboardingProgressBar: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     let selectedPage: OnboardingPage
 
     var body: some View {
-        VStack(spacing: 6) {
-            Text("Step \(selectedPage.stepNumber) of \(OnboardingPage.totalCount)")
-                .font(CatTypography.finePrint)
-                .foregroundStyle(CatLocalTheme.secondaryText)
-
-            HStack(spacing: 7) {
-                ForEach(OnboardingPage.allCases) { page in
+        GeometryReader { geometry in
+            Capsule(style: .continuous)
+                .fill(CatLocalTheme.separator.opacity(0.72))
+                .overlay(alignment: .leading) {
                     Capsule(style: .continuous)
-                        .fill(fill(for: page))
-                        .frame(width: page == selectedPage ? 26 : 8, height: 8)
-                        .animation(reduceMotion ? nil : .smooth(duration: 0.2, extraBounce: 0), value: selectedPage)
-                        .accessibilityHidden(true)
+                        .fill(CatAttentionRole.action.accent)
+                        .frame(width: geometry.size.width * progressFraction)
                 }
-            }
         }
-        .frame(maxWidth: .infinity, alignment: .center)
+        .frame(maxWidth: .infinity, minHeight: 5, maxHeight: 5)
+        .animation(reduceMotion ? nil : .smooth(duration: 0.2, extraBounce: 0), value: selectedPage)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Onboarding step \(selectedPage.stepNumber) of \(OnboardingPage.totalCount)")
+        .accessibilityIdentifier("onboarding-progress")
     }
 
-    private func fill(for page: OnboardingPage) -> Color {
-        if page == selectedPage {
-            return CatAttentionRole.action.accent
-        }
-        if page.rawValue < selectedPage.rawValue {
-            return CatAttentionRole.success.accent.opacity(0.9)
-        }
-        return CatLocalTheme.separator.opacity(0.72)
+    private var progressFraction: CGFloat {
+        CGFloat(selectedPage.stepNumber) / CGFloat(OnboardingPage.totalCount)
     }
 }
 
