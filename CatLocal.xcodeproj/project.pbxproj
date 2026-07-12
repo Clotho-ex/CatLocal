@@ -34,6 +34,8 @@
 		C982ADF153B9B1AF278AD467 /* CatVisionProcessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEAFBCFBDEEE3B140EB0F707 /* CatVisionProcessor.swift */; };
 		D1A7C0DE0000000000000001 /* DustingRevealView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1A7C0DE0000000000000002 /* DustingRevealView.swift */; };
 		D1A7C0DF0000000000000001 /* CardMintingSuccessView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1A7C0DF0000000000000002 /* CardMintingSuccessView.swift */; };
+		D9A100000000000000000002 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = D9A100000000000000000001 /* PrivacyInfo.xcprivacy */; };
+		D9A100000000000000000004 /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = D9A100000000000000000003 /* AppIcon.icon */; };
 		F3D62FB694EA4B9B098653C8 /* CatLocalCoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDEA3652F9D08C3C1F43DC5B /* CatLocalCoreTests.swift */; };
 		F520AAC5A08D2F036EA19216 /* CatLocalTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B34D0EFB9539E239D6122F2 /* CatLocalTheme.swift */; };
 		FAA0C6C0FC0555510763A31F /* CatLocalUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F01F95B5EC6531850C07090 /* CatLocalUITests.swift */; };
@@ -85,6 +87,8 @@
 		D1A7C0DE0000000000000002 /* DustingRevealView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DustingRevealView.swift; path = CatLocal/Shared/UI/Effects/DustingRevealView.swift; sourceTree = "<group>"; };
 		D1A7C0DF0000000000000002 /* CardMintingSuccessView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CardMintingSuccessView.swift; path = CatLocal/Shared/UI/Effects/CardMintingSuccessView.swift; sourceTree = "<group>"; };
 		D58C11AD2A0BE295FE2FDE73 /* FocusedCardView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = FocusedCardView.swift; path = CatLocal/Shared/UI/Card/FocusedCardView.swift; sourceTree = "<group>"; };
+		D9A100000000000000000001 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = CatLocal/Resources/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		D9A100000000000000000003 /* AppIcon.icon */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder.iconcomposer.icon; name = AppIcon.icon; path = CatLocal/Resources/AppIcon.icon; sourceTree = "<group>"; };
 		DDEA3652F9D08C3C1F43DC5B /* CatLocalCoreTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CatLocalCoreTests.swift; path = CatLocalTests/CatLocalCoreTests.swift; sourceTree = "<group>"; };
 		EFDD8B2A8E859982240AAF1B /* CatCardView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CatCardView.swift; path = CatLocal/Shared/UI/Card/CatCardView.swift; sourceTree = "<group>"; };
 		F2FBE7F3793602ECCC9827A9 /* CollectionView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CollectionView.swift; path = CatLocal/Features/Collection/CollectionView.swift; sourceTree = "<group>"; };
@@ -264,7 +268,9 @@
 		A00000000000000000000014 /* Resources */ = {
 			isa = PBXGroup;
 			children = (
+				D9A100000000000000000003 /* AppIcon.icon */,
 				5C0C1CE8A57605EDE232C146 /* Assets.xcassets */,
+				D9A100000000000000000001 /* PrivacyInfo.xcprivacy */,
 			);
 			name = Resources;
 			sourceTree = "<group>";
@@ -442,6 +448,8 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D9A100000000000000000004 /* AppIcon.icon in Resources */,
+				D9A100000000000000000002 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

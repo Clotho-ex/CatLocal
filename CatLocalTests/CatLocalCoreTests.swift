@@ -492,8 +492,12 @@ struct CatLocalCoreTests {
             imageSize: CGSize(width: 400, height: 200),
             containerSize: CGSize(width: 300, height: 300)
         )
+        let tolerance: CGFloat = 0.000_001
 
-        #expect(overlayRect == CGRect(x: 75, y: 105, width: 150, height: 30))
+        #expect(abs(overlayRect.minX - 75) < tolerance)
+        #expect(abs(overlayRect.minY - 105) < tolerance)
+        #expect(abs(overlayRect.width - 150) < tolerance)
+        #expect(abs(overlayRect.height - 30) < tolerance)
     }
 
     @Test

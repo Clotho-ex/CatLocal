@@ -30,7 +30,6 @@ struct OnboardingView: View {
 
     private var onboardingContent: some View {
         pageStage
-            .padding(.horizontal, horizontalPadding)
             .padding(.vertical, pageVerticalPadding)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .layoutPriority(1)
@@ -91,7 +90,7 @@ struct OnboardingView: View {
 
     private var progressStepLabel: some View {
         Text("Step \(selectedPage.stepNumber) of \(OnboardingPage.totalCount)")
-            .font(CatTypography.finePrint)
+            .font(CatTypography.metadata)
             .foregroundStyle(CatLocalTheme.secondaryText)
             .lineLimit(1)
             .fixedSize(horizontal: true, vertical: false)
@@ -341,7 +340,7 @@ private enum OnboardingPage: Int, CaseIterable, Identifiable {
         case .welcome, .privacy:
             return "Continue"
         case .firstCard:
-            return "Start Collecting"
+            return "Open Home"
         }
     }
 
@@ -352,7 +351,7 @@ private enum OnboardingPage: Int, CaseIterable, Identifiable {
         case .privacy:
             return "Explains local privacy before you start collecting."
         case .firstCard:
-            return "Finishes onboarding, then Home opens so you can tap Camera or import a private photo."
+            return "Finishes onboarding and opens Home. Camera and private photo import remain available when you are ready."
         }
     }
 
@@ -382,6 +381,7 @@ private enum OnboardingPage: Int, CaseIterable, Identifiable {
         return [
             OnboardingPrivacyCue(
                 title: "On-device Vision",
+                titleMaxWidth: 76,
                 detail: "CatLocal looks for cats here.",
                 systemImage: "viewfinder",
                 role: .info
@@ -393,17 +393,19 @@ private enum OnboardingPage: Int, CaseIterable, Identifiable {
                 role: .info
             ),
             OnboardingPrivacyCue(
-                title: "No Account or Cloud",
+                title: "No Account No Cloud",
                 detail: "Cards save to this iPhone.",
                 systemImage: "person.crop.circle.badge.xmark",
                 role: .info
             )
         ]
     }
+
 }
 
 private struct OnboardingPrivacyCue: Identifiable {
     let title: String
+    var titleMaxWidth: CGFloat? = nil
     let detail: String
     let systemImage: String
     let role: CatAttentionRole
@@ -426,19 +428,27 @@ private struct OnboardingPageScreen: View {
                 .offset(y: revealOffset(for: .hero))
                 .scaleEffect(revealScale(for: .hero))
 
-            VStack(spacing: titleSpacing) {
+            Spacer(minLength: heroToCopyMinimumSpacing)
+
+            VStack(alignment: .leading, spacing: titleSpacing) {
                 titleContent
 
                 detailCopy
             }
+            .padding(.horizontal, contentHorizontalPadding)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .opacity(revealOpacity(.copy))
             .offset(y: revealOffset(for: .copy))
-            .padding(.top, heroToCopySpacing)
+
+            Spacer(minLength: copyToSupportingMinimumSpacing)
 
             supportingContent
+                .padding(.horizontal, contentHorizontalPadding)
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .opacity(revealOpacity(.supporting))
                 .offset(y: revealOffset(for: .supporting))
-                .padding(.top, copyToSupportingSpacing)
+
+            Spacer(minLength: supportingToFooterMinimumSpacing)
         }
         .padding(.top, pageTopInset)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
@@ -468,19 +478,20 @@ private struct OnboardingPageScreen: View {
         dynamicTypeSize.isAccessibilitySize ? 9 : 11
     }
 
-    private var heroToCopySpacing: CGFloat {
+    private var contentHorizontalPadding: CGFloat {
+        dynamicTypeSize.isAccessibilitySize ? 18 : CatLocalTheme.screenHorizontalPadding
+    }
+
+    private var heroToCopyMinimumSpacing: CGFloat {
         dynamicTypeSize.isAccessibilitySize ? 12 : 24
     }
 
-    private var copyToSupportingSpacing: CGFloat {
-        guard !dynamicTypeSize.isAccessibilitySize else { return 12 }
+    private var copyToSupportingMinimumSpacing: CGFloat {
+        dynamicTypeSize.isAccessibilitySize ? 12 : 20
+    }
 
-        switch page {
-        case .welcome, .privacy:
-            return 24
-        case .firstCard:
-            return 20
-        }
+    private var supportingToFooterMinimumSpacing: CGFloat {
+        dynamicTypeSize.isAccessibilitySize ? 8 : 12
     }
 
     @ViewBuilder
@@ -489,12 +500,7 @@ private struct OnboardingPageScreen: View {
         case .privacy:
             OnboardingPrivacyTitle()
         case .welcome, .firstCard:
-            Text(page.title)
-                .font(CatTypography.screenTitle)
-                .foregroundStyle(CatLocalTheme.primaryText)
-                .multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
-                .accessibilityAddTraits(.isHeader)
+            OnboardingEditorialTitle(page: page)
         }
     }
 
@@ -512,9 +518,9 @@ private struct OnboardingPageScreen: View {
         Text(page.detail)
             .font(CatTypography.body)
             .foregroundStyle(CatLocalTheme.secondaryText.opacity(page.detailOpacity))
-            .multilineTextAlignment(.center)
+            .multilineTextAlignment(.leading)
             .fixedSize(horizontal: false, vertical: true)
-            .frame(maxWidth: 340)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .accessibilityLabel(page.detailAccessibilityLabel)
     }
 
@@ -606,75 +612,51 @@ private enum OnboardingRevealSection: Int {
 }
 
 private struct OnboardingPrivacyTitle: View {
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-
     var body: some View {
-        VStack(spacing: 0) {
-            titleLayout
-        }
+        privacyTitle
         .font(CatTypography.screenTitle)
+        .fontWeight(.bold)
         .foregroundStyle(CatLocalTheme.primaryText)
-        .multilineTextAlignment(.center)
+        .multilineTextAlignment(.leading)
         .fixedSize(horizontal: false, vertical: true)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Your furry encounters are safe")
         .accessibilityIdentifier("onboarding-privacy-title")
         .accessibilityAddTraits(.isHeader)
     }
 
-    @ViewBuilder
-    private var titleLayout: some View {
-        if dynamicTypeSize.isAccessibilitySize {
-            VStack(spacing: 6) {
-                Image(systemName: "pawprint.fill")
-                    .font(.system(size: 18, weight: .bold))
-                    .foregroundStyle(CatLocalTheme.warning)
-                    .rotationEffect(.degrees(-12))
-                    .accessibilityHidden(true)
-
-                privacyTitleLine
-            }
-        } else {
-            VStack(spacing: 2) {
-                ViewThatFits(in: .horizontal) {
-                    HStack(alignment: .lastTextBaseline, spacing: 7) {
-                        Text("Your")
-                        furryWord
-                        Text("encounters")
-                    }
-
-                    VStack(spacing: 0) {
-                        Text("Your encounters")
-                        furryWord
-                    }
-                }
-
-                HStack(alignment: .lastTextBaseline, spacing: 7) {
-                    Text("are")
-                    Text("safe")
-                        .foregroundStyle(CatAttentionRole.success.accent)
-                }
-            }
-        }
-    }
-
-    private var privacyTitleLine: Text {
+    private var privacyTitle: Text {
         Text("Your furry encounters are ")
             + Text("safe").foregroundStyle(CatAttentionRole.success.accent)
     }
+}
 
-    private var furryWord: some View {
-        VStack(spacing: -2) {
-            Image(systemName: "pawprint.fill")
-                .font(.system(size: 15, weight: .bold))
-                .foregroundStyle(CatLocalTheme.warning)
-                .rotationEffect(.degrees(-12))
-                .accessibilityHidden(true)
+private struct OnboardingEditorialTitle: View {
+    let page: OnboardingPage
 
-            Text("furry")
-        }
-        .alignmentGuide(.lastTextBaseline) { dimensions in
-            dimensions[.bottom] - 4
+    var body: some View {
+        title
+            .font(CatTypography.screenTitle)
+            .fontWeight(.bold)
+            .foregroundStyle(CatLocalTheme.primaryText)
+            .multilineTextAlignment(.leading)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityLabel(page.title)
+            .accessibilityAddTraits(.isHeader)
+    }
+
+    private var title: Text {
+        switch page {
+        case .welcome:
+            return Text("Welcome to\n")
+                + Text("CatLocal").foregroundStyle(CatAttentionRole.action.accent)
+        case .firstCard:
+            return Text("Ready for Your\n")
+                + Text("First Local").foregroundStyle(CatAttentionRole.action.accent)
+        case .privacy:
+            return Text(page.title)
         }
     }
 }
@@ -705,8 +687,8 @@ private struct OnboardingHeroVisual: View {
 
 private struct OnboardingCollectionHero: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @ScaledMetric(relativeTo: .largeTitle) private var cardWidth: CGFloat = 152
-    @ScaledMetric(relativeTo: .largeTitle) private var cardHeight: CGFloat = 184
+    @ScaledMetric(relativeTo: .largeTitle) private var cardWidth: CGFloat = 164
+    @ScaledMetric(relativeTo: .largeTitle) private var cardHeight: CGFloat = 196
 
     let didReveal: Bool
 
@@ -786,7 +768,7 @@ private struct OnboardingCollectionHero: View {
 
 private struct OnboardingPrivacyHero: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @ScaledMetric(relativeTo: .largeTitle) private var mascotSize: CGFloat = 92
+    @ScaledMetric(relativeTo: .largeTitle) private var mascotSize: CGFloat = 102
     @State private var backlightBreathes = false
 
     let didReveal: Bool
@@ -841,6 +823,7 @@ private struct OnboardingPrivacyHero: View {
                     .stroke(CatAttentionRole.success.stroke.opacity(0.52), lineWidth: 1)
             )
             .shadow(color: CatAttentionRole.success.accent.opacity(0.08), radius: 7, y: 2)
+            .offset(y: -8)
             .accessibilityElement(children: .combine)
             .accessibilityIdentifier("onboarding-privacy-pill")
         }
@@ -909,7 +892,7 @@ private struct OnboardingPrivacyHero: View {
 private struct OnboardingFirstCardHero: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    @ScaledMetric(relativeTo: .largeTitle) private var stageWidth: CGFloat = 258
+    @ScaledMetric(relativeTo: .largeTitle) private var stageWidth: CGFloat = 276
 
     let didReveal: Bool
 
@@ -927,7 +910,7 @@ private struct OnboardingFirstCardHero: View {
                 .scaleEffect(didReveal && !reduceMotion ? 1 : 0.94)
                 .offset(y: didReveal && !reduceMotion ? -4 : 10)
         }
-        .frame(width: effectiveStageWidth, height: dynamicTypeSize.isAccessibilitySize ? 176 : 204)
+        .frame(width: effectiveStageWidth, height: dynamicTypeSize.isAccessibilitySize ? 176 : 214)
         .frame(maxWidth: .infinity)
         .animation(reduceMotion ? nil : .smooth(duration: 0.42, extraBounce: 0), value: didReveal)
     }
@@ -1063,7 +1046,7 @@ private struct OnboardingActivationTrail: View {
     ]
 
     var body: some View {
-        HStack(alignment: .top, spacing: 8) {
+        VStack(alignment: .leading, spacing: 12) {
             ForEach(items) { item in
                 OnboardingProcessStepRow(item: item)
             }
@@ -1078,22 +1061,30 @@ private struct OnboardingProcessStepRow: View {
     let item: OnboardingTrailItem
 
     var body: some View {
-        VStack(spacing: 8) {
+        HStack(spacing: 12) {
             Image(systemName: item.systemImage)
-                .font(.system(size: 15, weight: .semibold))
+                .font(.system(size: 17, weight: .semibold))
                 .foregroundStyle(item.role.accent)
-                .frame(width: 40, height: 40)
+                .frame(width: 42, height: 42)
                 .background(item.role.wash.opacity(0.86), in: Circle())
                 .accessibilityHidden(true)
 
-            Text(item.title)
-                .font(CatTypography.metadata)
-                .foregroundStyle(CatLocalTheme.primaryText)
-                .multilineTextAlignment(.center)
-                .lineLimit(2)
-                .fixedSize(horizontal: false, vertical: true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(item.title)
+                    .font(CatTypography.supportingEmphasized)
+                    .foregroundStyle(CatLocalTheme.primaryText)
+
+                if let detail = item.detail {
+                    Text(detail)
+                        .font(CatTypography.finePrint)
+                        .foregroundStyle(CatLocalTheme.secondaryText)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+
+            Spacer(minLength: 0)
         }
-        .frame(maxWidth: .infinity, alignment: .top)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel([item.title, item.detail].compactMap { $0 }.joined(separator: ". "))
     }
@@ -1103,7 +1094,7 @@ private struct OnboardingPrivacyCueList: View {
     let cues: [OnboardingPrivacyCue]
 
     var body: some View {
-        HStack(alignment: .top, spacing: 8) {
+        VStack(alignment: .leading, spacing: 12) {
             ForEach(cues) { cue in
                 OnboardingPrivacyCueRow(cue: cue)
             }
@@ -1114,35 +1105,43 @@ private struct OnboardingPrivacyCueList: View {
 }
 
 private struct OnboardingPrivacyCueRow: View {
-    @ScaledMetric(relativeTo: .body) private var iconSize: CGFloat = 16
+    @ScaledMetric(relativeTo: .body) private var iconSize: CGFloat = 17
 
     let cue: OnboardingPrivacyCue
 
     var body: some View {
-        VStack(spacing: 8) {
+        HStack(spacing: 12) {
             Image(systemName: cue.systemImage)
                 .font(.system(size: iconSize, weight: .semibold))
                 .foregroundStyle(cue.role.accent)
-                .frame(width: 40, height: 40)
+                .frame(width: 42, height: 42)
                 .background(cue.role.wash, in: Circle())
                 .accessibilityHidden(true)
 
-            Text(cue.title)
-                .font(CatTypography.metadata)
-                .foregroundStyle(CatLocalTheme.primaryText)
-                .multilineTextAlignment(.center)
-                .lineLimit(3)
-                .fixedSize(horizontal: false, vertical: true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(cue.title)
+                    .font(CatTypography.supportingEmphasized)
+                    .foregroundStyle(CatLocalTheme.primaryText)
+                    .multilineTextAlignment(.leading)
+                    .lineLimit(3)
+                    .frame(maxWidth: cue.titleMaxWidth ?? .infinity, alignment: .leading)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Text(cue.detail)
+                    .font(CatTypography.finePrint)
+                    .foregroundStyle(CatLocalTheme.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer(minLength: 0)
         }
-        .frame(maxWidth: .infinity, alignment: .top)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(cue.title). \(cue.detail)")
     }
 }
 
 private struct OnboardingFinalPrompt: View {
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-
     private let traits = [
         OnboardingTrailItem(
             title: "Lifted cutout",
@@ -1159,79 +1158,36 @@ private struct OnboardingFinalPrompt: View {
     ]
 
     var body: some View {
-        VStack(spacing: 14) {
+        VStack(alignment: .leading, spacing: 12) {
             Text("Your first card keeps the lifted cutout, design, notes, and typed place together.")
                 .font(CatTypography.supporting)
                 .foregroundStyle(CatLocalTheme.secondaryText)
-                .multilineTextAlignment(.center)
+                .multilineTextAlignment(.leading)
                 .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: 320)
+                .frame(maxWidth: .infinity, alignment: .leading)
 
-            anatomyRail
+            VStack(alignment: .leading, spacing: 10) {
+                ForEach(traits) { trait in
+                    OnboardingCardDetailItem(item: trait)
+                }
+            }
         }
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("onboarding-first-card-anatomy")
     }
-
-    @ViewBuilder
-    private var anatomyRail: some View {
-        if dynamicTypeSize.isAccessibilitySize {
-            VStack(spacing: 8) {
-                ForEach(traits) { trait in
-                    OnboardingCardDetailItem(item: trait, layout: .row)
-                }
-            }
-        } else {
-            HStack(spacing: 9) {
-                ForEach(traits) { trait in
-                    OnboardingCardDetailItem(item: trait, layout: .tile)
-                }
-            }
-        }
-    }
-}
-
-private enum OnboardingCardDetailLayout: Equatable {
-    case row
-    case tile
 }
 
 private struct OnboardingCardDetailItem: View {
     let item: OnboardingTrailItem
-    let layout: OnboardingCardDetailLayout
 
     var body: some View {
-        Group {
-            switch layout {
-            case .row:
-                rowContent
-            case .tile:
-                tileContent
-            }
-        }
-        .padding(.horizontal, layout == .tile ? 10 : 12)
-        .padding(.vertical, layout == .tile ? 11 : 10)
-        .background(CatLocalTheme.cardSurface.opacity(0.66), in: RoundedRectangle(cornerRadius: 15, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 15, style: .continuous)
-                .stroke(item.role.stroke.opacity(0.34), lineWidth: 1)
-        )
-    }
-
-    private var rowContent: some View {
-        HStack(alignment: .top, spacing: 8) {
+        HStack(spacing: 12) {
             icon
             textStack(alignment: .leading, detailAlignment: .leading)
+
+            Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private var tileContent: some View {
-        VStack(spacing: 7) {
-            icon
-            textStack(alignment: .center, detailAlignment: .center)
-        }
-        .frame(maxWidth: .infinity, minHeight: 68, alignment: .center)
     }
 
     private var icon: some View {
@@ -1271,24 +1227,24 @@ private struct OnboardingProgressBar: View {
     let selectedPage: OnboardingPage
 
     var body: some View {
-        GeometryReader { geometry in
-            Capsule(style: .continuous)
-                .fill(CatLocalTheme.separator.opacity(0.72))
-                .overlay(alignment: .leading) {
-                    Capsule(style: .continuous)
-                        .fill(CatAttentionRole.action.accent)
-                        .frame(width: geometry.size.width * progressFraction)
-                }
+        HStack(spacing: 5) {
+            ForEach(OnboardingPage.allCases) { page in
+                Capsule(style: .continuous)
+                    .fill(progressColor(for: page))
+                    .frame(maxWidth: .infinity)
+            }
         }
-        .frame(maxWidth: .infinity, minHeight: 5, maxHeight: 5)
+        .frame(maxWidth: .infinity, minHeight: 7, maxHeight: 7)
         .animation(reduceMotion ? nil : .smooth(duration: 0.2, extraBounce: 0), value: selectedPage)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Onboarding step \(selectedPage.stepNumber) of \(OnboardingPage.totalCount)")
         .accessibilityIdentifier("onboarding-progress")
     }
 
-    private var progressFraction: CGFloat {
-        CGFloat(selectedPage.stepNumber) / CGFloat(OnboardingPage.totalCount)
+    private func progressColor(for page: OnboardingPage) -> Color {
+        page.rawValue <= selectedPage.rawValue
+            ? CatAttentionRole.action.accent
+            : CatLocalTheme.separator.opacity(0.72)
     }
 }
 
@@ -1330,5 +1286,5 @@ private struct OnboardingPrimaryActionLabel: View {
 }
 
 #Preview {
-    OnboardingView {}
+    OnboardingView(onComplete: {})
 }

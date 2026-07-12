@@ -37,6 +37,41 @@ final class CatLocalUITests: XCTestCase {
         element.tap()
     }
 
+    private func selectTab(
+        _ tab: XCUIElement,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        tapWhenHittable(tab, file: file, line: line)
+
+        let selected = NSPredicate(format: "selected == true")
+        let initialSelection = XCTNSPredicateExpectation(predicate: selected, object: tab)
+        if XCTWaiter.wait(for: [initialSelection], timeout: 1) != .completed {
+            tab.tap()
+        }
+
+        let confirmedSelection = XCTNSPredicateExpectation(predicate: selected, object: tab)
+        XCTAssertEqual(
+            XCTWaiter.wait(for: [confirmedSelection], timeout: 5),
+            .completed,
+            file: file,
+            line: line
+        )
+    }
+
+    private func tapToNavigate(
+        _ element: XCUIElement,
+        destination: XCUIElement,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        tapWhenHittable(element, file: file, line: line)
+        if !destination.waitForExistence(timeout: 2) {
+            element.tap()
+        }
+        XCTAssertTrue(destination.waitForExistence(timeout: 5), file: file, line: line)
+    }
+
     func testOnboardingMovesThroughWelcomePrivacyAndFirstCard() {
         let app = XCUIApplication()
         app.launchArguments = ["-ui-testing-reset", "-ui-testing-show-onboarding"]
@@ -67,6 +102,9 @@ final class CatLocalUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Capture or Import"].exists)
         XCTAssertTrue(app.staticTexts["Lift On Device"].exists)
         XCTAssertTrue(app.staticTexts["Make It Yours"].exists)
+        XCTAssertTrue(app.staticTexts["Camera or private photo"].exists)
+        XCTAssertTrue(app.staticTexts["Looking for cats, then lifting the subject"].exists)
+        XCTAssertTrue(app.staticTexts["Choose a design, notes, and typed place"].exists)
         XCTAssertLessThan(
             app.staticTexts["Saved here"].frame.maxY,
             app.staticTexts["Welcome to CatLocal"].frame.minY
@@ -85,18 +123,23 @@ final class CatLocalUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Photos stay on this iPhone."].exists)
         XCTAssertTrue(app.staticTexts["On this iPhone, by design"].exists)
         XCTAssertTrue(app.descendants(matching: .any)["onboarding-privacy-cues"].exists)
-        XCTAssertTrue(app.staticTexts["On-device Vision"].exists)
+        let onDeviceVision = app.staticTexts["On-device Vision"]
+        XCTAssertTrue(onDeviceVision.exists)
+        XCTAssertGreaterThan(onDeviceVision.frame.height, 20)
         XCTAssertTrue(app.staticTexts["Location Data Stripped"].exists)
-        XCTAssertTrue(app.staticTexts["No Account or Cloud"].exists)
+        XCTAssertTrue(app.staticTexts["No Account No Cloud"].exists)
+        XCTAssertTrue(app.staticTexts["CatLocal looks for cats here."].exists)
+        XCTAssertTrue(app.staticTexts["Saved images are GPS-free."].exists)
+        XCTAssertTrue(app.staticTexts["Cards save to this iPhone."].exists)
         XCTAssertLessThan(
             app.descendants(matching: .any)["onboarding-privacy-pill"].frame.maxY,
             privacyTitle.frame.minY
         )
         XCTAssertLessThan(
             privacyTitle.frame.maxY,
-            app.staticTexts["On-device Vision"].frame.minY
+            onDeviceVision.frame.minY
         )
-        XCTAssertLessThanOrEqual(app.staticTexts["No Account or Cloud"].frame.maxY, onboardingPrimaryAction.frame.minY)
+        XCTAssertLessThanOrEqual(app.staticTexts["No Account No Cloud"].frame.maxY, onboardingPrimaryAction.frame.minY)
         XCTAssertTrue(app.buttons["onboarding-skip-home"].exists)
         XCTAssertTrue(onboardingPrimaryAction.waitForExistence(timeout: 5))
         XCTAssertEqual(onboardingPrimaryAction.label, "Continue")
@@ -124,12 +167,13 @@ final class CatLocalUITests: XCTestCase {
         XCTAssertLessThanOrEqual(app.staticTexts["Card details"].frame.maxY, onboardingPrimaryAction.frame.minY)
 
         XCTAssertTrue(onboardingPrimaryAction.waitForExistence(timeout: 5))
-        XCTAssertEqual(onboardingPrimaryAction.label, "Start Collecting")
+        XCTAssertEqual(onboardingPrimaryAction.label, "Open Home")
         XCTAssertFalse(app.buttons["onboarding-skip-home"].exists)
         tapWhenHittable(onboardingPrimaryAction)
 
         XCTAssertTrue(app.staticTexts["Meet Your First Local"].waitForExistence(timeout: 8))
-        XCTAssertFalse(app.buttons["Start Collecting"].exists)
+        XCTAssertTrue(app.tabBars.buttons["Camera"].exists)
+        XCTAssertFalse(app.buttons["Open Home"].exists)
     }
 
     func testOnboardingKeepsThreeStepCompletion() {
@@ -140,19 +184,20 @@ final class CatLocalUITests: XCTestCase {
         let onboardingPrimaryAction = app.buttons["onboarding-primary-action"]
         XCTAssertTrue(onboardingPrimaryAction.waitForExistence(timeout: 8))
         XCTAssertTrue(app.buttons["onboarding-skip-home"].exists)
-        XCTAssertFalse(app.buttons["Start Collecting"].exists)
+        XCTAssertFalse(app.buttons["Open Home"].exists)
 
         tapWhenHittable(onboardingPrimaryAction)
         XCTAssertTrue(app.descendants(matching: .any)["onboarding-privacy-title"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.staticTexts["Meet Your First Local"].waitForExistence(timeout: 1))
-        XCTAssertFalse(app.buttons["Start Collecting"].exists)
+        XCTAssertFalse(app.buttons["Open Home"].exists)
 
         tapWhenHittable(onboardingPrimaryAction)
-        XCTAssertTrue(app.buttons["Start Collecting"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Open Home"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Ready for Your First Local"].exists)
 
         tapWhenHittable(onboardingPrimaryAction)
-        XCTAssertTrue(app.staticTexts["Meet Your First Local"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Meet Your First Local"].waitForExistence(timeout: 8))
+        XCTAssertTrue(app.tabBars.buttons["Camera"].exists)
     }
 
     func testOnboardingCanSkipFromWelcomeToHome() {
@@ -181,7 +226,7 @@ final class CatLocalUITests: XCTestCase {
 
         let settingsButton = app.tabBars.buttons["Settings"]
         XCTAssertTrue(settingsButton.waitForExistence(timeout: 5))
-        settingsButton.tap()
+        selectTab(settingsButton)
         XCTAssertTrue(app.staticTexts["Settings"].waitForExistence(timeout: 8))
         XCTAssertTrue(app.staticTexts["Privacy Receipt"].exists)
         XCTAssertTrue(app.staticTexts["Photos"].exists)
@@ -275,8 +320,7 @@ final class CatLocalUITests: XCTestCase {
 
         let unplacedCard = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Cat,")).firstMatch
         XCTAssertTrue(unplacedCard.waitForExistence(timeout: 5))
-        unplacedCard.tap()
-        XCTAssertTrue(app.buttons["Edit"].waitForExistence(timeout: 5))
+        tapToNavigate(unplacedCard, destination: app.buttons["Edit"])
     }
 
     func testValidationMultipleCatSelectionMapsNumbersAndHidesConfidence() {
