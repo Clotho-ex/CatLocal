@@ -137,7 +137,8 @@ struct FocusedCardView: View {
                 rotateX: rotateX,
                 rotateY: rotateY,
                 isLightActive: isInteracting,
-                showsFooter: showsFooter
+                showsFooter: showsFooter,
+                showsSurfaceShadow: false
             )
         }
         .frame(maxWidth: focusedCardMaxWidth)
@@ -430,11 +431,7 @@ struct CatRecordEditSheet: View {
                             Text("Delete Cat")
                                 .font(CatTypography.control)
                                 .frame(maxWidth: .infinity, alignment: .center)
-                                .catDestructiveActionSurface(
-                                    cornerRadius: 24,
-                                    minHeight: 54,
-                                    isProminent: true
-                                )
+                                .catOutlinedDestructiveActionSurface()
                         }
                         .buttonStyle(.catTactile)
                         .accessibilityHint("Deletes this cat and its local images from this iPhone")

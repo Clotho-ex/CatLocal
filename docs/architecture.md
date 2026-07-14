@@ -146,6 +146,25 @@ delay the UI while doing image analysis.
 - Timed reveal tasks should always complete even if optional sampling work is
   slow or cancelled. The user must not get stuck waiting for a decorative
   effect.
+- `FullScreenDustRevealView` owns the first-cutout presentation after Vision has
+  produced an aligned transparent image. SwiftUI keeps the raw cutout stable and
+  uses the shared `DustRevealGeometry` aspect-fit rect for both that image and a
+  transparent `MTKView`; the Metal renderer only dissolves inverse-alpha source
+  pixels and never reruns Vision or changes `CatAnalyzing`.
+- `MetalBackgroundDustView` owns `DustParticleRenderer` for exactly one reveal.
+  Its representable returns an inactive transparent `MTKView` immediately, then
+  prepares immutable Metal textures and pipelines in a cancellable
+  user-initiated task before attaching the renderer on the main actor.
+  While that task runs, SwiftUI shows the aligned original and keeps the raw
+  cutout hidden. A thread-safe gate reports the first frame only after both its
+  command buffer succeeds and its drawable's presented handler fires, then
+  SwiftUI swaps the placeholder for the raw cutout in a single animation-free
+  transaction so preparation never flashes a cutout-only frame.
+  Dismantling invalidates late preparation results, stops the display loop, and
+  releases the coordinator reference. Setup or draw failures are logged and
+  switch to the same short background fade used for Reduce Motion and disabled
+  Card Motion; runtime failures begin that fade from the remaining source
+  contribution instead of flashing the full original back onscreen.
 - `StoredImageView` should keep disk reads and `UIImage(data:)` decoding off
   the main actor, reuse a small cache for repeated local paths, and expose a
   clear placeholder/error state instead of silently hiding failed image loads.

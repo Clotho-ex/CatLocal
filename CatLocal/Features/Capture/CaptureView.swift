@@ -479,7 +479,7 @@ struct CaptureView: View {
     private var stickerRevealScreen: some View {
         Group {
             if let cutoutImage {
-                CutoutSpotlightRevealView(
+                FullScreenDustRevealView(
                     sourceImage: originalImage,
                     cutoutImage: cutoutImage
                 ) {
@@ -935,7 +935,7 @@ struct CaptureView: View {
                 presentation: .focused,
                 showsFooter: true,
                 catBoundingBox: selectedBoundingBox,
-                topoSeed: activeSequence,
+                patternSeed: activeSequence,
                 appliesStickerEffect: true,
                 stickerMotionIntensity: nil
             )
@@ -980,7 +980,7 @@ struct CaptureView: View {
         persistedRecord?.catBoundingBox ?? selectedBoundingBox
     }
 
-    private var celebrationPreviewTopoSeed: Int {
+    private var celebrationPreviewPatternSeed: Int {
         persistedRecord?.sequence ?? activeSequence
     }
 
@@ -1017,7 +1017,8 @@ struct CaptureView: View {
                             isLightActive: isInteracting,
                             showsFooter: true,
                             catBoundingBox: celebrationPreviewBoundingBox,
-                            topoSeed: celebrationPreviewTopoSeed,
+                            patternSeed: celebrationPreviewPatternSeed,
+                            showsSurfaceShadow: false,
                             appliesStickerEffect: true,
                             stickerMotionIntensity: nil
                         )
@@ -1408,22 +1409,12 @@ struct CaptureView: View {
         let format = UIGraphicsImageRendererFormat()
         format.opaque = false
         format.scale = 1
-        return UIGraphicsImageRenderer(size: CGSize(width: 720, height: 720), format: format).image { context in
+        return UIGraphicsImageRenderer(size: CGSize(width: 900, height: 900), format: format).image { context in
             UIColor.clear.setFill()
-            context.fill(CGRect(x: 0, y: 0, width: 720, height: 720))
+            context.fill(CGRect(x: 0, y: 0, width: 900, height: 900))
             UIColor(red: 0.18, green: 0.13, blue: 0.09, alpha: 1).setFill()
-            context.cgContext.fillEllipse(in: CGRect(x: 210, y: 220, width: 300, height: 330))
-            context.cgContext.fillEllipse(in: CGRect(x: 250, y: 120, width: 220, height: 210))
-            context.cgContext.move(to: CGPoint(x: 276, y: 160))
-            context.cgContext.addLine(to: CGPoint(x: 322, y: 64))
-            context.cgContext.addLine(to: CGPoint(x: 360, y: 164))
-            context.cgContext.closePath()
-            context.cgContext.fillPath()
-            context.cgContext.move(to: CGPoint(x: 400, y: 164))
-            context.cgContext.addLine(to: CGPoint(x: 444, y: 64))
-            context.cgContext.addLine(to: CGPoint(x: 476, y: 160))
-            context.cgContext.closePath()
-            context.cgContext.fillPath()
+            context.cgContext.fillEllipse(in: CGRect(x: 260, y: 250, width: 380, height: 420))
+            context.cgContext.fillEllipse(in: CGRect(x: 310, y: 145, width: 280, height: 250))
         }
     }
     #endif

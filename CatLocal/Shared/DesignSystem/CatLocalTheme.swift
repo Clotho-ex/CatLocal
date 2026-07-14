@@ -934,6 +934,28 @@ extension View {
             )
             .contentShape(shape)
     }
+
+    nonisolated func catOutlinedDestructiveActionSurface(
+        cornerRadius: CGFloat = 24,
+        minHeight: CGFloat = 54,
+        isDisabled: Bool = false
+    ) -> some View {
+        let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+
+        return foregroundStyle(
+            isDisabled ? CatLocalTheme.secondaryText : CatAttentionRole.destructive.text
+        )
+            .frame(maxWidth: .infinity)
+            .frame(minHeight: minHeight)
+            .background(CatLocalTheme.cardSurface.opacity(isDisabled ? 0.62 : 0.98), in: shape)
+            .overlay(
+                shape.stroke(
+                    CatAttentionRole.destructive.stroke.opacity(isDisabled ? 0.36 : 0.82),
+                    lineWidth: 1.15
+                )
+            )
+            .contentShape(shape)
+    }
 }
 
 extension Color {

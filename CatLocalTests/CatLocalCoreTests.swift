@@ -172,6 +172,127 @@ struct CatLocalCoreTests {
     }
 
     @Test
+    func lightEffectProgressIsQuietAtRestAndInsideDeadZone() {
+        #expect(CatCardLightEffectMath.progress(rotateX: 0, rotateY: 0) == 0)
+        #expect(CatCardLightEffectMath.progress(rotateX: 1.2, rotateY: 0) == 0)
+        #expect(CatCardLightEffectMath.progress(rotateX: 0, rotateY: -1.19) == 0)
+    }
+
+    @Test
+    func lightEffectProgressGrowsSmoothlyWithTilt() {
+        let low = CatCardLightEffectMath.progress(rotateX: 3, rotateY: 0)
+        let middle = CatCardLightEffectMath.progress(rotateX: 0, rotateY: 6)
+        let high = CatCardLightEffectMath.progress(rotateX: -9, rotateY: 2)
+
+        #expect(low > 0)
+        #expect(low < middle)
+        #expect(middle < high)
+        #expect(high < 1)
+    }
+
+    @Test
+    func lightEffectProgressReachesAndClampsAtMaximumTilt() {
+        #expect(CatCardLightEffectMath.progress(rotateX: 12, rotateY: 0) == 1)
+        #expect(CatCardLightEffectMath.progress(rotateX: -24, rotateY: 18) == 1)
+    }
+
+    @Test
+    func lightThumbnailPresentationPolicyDisablesEveryOverlay() {
+        let policy = CatCardEffectPresentationPolicy(
+            style: .cobaltHalo,
+            presentation: .thumbnail
+        )
+
+        #expect(!policy.showsStandardAura)
+        #expect(!policy.showsStandardSheen)
+        #expect(!policy.showsFamilyAura)
+        #expect(!policy.showsLightBand)
+        #expect(!policy.showsGenericGlint)
+        #expect(policy.illustrativeLightProgress == 0)
+    }
+
+    @Test
+    func lightStylePreviewPresentationPolicyKeepsIllustrativeEffect() {
+        let policy = CatCardEffectPresentationPolicy(
+            style: .cobaltHalo,
+            presentation: .stylePreview
+        )
+
+        #expect(!policy.showsStandardAura)
+        #expect(!policy.showsStandardSheen)
+        #expect(policy.showsFamilyAura)
+        #expect(policy.showsLightBand)
+        #expect(policy.illustrativeLightProgress == 0.55)
+    }
+
+    @Test
+    func contourSamplesReachEveryCardEdgeBand() {
+        for aspectRatio in [CGFloat(0.64), CGFloat(0.72)] {
+            let rect = CGRect(x: 0, y: 0, width: 1_000 * aspectRatio, height: 1_000)
+            let points = CatCardContourMath.samplePoints(
+                index: 14,
+                total: 15,
+                patternSeed: 73,
+                in: rect
+            )
+            let horizontalBand = rect.width * 0.04
+            let verticalBand = rect.height * 0.04
+
+            #expect(points.contains { $0.x <= rect.minX + horizontalBand })
+            #expect(points.contains { $0.x >= rect.maxX - horizontalBand })
+            #expect(points.contains { $0.y <= rect.minY + verticalBand })
+            #expect(points.contains { $0.y >= rect.maxY - verticalBand })
+        }
+    }
+
+    @Test
+    func botanicalPatternsAreDeterministicAndSeeded() {
+        let first = CatCardBotanicalPattern.signature(style: .pineShadow, patternSeed: 41)
+        let repeated = CatCardBotanicalPattern.signature(style: .pineShadow, patternSeed: 41)
+        let differentSeed = CatCardBotanicalPattern.signature(style: .pineShadow, patternSeed: 42)
+
+        #expect(first == repeated)
+        #expect(first != differentSeed)
+        #expect(!first.isEmpty)
+    }
+
+    @Test
+    func botanicalStylesProduceDistinctBroadGeometry() {
+        let styles: [CardStyle] = [.pineShadow, .cedarShade, .fernTrace, .mossVeil]
+        let signatures = styles.map {
+            CatCardBotanicalPattern.signature(style: $0, patternSeed: 18)
+        }
+
+        #expect(Set(signatures).count == styles.count)
+
+        for style in styles {
+            let bounds = CatCardBotanicalPattern.normalizedBounds(style: style, patternSeed: 18)
+            #expect(!bounds.isNull)
+            #expect(bounds.width > 0.72)
+            #expect(bounds.height > 0.72)
+        }
+    }
+
+    @Test
+    func mossPatternIsDenseDeterministicAndBroad() {
+        let first = CatCardBotanicalPattern.commands(style: .mossVeil, patternSeed: 91)
+        let repeated = CatCardBotanicalPattern.signature(style: .mossVeil, patternSeed: 91)
+        let repeatedAgain = CatCardBotanicalPattern.signature(style: .mossVeil, patternSeed: 91)
+        let bounds = CatCardBotanicalPattern.normalizedBounds(style: .mossVeil, patternSeed: 91)
+
+        #expect(first.count > 60)
+        #expect(repeated == repeatedAgain)
+        #expect(bounds.width > 0.90)
+        #expect(bounds.height > 0.90)
+    }
+
+    @Test
+    func cardPatternSeedUsesStableSequenceContract() {
+        #expect(CatCardPatternSeed.forSequence(1) == 1)
+        #expect(CatCardPatternSeed.forSequence(4_271) == 4_271)
+    }
+
+    @Test
     func cardStyleFamiliesPartitionTheCatalog() {
         let groupedStyles = CardStyleFamily.allCases.flatMap(\.styles)
 
@@ -422,68 +543,240 @@ struct CatLocalCoreTests {
     }
 
     @Test
-    func dustingAnchorSamplerIgnoresTransparentPixels() throws {
-        let image = renderedImage(size: CGSize(width: 100, height: 100), opaque: false) { context in
-            UIColor.clear.setFill()
-            context.fill(CGRect(x: 0, y: 0, width: 100, height: 100))
-            UIColor.black.setFill()
-            context.fill(CGRect(x: 40, y: 40, width: 20, height: 20))
-        }
-
-        let cgImage = try #require(image.cgImage)
-        let bounds = try #require(DustingAnchorSampler.visibleBounds(in: cgImage))
-        let anchors = DustingAnchorSampler.sampleVisibleAnchors(
-            in: cgImage,
-            maximumAnchors: 20
+    func dustRevealGeometryAspectFitsPortraitImages() {
+        let rect = DustRevealGeometry.imageRect(
+            imageSize: CGSize(width: 3, height: 4),
+            containerSize: CGSize(width: 400, height: 300)
         )
 
-        #expect(bounds.minX >= 0.35)
-        #expect(bounds.maxX <= 0.65)
-        #expect(bounds.minY >= 0.35)
-        #expect(bounds.maxY <= 0.65)
-        #expect(!anchors.isEmpty)
-        #expect(anchors.allSatisfy { anchor in
-            anchor.x >= 0.35
-                && anchor.x <= 0.65
-                && anchor.y >= 0.35
-                && anchor.y <= 0.65
-        })
+        #expect(rect == CGRect(x: 87.5, y: 0, width: 225, height: 300))
     }
 
     @Test
-    func dustingAnchorSamplerCapsAnchorCount() throws {
-        let image = renderedImage(size: CGSize(width: 120, height: 120), opaque: true) { context in
-            UIColor.systemBlue.setFill()
-            context.fill(CGRect(x: 0, y: 0, width: 120, height: 120))
-        }
-
-        let anchors = DustingAnchorSampler.sampleVisibleAnchors(
-            in: try #require(image.cgImage),
-            maximumAnchors: 8
+    func dustRevealGeometryAspectFitsLandscapeImages() {
+        let rect = DustRevealGeometry.imageRect(
+            imageSize: CGSize(width: 16, height: 9),
+            containerSize: CGSize(width: 300, height: 400)
         )
 
-        #expect(anchors.count <= 8)
-        #expect(!anchors.isEmpty)
+        #expect(rect == CGRect(x: 0, y: 115.625, width: 300, height: 168.75))
     }
 
     @Test
-    func dustingAnchorSamplerHandlesTransparentImages() throws {
-        let image = renderedImage(size: CGSize(width: 80, height: 80), opaque: false) { context in
-            UIColor.clear.setFill()
-            context.fill(CGRect(x: 0, y: 0, width: 80, height: 80))
-        }
-
-        let anchors = DustingAnchorSampler.sampleVisibleAnchors(
-            in: try #require(image.cgImage),
-            maximumAnchors: 40
+    func dustRevealGeometryAspectFitsSquareImages() {
+        let rect = DustRevealGeometry.imageRect(
+            imageSize: CGSize(width: 1, height: 1),
+            containerSize: CGSize(width: 390, height: 844)
         )
 
-        #expect(anchors.isEmpty)
-        #expect(DustingAnchorSampler.visibleBounds(in: try #require(image.cgImage)) == nil)
-        #expect(DustingAnchorSampler.sampleVisibleAnchors(
-            in: try #require(image.cgImage),
-            maximumAnchors: 0
-        ).isEmpty)
+        #expect(rect == CGRect(x: 0, y: 227, width: 390, height: 390))
+    }
+
+    @Test
+    func dustRevealTimelineClampsAndCompletesAtDuration() {
+        #expect(DustRevealTimeline.progress(elapsed: -1, duration: 2.6) == 0)
+        #expect(DustRevealTimeline.progress(elapsed: 1.3, duration: 2.6) == 0.5)
+        #expect(DustRevealTimeline.progress(elapsed: 3.0, duration: 2.6) == 1)
+        #expect(!DustRevealTimeline.isComplete(elapsed: 2.59, duration: 2.6))
+        #expect(DustRevealTimeline.isComplete(elapsed: 2.6, duration: 2.6))
+    }
+
+    @Test
+    func dustRevealAlphaClassifiesOnlyInverseAlphaAsBackground() {
+        #expect(DustRevealAlpha.isBackground(alpha: 0))
+        #expect(DustRevealAlpha.isBackground(alpha: 31.0 / 255.0))
+        #expect(!DustRevealAlpha.isBackground(alpha: 32.0 / 255.0))
+        #expect(!DustRevealAlpha.isBackground(alpha: 1))
+        #expect(DustRevealAlpha.inverseWeight(alpha: 0) == 1)
+        #expect(DustRevealAlpha.inverseWeight(alpha: 1) == 0)
+    }
+
+    @Test
+    func dustRevealSourceContributionReconstructsStartAndClearsTerminalFrame() {
+        #expect(DustRevealTimeline.staggeredProgress(progress: 0, stagger: 0.18) == 0)
+        #expect(DustRevealTimeline.staggeredProgress(progress: 1, stagger: 0.18) == 1)
+        #expect(DustRevealTimeline.terminalSourceFade(progress: 0) == 1)
+        #expect(DustRevealTimeline.terminalSourceFade(progress: 1) == 0)
+
+        for alpha in [0.0, 0.5, 1.0] {
+            #expect(DustRevealAlpha.sourceContribution(
+                cutoutAlpha: alpha,
+                progress: 0,
+                stagger: 0.18
+            ) == 1)
+            #expect(DustRevealAlpha.sourceContribution(
+                cutoutAlpha: alpha,
+                progress: 1,
+                stagger: 0.18
+            ) == 0)
+        }
+    }
+
+    @Test
+    func dustRevealFallbackUsesOnlyRemainingSourceContribution() {
+        #expect(DustRevealFallback.remainingSourceContribution(progress: -1) == 1)
+        #expect(DustRevealFallback.remainingSourceContribution(progress: 0) == 1)
+        #expect(DustRevealFallback.remainingSourceContribution(progress: 0.75) == 0.25)
+        #expect(DustRevealFallback.remainingSourceContribution(progress: 1) == 0)
+        #expect(DustRevealFallback.remainingSourceContribution(progress: 2) == 0)
+    }
+
+    @Test
+    func dustRevealPreparationGateRejectsCancelledAndLateResults() {
+        var gate = DustRevealPreparationGate()
+        let cancelled = gate.begin()
+
+        gate.cancel()
+
+        let acceptedCancelled = gate.consume(cancelled)
+        #expect(!acceptedCancelled)
+
+        let current = gate.begin()
+        let acceptedCurrent = gate.consume(current)
+        let acceptedCurrentAgain = gate.consume(current)
+        #expect(current != cancelled)
+        #expect(acceptedCurrent)
+        #expect(!acceptedCurrentAgain)
+    }
+
+    @Test
+    func dustRevealPresentationStartsOnOriginalWithoutRawCutout() {
+        let state = DustRevealPresentationState()
+
+        #expect(state.showsSourcePlaceholder)
+        #expect(!state.showsRawCutout)
+    }
+
+    @Test
+    func dustRevealPresentationSwapsAtomicallyAfterFirstFrame() {
+        var state = DustRevealPresentationState()
+
+        let accepted = state.presentFirstFrame()
+
+        #expect(accepted)
+        #expect(!state.showsSourcePlaceholder)
+        #expect(state.showsRawCutout)
+    }
+
+    @Test
+    func dustRevealPresentationIgnoresLateFirstFrameAfterCancellation() {
+        var state = DustRevealPresentationState()
+
+        state.cancel()
+        let accepted = state.presentFirstFrame()
+
+        #expect(!accepted)
+        #expect(!state.showsSourcePlaceholder)
+        #expect(!state.showsRawCutout)
+    }
+
+    @Test
+    func dustFirstFrameGateResolvesAfterSuccessThenPresentation() {
+        let gate = DustFirstFramePresentationGate()
+
+        #expect(!gate.commandCompleted(succeeded: true))
+        #expect(gate.drawablePresented())
+    }
+
+    @Test
+    func dustFirstFrameGateResolvesAfterPresentationThenSuccess() {
+        let gate = DustFirstFramePresentationGate()
+
+        #expect(!gate.drawablePresented())
+        #expect(gate.commandCompleted(succeeded: true))
+    }
+
+    @Test
+    func dustFirstFrameGateRejectsCommandFailure() {
+        let gate = DustFirstFramePresentationGate()
+
+        #expect(!gate.commandCompleted(succeeded: false))
+        #expect(!gate.drawablePresented())
+        #expect(!gate.commandCompleted(succeeded: true))
+    }
+
+    @Test
+    func dustFirstFrameGateIgnoresDuplicateCallbacks() {
+        let gate = DustFirstFramePresentationGate()
+
+        #expect(!gate.drawablePresented())
+        #expect(!gate.drawablePresented())
+        #expect(gate.commandCompleted(succeeded: true))
+        #expect(!gate.commandCompleted(succeeded: true))
+        #expect(!gate.drawablePresented())
+    }
+
+    @Test
+    func dustFirstFrameGateIgnoresCallbacksAfterCancellation() {
+        let gate = DustFirstFramePresentationGate()
+
+        gate.cancel()
+
+        #expect(!gate.drawablePresented())
+        #expect(!gate.commandCompleted(succeeded: true))
+    }
+
+    @Test
+    func dustCommandTrackerWaitsForEarlierFailureBeforeTerminalSuccess() throws {
+        let tracker = DustCommandCompletionTracker()
+        let earlier = try #require(tracker.submit(isTerminalFrame: false))
+        let terminal = try #require(tracker.submit(isTerminalFrame: true))
+
+        #expect(tracker.complete(
+            submission: terminal,
+            succeeded: true,
+            errorDescription: nil
+        ) == nil)
+        #expect(tracker.complete(
+            submission: earlier,
+            succeeded: false,
+            errorDescription: "Earlier GPU failure"
+        ) == .fallback("Earlier GPU failure"))
+    }
+
+    @Test
+    func dustCommandTrackerFinishesAfterEveryTerminalSubmissionSucceeds() throws {
+        let tracker = DustCommandCompletionTracker()
+        let earlier = try #require(tracker.submit(isTerminalFrame: false))
+        let terminal = try #require(tracker.submit(isTerminalFrame: true))
+
+        #expect(tracker.complete(
+            submission: terminal,
+            succeeded: true,
+            errorDescription: nil
+        ) == nil)
+        #expect(tracker.complete(
+            submission: earlier,
+            succeeded: true,
+            errorDescription: nil
+        ) == .finish)
+    }
+
+    @Test
+    func dustCommandTrackerIgnoresLateCompletionAfterCancellation() throws {
+        let tracker = DustCommandCompletionTracker()
+        let terminal = try #require(tracker.submit(isTerminalFrame: true))
+
+        tracker.cancel()
+
+        #expect(tracker.complete(
+            submission: terminal,
+            succeeded: false,
+            errorDescription: "Late GPU failure"
+        ) == nil)
+        #expect(tracker.submit(isTerminalFrame: false) == nil)
+    }
+
+    @Test
+    func dustRevealGeometryRequiresMatchingOriginalAndCutoutDimensions() {
+        #expect(DustRevealGeometry.imagesAreAligned(
+            originalSize: CGSize(width: 1200, height: 1600),
+            cutoutSize: CGSize(width: 1200, height: 1600)
+        ))
+        #expect(!DustRevealGeometry.imagesAreAligned(
+            originalSize: CGSize(width: 1200, height: 1600),
+            cutoutSize: CGSize(width: 600, height: 800)
+        ))
     }
 
     @Test

@@ -32,6 +32,7 @@
 		C22F46ED2FEBDC7400385C0F /* LiveInteractiveCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C22F46EC2FEBDC6F00385C0F /* LiveInteractiveCardView.swift */; };
 		C982ADF153B9B1AF278AD467 /* CatVisionProcessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEAFBCFBDEEE3B140EB0F707 /* CatVisionProcessor.swift */; };
 		D1A7C0DE0000000000000001 /* DustingRevealView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1A7C0DE0000000000000002 /* DustingRevealView.swift */; };
+		D1A7C0E00000000000000001 /* DustRevealShaders.metal in Sources */ = {isa = PBXBuildFile; fileRef = D1A7C0E00000000000000002 /* DustRevealShaders.metal */; };
 		D1A7C0DF0000000000000001 /* CardMintingSuccessView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1A7C0DF0000000000000002 /* CardMintingSuccessView.swift */; };
 		D9A100000000000000000002 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = D9A100000000000000000001 /* PrivacyInfo.xcprivacy */; };
 		D9A100000000000000000004 /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = D9A100000000000000000003 /* AppIcon.icon */; };
@@ -83,6 +84,7 @@
 		C22F46EC2FEBDC6F00385C0F /* LiveInteractiveCardView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LiveInteractiveCardView.swift; path = CatLocal/Shared/UI/Effects/LiveInteractiveCardView.swift; sourceTree = "<group>"; };
 		C8B964E0402B2EFBC1640AA3 /* RootView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = RootView.swift; path = CatLocal/App/RootView.swift; sourceTree = "<group>"; };
 		D1A7C0DE0000000000000002 /* DustingRevealView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DustingRevealView.swift; path = CatLocal/Shared/UI/Effects/DustingRevealView.swift; sourceTree = "<group>"; };
+		D1A7C0E00000000000000002 /* DustRevealShaders.metal */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.metal; name = DustRevealShaders.metal; path = CatLocal/Shared/UI/Effects/DustRevealShaders.metal; sourceTree = "<group>"; };
 		D1A7C0DF0000000000000002 /* CardMintingSuccessView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CardMintingSuccessView.swift; path = CatLocal/Shared/UI/Effects/CardMintingSuccessView.swift; sourceTree = "<group>"; };
 		D58C11AD2A0BE295FE2FDE73 /* FocusedCardView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = FocusedCardView.swift; path = CatLocal/Shared/UI/Card/FocusedCardView.swift; sourceTree = "<group>"; };
 		D9A100000000000000000001 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = CatLocal/Resources/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
@@ -258,6 +260,7 @@
 			children = (
 				C22F46EC2FEBDC6F00385C0F /* LiveInteractiveCardView.swift */,
 				D1A7C0DE0000000000000002 /* DustingRevealView.swift */,
+				D1A7C0E00000000000000002 /* DustRevealShaders.metal */,
 				D1A7C0DF0000000000000002 /* CardMintingSuccessView.swift */,
 			);
 			name = Effects;
@@ -487,6 +490,7 @@
 				A10C1F000000000000000016 /* LociStateView.swift in Sources */,
 				A10C1F000000000000000018 /* CatLocalCardSkeletonView.swift in Sources */,
 				D1A7C0DE0000000000000001 /* DustingRevealView.swift in Sources */,
+				D1A7C0E00000000000000001 /* DustRevealShaders.metal in Sources */,
 				D1A7C0DF0000000000000001 /* CardMintingSuccessView.swift in Sources */,
 				25EBED58CBB7EFA817A27B0D /* StoredImageView.swift in Sources */,
 				2A49D47A846EC868D709E4E6 /* CaptureView.swift in Sources */,

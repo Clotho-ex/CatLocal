@@ -10,6 +10,7 @@ struct CatCardView: View {
     var isLightActive: Bool = false
     var showsFooter: Bool = true
     var showsThumbnailPlaceFooter: Bool = true
+    var showsSurfaceShadow: Bool = true
 
     private var usesCutoutImage: Bool {
         presentation == .focused || presentation == .stylePreview
@@ -31,8 +32,9 @@ struct CatCardView: View {
             isLightActive: isLightActive,
             showsFooter: showsFooter,
             showsThumbnailPlaceFooter: showsThumbnailPlaceFooter,
+            showsSurfaceShadow: showsSurfaceShadow,
             catBoundingBox: record.catBoundingBox,
-            topoSeed: record.id.hashValue
+            patternSeed: CatCardPatternSeed.forSequence(record.sequence)
         ) {
             StoredImageView(path: imagePath, contentMode: .fit) {
                 if presentation == .stylePreview {
@@ -82,7 +84,8 @@ struct DraftCatCardView: View {
     var showsFooter: Bool = true
     var showsThumbnailPlaceFooter: Bool = true
     var catBoundingBox: CGRect?
-    var topoSeed: Int = 0
+    var patternSeed: Int = 0
+    var showsSurfaceShadow: Bool = true
     var appliesStickerEffect = false
     var stickerMotionIntensity: CGFloat?
 
@@ -103,8 +106,9 @@ struct DraftCatCardView: View {
             isLightActive: isLightActive,
             showsFooter: showsFooter,
             showsThumbnailPlaceFooter: showsThumbnailPlaceFooter,
+            showsSurfaceShadow: showsSurfaceShadow,
             catBoundingBox: catBoundingBox,
-            topoSeed: topoSeed
+            patternSeed: patternSeed
         ) {
             draftCatImage
         }
@@ -146,6 +150,51 @@ enum CatCardPresentation {
     case stylePreview
 }
 
+enum CatCardPatternSeed {
+    static func forSequence(_ sequence: Int) -> Int {
+        sequence
+    }
+}
+
+enum CatCardLightEffectMath {
+    static func progress(
+        rotateX: CGFloat,
+        rotateY: CGFloat,
+        maxTiltAngle: CGFloat = 12,
+        deadZone: CGFloat = 0.10
+    ) -> CGFloat {
+        guard maxTiltAngle > 0 else { return 0 }
+
+        let normalizedTilt = min(max(max(abs(rotateX), abs(rotateY)) / maxTiltAngle, 0), 1)
+        let clampedDeadZone = min(max(deadZone, 0), 0.99)
+        guard normalizedTilt > clampedDeadZone else { return 0 }
+
+        let value = (normalizedTilt - clampedDeadZone) / (1 - clampedDeadZone)
+        return value * value * (3 - 2 * value)
+    }
+}
+
+struct CatCardEffectPresentationPolicy {
+    let showsStandardAura: Bool
+    let showsStandardSheen: Bool
+    let showsFamilyAura: Bool
+    let showsLightBand: Bool
+    let showsGenericGlint: Bool
+    let illustrativeLightProgress: CGFloat
+
+    init(style: CardStyle, presentation: CatCardPresentation) {
+        let isLightStyle = style.isLightEffect
+        let isLightThumbnail = isLightStyle && presentation == .thumbnail
+
+        showsStandardAura = !isLightStyle
+        showsStandardSheen = !isLightStyle
+        showsFamilyAura = isLightStyle && !isLightThumbnail
+        showsLightBand = isLightStyle && !isLightThumbnail
+        showsGenericGlint = presentation == .thumbnail && !isLightStyle
+        illustrativeLightProgress = isLightStyle && presentation == .stylePreview ? 0.55 : 0
+    }
+}
+
 private struct CatCardSurface<CatImage: View>: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
@@ -162,8 +211,9 @@ private struct CatCardSurface<CatImage: View>: View {
     let isLightActive: Bool
     let showsFooter: Bool
     let showsThumbnailPlaceFooter: Bool
+    let showsSurfaceShadow: Bool
     let catBoundingBox: CGRect?
-    let topoSeed: Int
+    let patternSeed: Int
     @ViewBuilder let catImage: () -> CatImage
 
     private var focused: Bool { presentation == .focused }
@@ -184,6 +234,9 @@ private struct CatCardSurface<CatImage: View>: View {
         return thumbnail ? 0.16 : 0.92
     }
     private var palette: CardStylePalette { CardStylePalette(style: cardStyle) }
+    private var effectPolicy: CatCardEffectPresentationPolicy {
+        CatCardEffectPresentationPolicy(style: cardStyle, presentation: presentation)
+    }
 
     private var primaryContentColor: Color {
         palette.primaryContent
@@ -273,7 +326,11 @@ private struct CatCardSurface<CatImage: View>: View {
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                     .stroke(CatLocalTheme.imageOutline, lineWidth: 1)
             )
-            .shadow(color: shadowColor, radius: shadowRadius, y: shadowOffset)
+            .shadow(
+                color: showsSurfaceShadow ? shadowColor : .clear,
+                radius: shadowRadius,
+                y: shadowOffset
+            )
         }
         .aspectRatio(cardAspectRatio, contentMode: .fit)
     }
@@ -544,38 +601,49 @@ private struct CatCardSurface<CatImage: View>: View {
     private var thumbnailSurface: some View {
         ZStack {
             standardSurface
-            thumbnailStyleHintSurface
+
+            if effectPolicy.showsGenericGlint {
+                thumbnailStyleHintSurface
+            }
         }
     }
 
     private var standardSurface: some View {
         ZStack {
-            LinearGradient(
-                colors: palette.surfaceColors,
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
+            baseSurface
 
-            RadialGradient(
-                colors: [
-                    palette.accent.opacity(focused ? 0.34 : (thumbnail ? 0.11 : 0.25)),
-                    palette.secondaryAccent.opacity(focused ? 0.16 : (thumbnail ? 0.05 : 0.10)),
-                    .clear
-                ],
-                center: .topTrailing,
-                startRadius: 8,
-                endRadius: focused ? 260 : (thumbnail ? 120 : 150)
-            )
+            if effectPolicy.showsStandardAura {
+                RadialGradient(
+                    colors: [
+                        palette.accent.opacity(focused ? 0.34 : (thumbnail ? 0.11 : 0.25)),
+                        palette.secondaryAccent.opacity(focused ? 0.16 : (thumbnail ? 0.05 : 0.10)),
+                        .clear
+                    ],
+                    center: .topTrailing,
+                    startRadius: 8,
+                    endRadius: focused ? 260 : (thumbnail ? 120 : 150)
+                )
+            }
 
-            LinearGradient(
-                colors: [
-                    palette.sheen.opacity(focused ? 0.28 : (thumbnail ? 0.07 : 0.20)),
-                    palette.secondaryAccent.opacity(focused ? 0.18 : (thumbnail ? 0.05 : 0.12))
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
+            if effectPolicy.showsStandardSheen {
+                LinearGradient(
+                    colors: [
+                        palette.sheen.opacity(focused ? 0.28 : (thumbnail ? 0.07 : 0.20)),
+                        palette.secondaryAccent.opacity(focused ? 0.18 : (thumbnail ? 0.05 : 0.12))
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            }
         }
+    }
+
+    private var baseSurface: some View {
+        LinearGradient(
+            colors: palette.surfaceColors,
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
     }
 
     private var thumbnailStyleHintSurface: some View {
@@ -601,12 +669,9 @@ private struct CatCardSurface<CatImage: View>: View {
                     .opacity(0.54)
             }
 
-            if cardStyle.isLightEffect {
-                lightEffectThumbnailLayer
-                    .opacity(0.62)
+            if effectPolicy.showsGenericGlint {
+                thumbnailStyleGlint
             }
-
-            thumbnailStyleGlint
         }
         .blendMode(.softLight)
         .accessibilityHidden(true)
@@ -744,7 +809,7 @@ private struct CatCardSurface<CatImage: View>: View {
     }
 
     private var archiveMaterialPatternLayer: some View {
-        CardMaterialPatternShape(style: cardStyle, seed: positiveSeed)
+        CardMaterialPatternShape(style: cardStyle, patternSeed: positiveSeed)
             .stroke(
                 archiveMaterialPatternGradient,
                 style: StrokeStyle(
@@ -759,7 +824,7 @@ private struct CatCardSurface<CatImage: View>: View {
     }
 
     private var archiveMaterialThumbnailLayer: some View {
-        CardMaterialPatternShape(style: cardStyle, seed: positiveSeed)
+        CardMaterialPatternShape(style: cardStyle, patternSeed: positiveSeed)
             .stroke(
                 LinearGradient(
                     colors: [
@@ -800,14 +865,19 @@ private struct CatCardSurface<CatImage: View>: View {
 
     private var lightEffectSurface: some View {
         ZStack {
-            LinearGradient(
-                colors: palette.surfaceColors,
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
+            baseSurface
 
-            lightEffectAura
-            lightEffectBand
+            if effectPolicy.showsFamilyAura {
+                lightEffectAura
+                    .opacity(lightEffectProgress)
+                    .animation(.easeOut(duration: 0.20), value: lightEffectProgress)
+            }
+
+            if effectPolicy.showsLightBand {
+                lightEffectBand
+                    .opacity(lightEffectProgress)
+                    .animation(.easeOut(duration: 0.20), value: lightEffectProgress)
+            }
         }
     }
 
@@ -908,16 +978,6 @@ private struct CatCardSurface<CatImage: View>: View {
             .accessibilityHidden(true)
     }
 
-    private var lightEffectThumbnailLayer: some View {
-        ZStack {
-            lightEffectAura
-
-            lightEffectBand
-                .opacity(0.58)
-        }
-        .accessibilityHidden(true)
-    }
-
     private var topoSurface: some View {
         ZStack {
             LinearGradient(
@@ -926,47 +986,62 @@ private struct CatCardSurface<CatImage: View>: View {
                 endPoint: .bottomTrailing
             )
 
-            if presentation == .thumbnail {
-                topoThumbnailLayer
-            } else {
-                topoFoilLayer
-                    .mask {
-                        RadialGradient(
-                            colors: [
-                                .white,
-                                .white.opacity(0.4),
-                                .clear
-                            ],
-                            center: topoMaskCenter,
-                            startRadius: 0,
-                            endRadius: 180
-                        )
-                    }
-                    .blendMode(.plusLighter)
-                    .opacity(foilLightOpacity)
-                    .animation(.easeInOut(duration: 0.18), value: foilLightOpacity)
-            }
+            topoStaticLayer
+
+            topoFoilLayer
+                .mask {
+                    RadialGradient(
+                        colors: [
+                            .white,
+                            .white.opacity(0.4),
+                            .clear
+                        ],
+                        center: topoMaskCenter,
+                        startRadius: 0,
+                        endRadius: 180
+                    )
+                }
+                .blendMode(.plusLighter)
+                .opacity(foilLightOpacity)
+                .animation(.easeInOut(duration: 0.18), value: foilLightOpacity)
         }
     }
 
     private var topoThumbnailLayer: some View {
-        ZStack {
-            ForEach(0..<6, id: \.self) { index in
-                TopoContourShape(index: index, total: 6, seed: positiveSeed)
-                    .stroke(
-                        LinearGradient(
-                            colors: [
-                                topoLineColors.first?.opacity(0.42) ?? Color.white.opacity(0.36),
-                                palette.accent.opacity(0.26)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ),
-                        style: StrokeStyle(lineWidth: 0.7, lineCap: .round, lineJoin: .round)
-                    )
-            }
-        }
+        TopoContourLayer(
+            patternSeed: positiveSeed + topoVariant * 97,
+            lineCount: 8,
+            lineWidth: 0.7,
+            gradient: LinearGradient(
+                colors: [
+                    topoLineColors.first?.opacity(0.42) ?? Color.white.opacity(0.36),
+                    palette.accent.opacity(0.26)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        )
         .opacity(0.58)
+        .blendMode(.softLight)
+        .accessibilityHidden(true)
+    }
+
+    private var topoStaticLayer: some View {
+        TopoContourLayer(
+            patternSeed: positiveSeed + topoVariant * 97,
+            lineCount: topoLineCount,
+            lineWidth: max(topoLineWidth * 0.76, 0.72),
+            gradient: LinearGradient(
+                colors: [
+                    topoLineColors.first?.opacity(0.48) ?? Color.white.opacity(0.42),
+                    palette.accent.opacity(0.34),
+                    palette.secondaryAccent.opacity(0.26)
+                ],
+                startPoint: topoStartPoint,
+                endPoint: topoEndPoint
+            )
+        )
+        .opacity(stylePreview ? 0.68 : 0.46)
         .blendMode(.softLight)
         .accessibilityHidden(true)
     }
@@ -992,7 +1067,7 @@ private struct CatCardSurface<CatImage: View>: View {
                 AngularGradient(
                     colors: topoSecondaryColors,
                     center: .center,
-                    angle: .degrees(Double(topoSeed % 180) + Double(effectiveRotateX - effectiveRotateY) * 2.6)
+                    angle: .degrees(Double(patternSeed % 180) + Double(effectiveRotateX - effectiveRotateY) * 2.6)
                 )
                 .scaleEffect(1.75)
                 .blur(radius: presentation == .thumbnail ? 3 : 1.5)
@@ -1001,7 +1076,7 @@ private struct CatCardSurface<CatImage: View>: View {
             }
             .overlay {
                 TopoContourLayer(
-                    seed: positiveSeed + topoVariant * 97,
+                    patternSeed: positiveSeed + topoVariant * 97,
                     lineCount: topoLineCount,
                     lineWidth: topoLineWidth,
                     gradient: LinearGradient(
@@ -1199,6 +1274,19 @@ private struct CatCardSurface<CatImage: View>: View {
         }
     }
 
+    private var lightEffectProgress: CGFloat {
+        switch presentation {
+        case .thumbnail:
+            0
+        case .stylePreview:
+            effectPolicy.illustrativeLightProgress
+        case .focused:
+            isLightActive
+                ? CatCardLightEffectMath.progress(rotateX: effectiveRotateX, rotateY: effectiveRotateY)
+                : 0
+        }
+    }
+
     private var topoMaskCenter: UnitPoint {
         let base = topoBaseCenter
         return UnitPoint(
@@ -1349,7 +1437,7 @@ private struct CatCardSurface<CatImage: View>: View {
     }
 
     private var positiveSeed: Int {
-        abs(topoSeed == Int.min ? 0 : topoSeed)
+        abs(patternSeed == Int.min ? 0 : patternSeed)
     }
 
     private func clampedUnit(_ value: CGFloat) -> CGFloat {
@@ -1589,236 +1677,477 @@ private struct CardStylePalette {
 
 private struct CardMaterialPatternShape: Shape {
     let style: CardStyle
-    let seed: Int
+    let patternSeed: Int
 
     func path(in rect: CGRect) -> Path {
+        var path = Path()
+        for command in CatCardBotanicalPattern.commands(style: style, patternSeed: patternSeed) {
+            switch command {
+            case let .move(point):
+                path.move(to: scaled(point, in: rect))
+            case let .line(point):
+                path.addLine(to: scaled(point, in: rect))
+            case let .quad(end, control):
+                path.addQuadCurve(to: scaled(end, in: rect), control: scaled(control, in: rect))
+            case let .curve(end, control1, control2):
+                path.addCurve(
+                    to: scaled(end, in: rect),
+                    control1: scaled(control1, in: rect),
+                    control2: scaled(control2, in: rect)
+                )
+            case .close:
+                path.closeSubpath()
+            }
+        }
+
+        return path
+    }
+
+    private func scaled(_ point: CGPoint, in rect: CGRect) -> CGPoint {
+        CGPoint(
+            x: rect.minX + point.x * rect.width,
+            y: rect.minY + point.y * rect.height
+        )
+    }
+}
+
+enum CatCardBotanicalCommand {
+    case move(CGPoint)
+    case line(CGPoint)
+    case quad(end: CGPoint, control: CGPoint)
+    case curve(end: CGPoint, control1: CGPoint, control2: CGPoint)
+    case close
+
+    var points: [CGPoint] {
+        switch self {
+        case let .move(point), let .line(point):
+            [point]
+        case let .quad(end, control):
+            [end, control]
+        case let .curve(end, control1, control2):
+            [end, control1, control2]
+        case .close:
+            []
+        }
+    }
+}
+
+enum CatCardBotanicalPattern {
+    static func signature(style: CardStyle, patternSeed: Int) -> [Int] {
+        commands(style: style, patternSeed: patternSeed).flatMap { command in
+            let marker: Int
+            switch command {
+            case .move: marker = 1
+            case .line: marker = 2
+            case .quad: marker = 3
+            case .curve: marker = 4
+            case .close: marker = 5
+            }
+
+            return [marker] + command.points.flatMap { point in
+                [Int((point.x * 10_000).rounded()), Int((point.y * 10_000).rounded())]
+            }
+        }
+    }
+
+    static func normalizedBounds(style: CardStyle, patternSeed: Int) -> CGRect {
+        let points = commands(style: style, patternSeed: patternSeed).flatMap(\.points)
+        guard let first = points.first else { return .null }
+
+        return points.dropFirst().reduce(CGRect(origin: first, size: .zero)) { bounds, point in
+            bounds.union(CGRect(origin: point, size: .zero))
+        }
+    }
+
+    static func commands(style: CardStyle, patternSeed: Int) -> [CatCardBotanicalCommand] {
         switch style {
         case .pineShadow:
-            pineShadowPath(in: rect)
+            pineCommands(patternSeed: patternSeed)
         case .cedarShade:
-            cedarShadePath(in: rect)
+            cedarCommands(patternSeed: patternSeed)
         case .fernTrace:
-            fernTracePath(in: rect)
+            fernCommands(patternSeed: patternSeed)
         case .mossVeil:
-            mossVeilPath(in: rect)
+            mossCommands(patternSeed: patternSeed)
         default:
-            Path()
+            []
         }
     }
 
-    private func pineShadowPath(in rect: CGRect) -> Path {
-        var path = Path()
-        let stems = 9
+    private static func pineCommands(patternSeed: Int) -> [CatCardBotanicalCommand] {
+        var random = CatCardPatternRandom(patternSeed: patternSeed, salt: 0x5049_4E45)
+        var commands: [CatCardBotanicalCommand] = []
 
-        for index in 0..<stems {
-            let progress = CGFloat(index) / CGFloat(max(stems - 1, 1))
-            let baseX = rect.minX + rect.width * (-0.04 + progress * 1.10)
-            let baseY = rect.maxY + rect.height * 0.08
-            let tipX = baseX + rect.width * (-0.12 + CGFloat((seed + index * 5) % 9) * 0.028)
-            let tipY = rect.minY + rect.height * (0.10 + CGFloat((seed + index * 3) % 6) * 0.045)
-
-            path.move(to: CGPoint(x: baseX, y: baseY))
-            path.addLine(to: CGPoint(x: tipX, y: tipY))
-
-            for leaf in 0..<3 {
-                let leafProgress = CGFloat(leaf + 1) / 4
-                let anchorX = baseX + (tipX - baseX) * leafProgress
-                let anchorY = baseY + (tipY - baseY) * leafProgress
-                let reach = rect.width * (0.05 + CGFloat(leaf) * 0.014)
-                let rise = rect.height * (0.04 + CGFloat(leaf) * 0.010)
-
-                path.move(to: CGPoint(x: anchorX, y: anchorY))
-                path.addQuadCurve(
-                    to: CGPoint(x: anchorX + reach, y: anchorY - rise),
-                    control: CGPoint(x: anchorX + reach * 0.34, y: anchorY - rise * 1.24)
+        for trunk in 0..<6 {
+            let progress = CGFloat(trunk) / 5
+            let base = CGPoint(
+                x: -0.08 + progress * 1.16 + random.centered(0.035),
+                y: 1.06 + random.centered(0.035)
+            )
+            let tip = CGPoint(
+                x: base.x + 0.13 + random.nextUnit() * 0.10,
+                y: -0.06 + random.nextUnit() * 0.18
+            )
+            commands += [
+                .move(base),
+                .curve(
+                    end: tip,
+                    control1: CGPoint(x: base.x + 0.02, y: 0.76),
+                    control2: CGPoint(x: tip.x - 0.08, y: 0.26)
                 )
+            ]
 
-                path.move(to: CGPoint(x: anchorX, y: anchorY))
-                path.addQuadCurve(
-                    to: CGPoint(x: anchorX - reach * 0.72, y: anchorY - rise * 0.78),
-                    control: CGPoint(x: anchorX - reach * 0.20, y: anchorY - rise * 1.12)
-                )
+            for needle in 1...6 {
+                let needleProgress = CGFloat(needle) / 7
+                let anchor = interpolate(base, tip, progress: needleProgress)
+                let reach = 0.115 * (1 - needleProgress) + 0.028
+                let rise = 0.024 + random.nextUnit() * 0.018
+                commands += [
+                    .move(anchor),
+                    .quad(
+                        end: CGPoint(x: anchor.x + reach, y: anchor.y - rise),
+                        control: CGPoint(x: anchor.x + reach * 0.42, y: anchor.y - rise * 1.45)
+                    ),
+                    .move(anchor),
+                    .quad(
+                        end: CGPoint(x: anchor.x - reach * 0.82, y: anchor.y - rise * 0.72),
+                        control: CGPoint(x: anchor.x - reach * 0.34, y: anchor.y - rise * 1.28)
+                    )
+                ]
             }
         }
 
-        return path
+        return commands
     }
 
-    private func cedarShadePath(in rect: CGRect) -> Path {
-        var path = Path()
-        let branches = 8
+    private static func cedarCommands(patternSeed: Int) -> [CatCardBotanicalCommand] {
+        var random = CatCardPatternRandom(patternSeed: patternSeed, salt: 0x4345_4441)
+        var commands: [CatCardBotanicalCommand] = []
 
-        for index in 0..<branches {
-            let progress = CGFloat(index) / CGFloat(max(branches - 1, 1))
-            let start = CGPoint(
-                x: rect.minX + rect.width * (0.08 + progress * 0.82),
-                y: rect.maxY + rect.height * 0.06
-            )
-            let end = CGPoint(
-                x: start.x + rect.width * (-0.18 + CGFloat((seed + index * 7) % 13) * 0.025),
-                y: rect.minY + rect.height * (0.04 + CGFloat(index % 4) * 0.05)
-            )
-
-            path.move(to: start)
-            path.addCurve(
-                to: end,
-                control1: CGPoint(x: start.x - rect.width * 0.10, y: rect.midY * 1.08),
-                control2: CGPoint(x: end.x + rect.width * 0.08, y: rect.midY * 0.54)
-            )
-
-            for needle in 0..<4 {
-                let needleProgress = CGFloat(needle + 1) / 5
-                let anchor = CGPoint(
-                    x: start.x + (end.x - start.x) * needleProgress,
-                    y: start.y + (end.y - start.y) * needleProgress
+        for bough in 0..<5 {
+            let progress = CGFloat(bough) / 4
+            let start = CGPoint(x: -0.10, y: 0.01 + progress * 0.88 + random.centered(0.025))
+            let end = CGPoint(x: 1.10, y: 0.10 + progress * 0.82 + random.centered(0.035))
+            commands += [
+                .move(start),
+                .curve(
+                    end: end,
+                    control1: CGPoint(x: 0.20, y: start.y + 0.16 + random.centered(0.04)),
+                    control2: CGPoint(x: 0.72, y: end.y - 0.18 + random.centered(0.04))
                 )
-                let reach = rect.width * (0.036 + CGFloat(needle) * 0.006)
-                path.move(to: anchor)
-                path.addLine(to: CGPoint(x: anchor.x + reach, y: anchor.y - rect.height * 0.026))
-                path.move(to: anchor)
-                path.addLine(to: CGPoint(x: anchor.x - reach * 0.74, y: anchor.y - rect.height * 0.020))
+            ]
+
+            for cluster in 1...7 {
+                let clusterProgress = CGFloat(cluster) / 8
+                let anchor = interpolate(start, end, progress: clusterProgress)
+                let length = 0.054 - clusterProgress * 0.018 + random.nextUnit() * 0.012
+                commands += [
+                    .move(anchor),
+                    .line(CGPoint(x: anchor.x - length * 0.45, y: anchor.y - length)),
+                    .move(anchor),
+                    .line(CGPoint(x: anchor.x + length * 0.72, y: anchor.y - length * 0.74)),
+                    .move(anchor),
+                    .line(CGPoint(x: anchor.x + length * 0.88, y: anchor.y + length * 0.46))
+                ]
             }
         }
 
-        return path
+        return commands
     }
 
-    private func fernTracePath(in rect: CGRect) -> Path {
-        var path = Path()
-        let stemStart = CGPoint(x: rect.minX + rect.width * 0.20, y: rect.maxY + rect.height * 0.02)
-        let stemEnd = CGPoint(x: rect.minX + rect.width * 0.74, y: rect.minY + rect.height * 0.08)
+    private static func fernCommands(patternSeed: Int) -> [CatCardBotanicalCommand] {
+        var random = CatCardPatternRandom(patternSeed: patternSeed, salt: 0x4645_524E)
+        var commands: [CatCardBotanicalCommand] = []
+        let bases: [CGFloat] = [0.10, 0.48, 0.86]
+        let tips: [CGFloat] = [-0.08, 0.52, 1.08]
 
-        path.move(to: stemStart)
-        path.addCurve(
-            to: stemEnd,
-            control1: CGPoint(x: rect.minX + rect.width * 0.34, y: rect.midY * 1.14),
-            control2: CGPoint(x: rect.minX + rect.width * 0.54, y: rect.midY * 0.50)
+        for frond in 0..<3 {
+            let base = CGPoint(x: bases[frond] + random.centered(0.03), y: 1.08)
+            let tip = CGPoint(x: tips[frond] + random.centered(0.04), y: 0.01 + random.nextUnit() * 0.08)
+            let direction: CGFloat = frond == 0 ? -1 : (frond == 2 ? 1 : 0.2)
+            commands += [
+                .move(base),
+                .curve(
+                    end: tip,
+                    control1: CGPoint(x: base.x + direction * 0.12, y: 0.72),
+                    control2: CGPoint(x: tip.x - direction * 0.16, y: 0.30)
+                )
+            ]
+
+            for leaflet in 1...8 {
+                let leafletProgress = CGFloat(leaflet) / 9
+                let anchor = interpolate(base, tip, progress: leafletProgress)
+                let taper = 0.13 * (1 - leafletProgress) + 0.035
+                let lift = 0.026 + random.nextUnit() * 0.022
+                commands += [
+                    .move(anchor),
+                    .quad(
+                        end: CGPoint(x: anchor.x + taper, y: anchor.y - lift),
+                        control: CGPoint(x: anchor.x + taper * 0.48, y: anchor.y - lift * 1.55)
+                    ),
+                    .move(anchor),
+                    .quad(
+                        end: CGPoint(x: anchor.x - taper, y: anchor.y - lift * 0.86),
+                        control: CGPoint(x: anchor.x - taper * 0.48, y: anchor.y - lift * 1.42)
+                    )
+                ]
+            }
+        }
+
+        return commands
+    }
+
+    private static func mossCommands(patternSeed: Int) -> [CatCardBotanicalCommand] {
+        var random = CatCardPatternRandom(patternSeed: patternSeed, salt: 0x4D4F_5353)
+        let centers = [
+            CGPoint(x: -0.02, y: 0.18),
+            CGPoint(x: 0.28, y: 0.38),
+            CGPoint(x: 0.72, y: 0.18),
+            CGPoint(x: 1.02, y: 0.55),
+            CGPoint(x: 0.68, y: 0.84),
+            CGPoint(x: 0.18, y: 0.88)
+        ].map { point in
+            CGPoint(x: point.x + random.centered(0.045), y: point.y + random.centered(0.045))
+        }
+
+        var commands: [CatCardBotanicalCommand] = []
+
+        for (clusterIndex, center) in centers.enumerated() {
+            let radiusX = 0.17 + random.nextUnit() * 0.09
+            let radiusY = 0.12 + random.nextUnit() * 0.08
+            let lobeCount = 8
+            var lobes: [CGPoint] = []
+
+            for lobe in 0..<lobeCount {
+                let angle = CGFloat(lobe) / CGFloat(lobeCount) * .pi * 2
+                let radialJitter = 0.82 + random.nextUnit() * 0.32
+                lobes.append(
+                    CGPoint(
+                        x: center.x + cos(angle) * radiusX * radialJitter,
+                        y: center.y + sin(angle) * radiusY * radialJitter
+                    )
+                )
+            }
+
+            commands.append(.move(lobes[0]))
+            for lobe in 1..<lobeCount {
+                let previous = lobes[lobe - 1]
+                let next = lobes[lobe]
+                commands.append(
+                    .quad(
+                        end: next,
+                        control: CGPoint(
+                            x: (previous.x + next.x) * 0.5 + (previous.x - center.x) * 0.18,
+                            y: (previous.y + next.y) * 0.5 + (previous.y - center.y) * 0.18
+                        )
+                    )
+                )
+            }
+            commands.append(
+                .quad(
+                    end: lobes[0],
+                    control: CGPoint(
+                        x: (lobes[lobeCount - 1].x + lobes[0].x) * 0.5 + random.centered(0.04),
+                        y: (lobes[lobeCount - 1].y + lobes[0].y) * 0.5 + random.centered(0.04)
+                    )
+                )
+            )
+            commands.append(.close)
+
+            for filament in 0..<3 {
+                let angle = (CGFloat(filament) / 3 + CGFloat(clusterIndex) * 0.11) * .pi * 2
+                let end = CGPoint(
+                    x: center.x + cos(angle) * radiusX * 0.82,
+                    y: center.y + sin(angle) * radiusY * 0.82
+                )
+                commands += [
+                    .move(center),
+                    .curve(
+                        end: end,
+                        control1: CGPoint(
+                            x: center.x + cos(angle - 0.55) * radiusX * 0.42,
+                            y: center.y + sin(angle - 0.55) * radiusY * 0.42
+                        ),
+                        control2: CGPoint(
+                            x: center.x + cos(angle + 0.42) * radiusX * 0.66,
+                            y: center.y + sin(angle + 0.42) * radiusY * 0.66
+                        )
+                    )
+                ]
+            }
+        }
+
+        for index in 1..<centers.count {
+            let start = centers[index - 1]
+            let end = centers[index]
+            commands += [
+                .move(start),
+                .curve(
+                    end: end,
+                    control1: CGPoint(
+                        x: start.x + (end.x - start.x) * 0.34 + random.centered(0.05),
+                        y: start.y + random.centered(0.12)
+                    ),
+                    control2: CGPoint(
+                        x: start.x + (end.x - start.x) * 0.72 + random.centered(0.05),
+                        y: end.y + random.centered(0.12)
+                    )
+                )
+            ]
+        }
+
+        return commands
+    }
+
+    private static func interpolate(_ start: CGPoint, _ end: CGPoint, progress: CGFloat) -> CGPoint {
+        CGPoint(
+            x: start.x + (end.x - start.x) * progress,
+            y: start.y + (end.y - start.y) * progress
         )
+    }
+}
 
-        for leaflet in 0..<12 {
-            let progress = CGFloat(leaflet + 1) / 13
-            let anchor = CGPoint(
-                x: stemStart.x + (stemEnd.x - stemStart.x) * progress,
-                y: stemStart.y + (stemEnd.y - stemStart.y) * progress
-            )
-            let side: CGFloat = leaflet % 2 == 0 ? 1 : -1
-            let length = rect.width * (0.08 + CGFloat((seed + leaflet) % 4) * 0.008)
-            let lift = rect.height * (0.036 + CGFloat(leaflet % 3) * 0.008)
+struct CatCardPatternRandom {
+    private var state: UInt64
 
-            path.move(to: anchor)
-            path.addQuadCurve(
-                to: CGPoint(x: anchor.x + side * length, y: anchor.y - lift),
-                control: CGPoint(x: anchor.x + side * length * 0.42, y: anchor.y - lift * 1.32)
-            )
-        }
-
-        return path
+    init(patternSeed: Int, salt: UInt64) {
+        state = Self.mix(UInt64(bitPattern: Int64(patternSeed)) ^ salt)
     }
 
-    private func mossVeilPath(in rect: CGRect) -> Path {
-        var path = Path()
-        let pockets = 13
+    mutating func nextUnit() -> CGFloat {
+        state &+= 0x9E37_79B9_7F4A_7C15
+        let value = Self.mix(state) >> 11
+        return CGFloat(Double(value) / 9_007_199_254_740_992)
+    }
 
-        for index in 0..<pockets {
-            let seedX = CGFloat((seed + index * 17) % 97) / 97
-            let seedY = CGFloat((seed + index * 29) % 89) / 89
-            let width = rect.width * (0.08 + CGFloat(index % 4) * 0.018)
-            let height = width * (0.46 + CGFloat((seed + index) % 3) * 0.14)
-            let origin = CGPoint(
-                x: rect.minX + rect.width * (0.06 + seedX * 0.84),
-                y: rect.minY + rect.height * (0.10 + seedY * 0.74)
-            )
+    mutating func centered(_ magnitude: CGFloat) -> CGFloat {
+        (nextUnit() - 0.5) * magnitude * 2
+    }
 
-            path.addEllipse(
-                in: CGRect(
-                    x: origin.x - width / 2,
-                    y: origin.y - height / 2,
-                    width: width,
-                    height: height
-                )
-            )
+    static func unit(patternSeed: Int, salt: UInt64) -> CGFloat {
+        var random = CatCardPatternRandom(patternSeed: patternSeed, salt: salt)
+        return random.nextUnit()
+    }
 
-            if index % 3 == 0 {
-                path.move(to: CGPoint(x: origin.x - width * 0.62, y: origin.y))
-                path.addQuadCurve(
-                    to: CGPoint(x: origin.x + width * 0.62, y: origin.y - height * 0.12),
-                    control: CGPoint(x: origin.x, y: origin.y - height * 0.78)
-                )
-            }
-        }
-
-        return path
+    private static func mix(_ input: UInt64) -> UInt64 {
+        var value = input
+        value = (value ^ (value >> 30)) &* 0xBF58_476D_1CE4_E5B9
+        value = (value ^ (value >> 27)) &* 0x94D0_49BB_1331_11EB
+        return value ^ (value >> 31)
     }
 }
 
 private struct TopoContourLayer: View {
-    let seed: Int
+    let patternSeed: Int
     let lineCount: Int
     let lineWidth: CGFloat
     let gradient: LinearGradient
 
     var body: some View {
-        ZStack {
-            ForEach(0..<lineCount, id: \.self) { index in
-                TopoContourShape(index: index, total: lineCount, seed: seed)
-                    .stroke(
-                        gradient,
-                        style: StrokeStyle(
-                            lineWidth: lineWidth,
-                            lineCap: .round,
-                            lineJoin: .round
-                        )
-                    )
-            }
-        }
+        TopoContourShape(lineCount: lineCount, patternSeed: patternSeed)
+            .stroke(
+                gradient,
+                style: StrokeStyle(
+                    lineWidth: lineWidth,
+                    lineCap: .round,
+                    lineJoin: .round
+                )
+            )
         .drawingGroup()
         .accessibilityHidden(true)
     }
 }
 
 private struct TopoContourShape: Shape {
-    let index: Int
-    let total: Int
-    let seed: Int
+    let lineCount: Int
+    let patternSeed: Int
 
     func path(in rect: CGRect) -> Path {
-        let center = CGPoint(
-            x: rect.midX + seedOffset(axis: 0, scale: rect.width * 0.08),
-            y: rect.midY + seedOffset(axis: 1, scale: rect.height * 0.08)
-        )
-        let maximumRadius = min(rect.width, rect.height) * 0.62
-        let progress = CGFloat(index + 1) / CGFloat(total + 2)
-        let baseRadius = maximumRadius * progress
-        let seedPhase = Double(seed % 997) * 0.017
         var path = Path()
+        guard lineCount > 0 else { return path }
 
-        for angleDegrees in stride(from: 0.0, through: 360.0, by: 5.0) {
-            let angle = angleDegrees * .pi / 180
-            let contourIndex = Double(index)
-            let waveA = sin(angle * 3.0 + contourIndex * 0.47 + seedPhase)
-            let waveB = cos(angle * 5.0 - contourIndex * 0.31 + seedPhase * 0.7)
-            let waveC = sin(angle * 2.0 + contourIndex * 1.09 - seedPhase * 0.4)
-            let distortion = CGFloat(waveA * 7.5 + waveB * 4.8 + waveC * 3.2)
-            let radius = max(baseRadius + distortion, 5)
-            let point = CGPoint(
-                x: center.x + cos(angle) * radius,
-                y: center.y + sin(angle) * radius
+        for index in 0..<lineCount {
+            let points = CatCardContourMath.samplePoints(
+                index: index,
+                total: lineCount,
+                patternSeed: patternSeed,
+                in: rect
             )
+            guard let first = points.first else { continue }
 
-            if angleDegrees == 0 {
-                path.move(to: point)
-            } else {
+            path.move(to: first)
+            for point in points.dropFirst() {
                 path.addLine(to: point)
             }
+            path.closeSubpath()
         }
 
-        path.closeSubpath()
         return path
     }
+}
 
-    private func seedOffset(axis: Int, scale: CGFloat) -> CGFloat {
-        let value = ((seed / max(axis + 1, 1)) % 31) - 15
-        return CGFloat(value) / 15 * scale
+enum CatCardContourMath {
+    static func samplePoints(
+        index: Int,
+        total: Int,
+        patternSeed: Int,
+        in rect: CGRect
+    ) -> [CGPoint] {
+        guard rect.width > 0, rect.height > 0, total > 0 else { return [] }
+
+        let center = CGPoint(
+            x: rect.midX + (CatCardPatternRandom.unit(patternSeed: patternSeed, salt: 0xC011) - 0.5) * rect.width * 0.16,
+            y: rect.midY + (CatCardPatternRandom.unit(patternSeed: patternSeed, salt: 0xC012) - 0.5) * rect.height * 0.16
+        )
+        let denominator = CGFloat(max(total - 1, 1))
+        let contourProgress = min(max(CGFloat(index) / denominator, 0), 1)
+        let contourScale = 0.08 + contourProgress * 1.10
+        let phase = Double(CatCardPatternRandom.unit(patternSeed: patternSeed, salt: 0xC013)) * .pi * 2
+        let contourIndex = Double(index)
+
+        return stride(from: 0.0, through: 360.0, by: 4.0).map { angleDegrees in
+            let angle = angleDegrees * .pi / 180
+            let directionX = CGFloat(cos(angle))
+            let directionY = CGFloat(sin(angle))
+            let boundaryRadius = directionalRadius(
+                from: center,
+                directionX: directionX,
+                directionY: directionY,
+                in: rect
+            )
+            let wave = 1
+                + CGFloat(sin(angle * 3 + contourIndex * 0.47 + phase)) * 0.035
+                + CGFloat(cos(angle * 5 - contourIndex * 0.31 + phase * 0.7)) * 0.025
+            let radius = boundaryRadius * contourScale * wave
+
+            return CGPoint(
+                x: center.x + directionX * radius,
+                y: center.y + directionY * radius
+            )
+        }
+    }
+
+    private static func directionalRadius(
+        from center: CGPoint,
+        directionX: CGFloat,
+        directionY: CGFloat,
+        in rect: CGRect
+    ) -> CGFloat {
+        var radius = CGFloat.greatestFiniteMagnitude
+
+        if directionX > 0.0001 {
+            radius = min(radius, (rect.maxX - center.x) / directionX)
+        } else if directionX < -0.0001 {
+            radius = min(radius, (rect.minX - center.x) / directionX)
+        }
+
+        if directionY > 0.0001 {
+            radius = min(radius, (rect.maxY - center.y) / directionY)
+        } else if directionY < -0.0001 {
+            radius = min(radius, (rect.minY - center.y) / directionY)
+        }
+
+        return max(radius, 1)
     }
 }
 
@@ -2348,6 +2677,7 @@ struct CardStyleSwatch: View {
             archiveMaterialSwatchOverlay
         case .cobaltHalo, .apricotBeam, .auroraPool:
             lightEffectSwatchOverlay
+                .opacity(0.55)
         }
     }
 
@@ -2357,7 +2687,7 @@ struct CardStyleSwatch: View {
         return ZStack {
             archiveMaterialSwatchWash
 
-            CardMaterialPatternShape(style: style, seed: 23 + variant * 47)
+            CardMaterialPatternShape(style: style, patternSeed: 23 + variant * 47)
                 .stroke(
                     LinearGradient(
                         colors: [
@@ -2598,7 +2928,7 @@ struct CardStyleSwatch: View {
             .blendMode(.screen)
 
             TopoContourLayer(
-                seed: 17 + variant * 53,
+                patternSeed: 17 + variant * 53,
                 lineCount: 8 + min(variant, 4),
                 lineWidth: 0.8 + CGFloat(variant % 3) * 0.08,
                 gradient: LinearGradient(

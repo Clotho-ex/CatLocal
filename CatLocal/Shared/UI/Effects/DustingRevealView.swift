@@ -1,7 +1,277 @@
+import Metal
+import MetalKit
+import OSLog
+import QuartzCore
+import Foundation
 import SwiftUI
 import UIKit
 
-struct CutoutSpotlightRevealView: View {
+enum DustRevealGeometry {
+    static func imageRect(imageSize: CGSize, containerSize: CGSize) -> CGRect {
+        guard
+            imageSize.width > 0,
+            imageSize.height > 0,
+            containerSize.width > 0,
+            containerSize.height > 0
+        else {
+            return .zero
+        }
+
+        let scale = min(
+            containerSize.width / imageSize.width,
+            containerSize.height / imageSize.height
+        )
+        let fittedSize = CGSize(
+            width: imageSize.width * scale,
+            height: imageSize.height * scale
+        )
+        return CGRect(
+            x: (containerSize.width - fittedSize.width) / 2,
+            y: (containerSize.height - fittedSize.height) / 2,
+            width: fittedSize.width,
+            height: fittedSize.height
+        )
+    }
+
+    static func imagesAreAligned(originalSize: CGSize, cutoutSize: CGSize) -> Bool {
+        originalSize.width > 0
+            && originalSize.height > 0
+            && originalSize == cutoutSize
+    }
+
+    static func pixelSize(of image: UIImage) -> CGSize? {
+        guard let cgImage = image.cgImage else { return nil }
+        return CGSize(width: cgImage.width, height: cgImage.height)
+    }
+}
+
+enum DustRevealTimeline {
+    static let standardDuration: TimeInterval = 2.6
+    static let terminalFadeStart = 0.82
+
+    static func progress(elapsed: TimeInterval, duration: TimeInterval) -> Float {
+        guard duration > 0 else { return elapsed >= 0 ? 1 : 0 }
+        return Float(min(max(elapsed / duration, 0), 1))
+    }
+
+    static func isComplete(elapsed: TimeInterval, duration: TimeInterval) -> Bool {
+        progress(elapsed: elapsed, duration: duration) >= 1
+    }
+
+    static func staggeredProgress(progress: Double, stagger: Double) -> Double {
+        let clampedProgress = min(max(progress, 0), 1)
+        let clampedStagger = min(max(stagger, 0), 0.999)
+        return min(max(
+            (clampedProgress - clampedStagger) / (1 - clampedStagger),
+            0
+        ), 1)
+    }
+
+    static func terminalSourceFade(progress: Double) -> Double {
+        let width = 1 - terminalFadeStart
+        let linear = min(max((progress - terminalFadeStart) / width, 0), 1)
+        let smooth = linear * linear * (3 - 2 * linear)
+        return 1 - smooth
+    }
+}
+
+enum DustRevealAlpha {
+    static let backgroundThreshold = 32.0 / 255.0
+
+    static func isBackground(alpha: Double) -> Bool {
+        alpha < backgroundThreshold
+    }
+
+    static func inverseWeight(alpha: Double) -> Double {
+        1 - min(max(alpha, 0), 1)
+    }
+
+    static func sourceContribution(
+        cutoutAlpha: Double,
+        progress: Double,
+        stagger: Double
+    ) -> Double {
+        let localProgress = DustRevealTimeline.staggeredProgress(
+            progress: progress,
+            stagger: stagger
+        )
+        let backgroundSurvival = 1 - localProgress * inverseWeight(alpha: cutoutAlpha)
+        return backgroundSurvival * DustRevealTimeline.terminalSourceFade(progress: progress)
+    }
+}
+
+enum DustRevealFallback {
+    static func remainingSourceContribution(progress: Double) -> Double {
+        1 - min(max(progress, 0), 1)
+    }
+}
+
+struct DustRevealPreparationGate {
+    typealias Generation = UInt64
+
+    private var nextGeneration: Generation = 0
+    private var activeGeneration: Generation?
+
+    mutating func begin() -> Generation {
+        let generation = nextGeneration
+        nextGeneration &+= 1
+        activeGeneration = generation
+        return generation
+    }
+
+    mutating func cancel() {
+        activeGeneration = nil
+    }
+
+    mutating func consume(_ generation: Generation) -> Bool {
+        guard activeGeneration == generation else { return false }
+        activeGeneration = nil
+        return true
+    }
+}
+
+struct DustRevealPresentationState: Equatable {
+    private enum Phase: Equatable {
+        case preparing
+        case firstFramePresented
+        case cancelled
+    }
+
+    private var phase = Phase.preparing
+
+    var showsSourcePlaceholder: Bool {
+        phase == .preparing
+    }
+
+    var showsRawCutout: Bool {
+        phase == .firstFramePresented
+    }
+
+    mutating func presentFirstFrame() -> Bool {
+        guard phase == .preparing else { return false }
+        phase = .firstFramePresented
+        return true
+    }
+
+    mutating func cancel() {
+        phase = .cancelled
+    }
+}
+
+final class DustFirstFramePresentationGate: @unchecked Sendable {
+    private enum CommandState: Equatable {
+        case pending
+        case succeeded
+        case failed
+    }
+
+    private let lock = NSLock()
+    private var commandState = CommandState.pending
+    private var didPresentDrawable = false
+    private var isResolved = false
+    private var isCancelled = false
+
+    func commandCompleted(succeeded: Bool) -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+
+        guard !isResolved, !isCancelled, commandState == .pending else { return false }
+        commandState = succeeded ? .succeeded : .failed
+        guard succeeded else {
+            isResolved = true
+            return false
+        }
+        return resolveIfReady()
+    }
+
+    func drawablePresented() -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+
+        guard !isResolved, !isCancelled, !didPresentDrawable else { return false }
+        didPresentDrawable = true
+        return resolveIfReady()
+    }
+
+    func cancel() {
+        lock.lock()
+        isCancelled = true
+        isResolved = true
+        lock.unlock()
+    }
+
+    private func resolveIfReady() -> Bool {
+        guard commandState == .succeeded, didPresentDrawable else { return false }
+        isResolved = true
+        return true
+    }
+}
+
+final class DustCommandCompletionTracker: @unchecked Sendable {
+    typealias Submission = UInt64
+
+    enum Outcome: Equatable, Sendable {
+        case finish
+        case fallback(String?)
+    }
+
+    private let lock = NSLock()
+    private var nextSubmission: Submission = 0
+    private var outstanding: Set<Submission> = []
+    private var terminalSubmission: Submission?
+    private var isResolved = false
+    private var isCancelled = false
+
+    func submit(isTerminalFrame: Bool) -> Submission? {
+        lock.lock()
+        defer { lock.unlock() }
+
+        guard !isResolved, !isCancelled, terminalSubmission == nil else { return nil }
+        let submission = nextSubmission
+        nextSubmission += 1
+        outstanding.insert(submission)
+        if isTerminalFrame {
+            terminalSubmission = submission
+        }
+        return submission
+    }
+
+    func complete(
+        submission: Submission,
+        succeeded: Bool,
+        errorDescription: String?
+    ) -> Outcome? {
+        lock.lock()
+        defer { lock.unlock() }
+
+        guard
+            !isResolved,
+            !isCancelled,
+            outstanding.remove(submission) != nil
+        else {
+            return nil
+        }
+
+        if !succeeded {
+            isResolved = true
+            outstanding.removeAll()
+            return .fallback(errorDescription)
+        }
+
+        guard terminalSubmission != nil, outstanding.isEmpty else { return nil }
+        isResolved = true
+        return .finish
+    }
+
+    func cancel() {
+        lock.lock()
+        isCancelled = true
+        outstanding.removeAll()
+        lock.unlock()
+    }
+}
+
+struct FullScreenDustRevealView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.catLocalCardMotionEnabled) private var cardMotionEnabled
 
@@ -9,243 +279,182 @@ struct CutoutSpotlightRevealView: View {
     let cutoutImage: UIImage
     var onCompleted: () -> Void
 
-    @State private var hasStarted = false
+    @State private var fallbackRequested = false
+    @State private var fallbackBackgroundOpacity = 1.0
     @State private var hasCompleted = false
-    @State private var stickerScale: CGFloat
-    @State private var stickerOpacity = 0.0
-    @State private var sourceOpacity = 0.0
-    @State private var sourceBlur: CGFloat = 14
-    @State private var spotlightProgress = 0.0
-    @State private var moteProgress = 0.0
-    @State private var haloOpacity = 0.0
-    @State private var haloScale: CGFloat = 0.96
-    @State private var stickerYOffset: CGFloat = 28
-    @State private var stickerPeelTilt = -18.0
-    @State private var stickerRotation = -5.0
-    @State private var peelSheenProgress = 0.0
-    @State private var anchorBounds: CGRect?
-    @State private var liftFeedbackTrigger = 0
-    @State private var edgeFeedbackTrigger = 0
-    @State private var landingFeedbackTrigger = 0
-
-    init(
-        sourceImage: UIImage?,
-        cutoutImage: UIImage,
-        onCompleted: @escaping () -> Void
-    ) {
-        self.sourceImage = sourceImage
-        self.cutoutImage = cutoutImage
-        self.onCompleted = onCompleted
-        _stickerScale = State(initialValue: 1.16)
-    }
+    @State private var presentationState = DustRevealPresentationState()
 
     var body: some View {
-        ZStack {
-            CatLocalBackground()
+        GeometryReader { proxy in
+            let imageRect = DustRevealGeometry.imageRect(
+                imageSize: sourcePixelSize ?? cutoutPixelSize ?? cutoutImage.size,
+                containerSize: proxy.size
+            )
 
-            VStack(spacing: 18) {
-                Spacer(minLength: 72)
+            ZStack {
+                CatLocalBackground()
+                softBackdrop
 
-                revealStage
-                    .padding(.horizontal, 30)
+                if usesFallback {
+                    fallbackBackground(in: imageRect)
+                } else if let sourceImage {
+                    MetalBackgroundDustView(
+                        sourceImage: sourceImage,
+                        cutoutImage: cutoutImage,
+                        imageRect: imageRect,
+                        duration: DustRevealTimeline.standardDuration,
+                        onFirstFramePresented: presentFirstFrame,
+                        onCompleted: complete,
+                        onFailure: requestFallback
+                    )
 
-                Text("Lifting the subject")
-                    .font(CatTypography.pageTitle)
-                    .foregroundStyle(CatLocalTheme.primaryText)
-                    .multilineTextAlignment(.center)
+                    alignedSource(sourceImage, in: imageRect)
+                        .opacity(presentationState.showsSourcePlaceholder ? 1 : 0)
+                }
 
-                Text("A private sticker is taking shape.")
-                    .font(CatTypography.supporting)
-                    .foregroundStyle(CatLocalTheme.secondaryText)
-                    .multilineTextAlignment(.center)
-
-                Spacer(minLength: 120)
+                alignedCutout(in: imageRect)
+                    .opacity(rawCutoutOpacity)
+                revealCopy
             }
-            .padding(.horizontal, CatLocalTheme.screenHorizontalPadding)
+            .frame(width: proxy.size.width, height: proxy.size.height)
         }
-        .task { await startRevealIfNeeded() }
-        .catSensoryFeedback(.impact(flexibility: .soft, intensity: 0.42), trigger: liftFeedbackTrigger)
-        .catSensoryFeedback(.selection, trigger: edgeFeedbackTrigger)
-        .catSensoryFeedback(.success, trigger: landingFeedbackTrigger)
+        .ignoresSafeArea()
+        .task(id: usesFallback) {
+            guard usesFallback else { return }
+            await runFallback()
+        }
+        .onDisappear {
+            presentationState.cancel()
+        }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Lifting the cat subject")
         .accessibilityIdentifier("cutout-reveal")
     }
 
-    private var revealStage: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 34, style: .continuous)
-                .fill(CatLocalTheme.cardSurface.opacity(0.64))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 34, style: .continuous)
-                        .stroke(CatLocalTheme.imageOutline.opacity(0.42), lineWidth: 1)
-                )
-
-            sourceBackdrop
-
-            if !motionIsReduced {
-                CutoutSpotlightBeam(progress: spotlightProgress)
-                    .allowsHitTesting(false)
-            }
-
-            Image(uiImage: cutoutImage)
-                .resizable()
-                .scaledToFit()
-                .padding(20)
-                .opacity(haloOpacity)
-                .scaleEffect(haloScale)
-                .blur(radius: motionIsReduced ? 0 : 15)
-                .blendMode(.screen)
-                .accessibilityHidden(true)
-
-            if !motionIsReduced {
-                StickerPeelSheen(
-                    image: cutoutImage,
-                    progress: peelSheenProgress
-                )
-                .opacity(stickerOpacity)
-                .scaleEffect(stickerScale)
-                .rotationEffect(.degrees(stickerRotation))
-                .rotation3DEffect(
-                    .degrees(stickerPeelTilt),
-                    axis: (x: 1, y: -0.18, z: 0),
-                    perspective: 0.62
-                )
-                .offset(y: stickerYOffset)
-                .accessibilityHidden(true)
-            }
-
-            StickerCutoutView(
-                image: cutoutImage,
-                appliesMotion: false
-            )
-            .opacity(stickerOpacity)
-            .scaleEffect(stickerScale)
-            .rotationEffect(.degrees(stickerRotation))
-            .rotation3DEffect(
-                .degrees(stickerPeelTilt),
-                axis: (x: 1, y: -0.18, z: 0),
-                perspective: 0.62
-            )
-            .offset(y: stickerYOffset)
-            .accessibilityHidden(true)
-
-            if !motionIsReduced {
-                CutoutMoteField(
-                    progress: moteProgress,
-                    anchorBounds: anchorBounds
-                )
-                .allowsHitTesting(false)
-            }
-        }
-        .frame(maxWidth: 290, maxHeight: 340)
-        .clipShape(RoundedRectangle(cornerRadius: 34, style: .continuous))
-        .shadow(color: CatLocalTheme.shadow.opacity(0.12), radius: 18, x: 0, y: 9)
-    }
-
     @ViewBuilder
-    private var sourceBackdrop: some View {
+    private var softBackdrop: some View {
         if let sourceImage {
             Image(uiImage: sourceImage)
                 .resizable()
                 .scaledToFill()
-                .blur(radius: sourceBlur)
-                .saturation(0.82)
-                .opacity(sourceOpacity)
-                .overlay(CatLocalTheme.primaryText.opacity(sourceOpacity * 0.16))
+                .saturation(0.62)
+                .blur(radius: 34)
+                .scaleEffect(1.14)
+                .overlay(CatLocalTheme.background.opacity(0.56))
                 .clipped()
                 .accessibilityHidden(true)
         }
     }
 
-    private func startRevealIfNeeded() async {
-        guard !hasStarted else { return }
-        hasStarted = true
-
-        if motionIsReduced {
-            withAnimation(.easeOut(duration: 0.22)) {
-                sourceOpacity = sourceImage == nil ? 0 : 0.18
-                stickerScale = 1
-                stickerOpacity = 1
-                stickerYOffset = 0
-                stickerPeelTilt = 0
-                stickerRotation = 0
-                haloOpacity = 0.18
-            }
-            try? await Task.sleep(for: .milliseconds(360))
-            complete()
-            return
+    @ViewBuilder
+    private func fallbackBackground(in rect: CGRect) -> some View {
+        if let sourceImage {
+            Image(uiImage: sourceImage)
+                .resizable()
+                .frame(width: rect.width, height: rect.height)
+                .position(x: rect.midX, y: rect.midY)
+                .opacity(fallbackBackgroundOpacity)
+                .accessibilityHidden(true)
         }
+    }
 
-        Task { @MainActor in
-            anchorBounds = await Self.visibleBounds(for: SendableImage(value: cutoutImage))
+    private func alignedCutout(in rect: CGRect) -> some View {
+        Image(uiImage: cutoutImage)
+            .resizable()
+            .frame(width: rect.width, height: rect.height)
+            .position(x: rect.midX, y: rect.midY)
+            .accessibilityHidden(true)
+    }
+
+    private func alignedSource(_ image: UIImage, in rect: CGRect) -> some View {
+        Image(uiImage: image)
+            .resizable()
+            .frame(width: rect.width, height: rect.height)
+            .position(x: rect.midX, y: rect.midY)
+            .accessibilityHidden(true)
+    }
+
+    private var revealCopy: some View {
+        VStack(spacing: 7) {
+            Spacer()
+
+            Text("Lifting the subject")
+                .font(CatTypography.pageTitle)
+                .foregroundStyle(CatLocalTheme.primaryText)
+
+            Text("Separating the cat on this iPhone.")
+                .font(CatTypography.supporting)
+                .foregroundStyle(CatLocalTheme.secondaryText)
         }
+        .multilineTextAlignment(.center)
+        .padding(.horizontal, CatLocalTheme.screenHorizontalPadding)
+        .padding(.bottom, 54)
+        .shadow(color: CatLocalTheme.background.opacity(0.9), radius: 9)
+    }
 
-        liftFeedbackTrigger += 1
-        withAnimation(.smooth(duration: 0.5, extraBounce: 0)) {
-            sourceOpacity = sourceImage == nil ? 0 : 0.34
-            sourceBlur = 9
-            spotlightProgress = 0.34
-            haloOpacity = 0.16
-            haloScale = 1.04
-            stickerYOffset = 18
-            stickerPeelTilt = -12
-        }
+    private var sourcePixelSize: CGSize? {
+        sourceImage.flatMap(DustRevealGeometry.pixelSize(of:))
+    }
 
-        try? await Task.sleep(for: .milliseconds(700))
-        edgeFeedbackTrigger += 1
-        withAnimation(.smooth(duration: 1.0, extraBounce: 0)) {
-            moteProgress = 0.5
-            stickerScale = 1.04
-            stickerOpacity = 0.78
-            stickerYOffset = 7
-            stickerPeelTilt = -4
-            stickerRotation = -1.5
-            peelSheenProgress = 0.78
-            haloOpacity = 0.34
-            spotlightProgress = 0.74
-        }
+    private var cutoutPixelSize: CGSize? {
+        DustRevealGeometry.pixelSize(of: cutoutImage)
+    }
 
-        try? await Task.sleep(for: .milliseconds(1_050))
-        withAnimation(.smooth(duration: 0.75, extraBounce: 0)) {
-            sourceOpacity = sourceImage == nil ? 0 : 0.18
-            sourceBlur = 12
-            spotlightProgress = 1
-            moteProgress = 1
-            stickerScale = 1
-            stickerOpacity = 1
-            stickerYOffset = 0
-            stickerPeelTilt = 0
-            stickerRotation = 0
-            peelSheenProgress = 1
-            haloOpacity = 0.42
-            haloScale = 1
-        }
-
-        try? await Task.sleep(for: .milliseconds(850))
-        landingFeedbackTrigger += 1
-        withAnimation(.spring(response: 0.48, dampingFraction: 0.84)) {
-            stickerScale = 0.985
-        }
-
-        try? await Task.sleep(for: .milliseconds(250))
-        withAnimation(.smooth(duration: 0.28, extraBounce: 0)) {
-            stickerScale = 1
-            haloOpacity = 0.24
-        }
-
-        try? await Task.sleep(for: .milliseconds(350))
-        complete()
+    private var canRenderMetal: Bool {
+        guard let sourcePixelSize, let cutoutPixelSize else { return false }
+        return !motionIsReduced
+            && DustRevealGeometry.imagesAreAligned(
+                originalSize: sourcePixelSize,
+                cutoutSize: cutoutPixelSize
+            )
     }
 
     private var motionIsReduced: Bool {
         reduceMotion || !cardMotionEnabled
     }
 
-    private static func visibleBounds(for image: SendableImage) async -> CGRect? {
-        await Task.detached(priority: .utility) {
-            image.value.cgImage.flatMap { DustingAnchorSampler.visibleBounds(in: $0) }
-        }.value
+    private var usesFallback: Bool {
+        fallbackRequested || !canRenderMetal
+    }
+
+    private var rawCutoutOpacity: Double {
+        guard sourceImage != nil else { return 1 }
+        if usesFallback, !presentationState.showsRawCutout {
+            return 1 - fallbackBackgroundOpacity
+        }
+        return presentationState.showsRawCutout ? 1 : 0
+    }
+
+    @MainActor
+    private func presentFirstFrame() {
+        var transaction = Transaction(animation: nil)
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            _ = presentationState.presentFirstFrame()
+        }
+    }
+
+    @MainActor
+    private func requestFallback(progress: Double) {
+        guard !hasCompleted, !fallbackRequested else { return }
+        fallbackBackgroundOpacity = DustRevealFallback.remainingSourceContribution(
+            progress: progress
+        )
+        fallbackRequested = true
+    }
+
+    @MainActor
+    private func runFallback() async {
+        withAnimation(.easeOut(duration: 0.35)) {
+            fallbackBackgroundOpacity = 0
+        }
+
+        do {
+            try await Task.sleep(for: .milliseconds(350))
+        } catch {
+            return
+        }
+        complete()
     }
 
     @MainActor
@@ -256,169 +465,571 @@ struct CutoutSpotlightRevealView: View {
     }
 }
 
-private struct CutoutSpotlightBeam: View, Animatable {
-    var progress: Double
+@MainActor
+struct MetalBackgroundDustView: UIViewRepresentable {
+    let sourceImage: UIImage
+    let cutoutImage: UIImage
+    let imageRect: CGRect
+    let duration: TimeInterval
+    let onFirstFramePresented: @MainActor () -> Void
+    let onCompleted: @MainActor () -> Void
+    let onFailure: @MainActor (Double) -> Void
 
-    nonisolated var animatableData: Double {
-        get { progress }
-        set { progress = newValue }
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
     }
 
-    var body: some View {
-        GeometryReader { proxy in
-            let width = proxy.size.width
-            let height = proxy.size.height
+    func makeUIView(context: Context) -> MTKView {
+        let view = inactiveView()
+        context.coordinator.startPreparation(
+            view: view,
+            sourceImage: SendableImage(value: sourceImage),
+            cutoutImage: SendableImage(value: cutoutImage),
+            imageRect: imageRect,
+            duration: duration,
+            onFirstFramePresented: onFirstFramePresented,
+            onCompleted: onCompleted,
+            onFailure: onFailure
+        )
+        return view
+    }
 
-            ZStack {
-                Ellipse()
-                    .fill(
-                        RadialGradient(
-                            colors: [
-                                CatLocalTheme.warning.opacity(0.30 * progress),
-                                CatLocalTheme.backgroundGlow.opacity(0.30 * progress),
-                                CatLocalTheme.backgroundGlow.opacity(0)
-                            ],
-                            center: .center,
-                            startRadius: 8,
-                            endRadius: min(width, height) * 0.42
-                        )
-                    )
-                    .frame(width: width * 0.82, height: height * 0.58)
-                    .blur(radius: 24)
-                    .offset(y: height * 0.07)
+    func updateUIView(_ view: MTKView, context: Context) {
+        context.coordinator.update(imageRect: imageRect)
+    }
 
-                Rectangle()
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                .white.opacity(0),
-                                .white.opacity(0.16 * progress),
-                                .white.opacity(0)
-                            ],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                    )
-                    .frame(width: width * 0.34, height: height * 0.82)
-                    .rotationEffect(.degrees(-7))
-                    .blur(radius: 20)
-                    .offset(y: -height * 0.05)
+    static func dismantleUIView(_ view: MTKView, coordinator: Coordinator) {
+        coordinator.stop()
+        view.delegate = nil
+        view.isPaused = true
+    }
+
+    private func inactiveView() -> MTKView {
+        let view = MTKView(frame: .zero, device: nil)
+        view.backgroundColor = .clear
+        view.clearColor = MTLClearColorMake(0, 0, 0, 0)
+        view.colorPixelFormat = .bgra8Unorm_srgb
+        view.framebufferOnly = true
+        view.isOpaque = false
+        view.autoResizeDrawable = true
+        view.preferredFramesPerSecond = 60
+        view.enableSetNeedsDisplay = false
+        view.isPaused = true
+        return view
+    }
+
+    @MainActor
+    final class Coordinator {
+        private var renderer: DustParticleRenderer?
+        private var preparationTask: Task<DustRendererResources, Error>?
+        private var attachmentTask: Task<Void, Never>?
+        private var preparationGate = DustRevealPreparationGate()
+        private var firstFrameGate = DustRevealPreparationGate()
+        private var latestImageRect = CGRect.zero
+        private var didReportFailure = false
+
+        func startPreparation(
+            view: MTKView,
+            sourceImage: SendableImage,
+            cutoutImage: SendableImage,
+            imageRect: CGRect,
+            duration: TimeInterval,
+            onFirstFramePresented: @escaping @MainActor () -> Void,
+            onCompleted: @escaping @MainActor () -> Void,
+            onFailure: @escaping @MainActor (Double) -> Void
+        ) {
+            latestImageRect = imageRect
+            let generation = preparationGate.begin()
+            let firstFrameGeneration = firstFrameGate.begin()
+            let task = Task.detached(priority: .userInitiated) {
+                try DustRendererResourcePreparer.prepare(
+                    sourceImage: sourceImage,
+                    cutoutImage: cutoutImage,
+                    pixelFormat: .bgra8Unorm_srgb
+                )
             }
-            .frame(width: width, height: height)
-        }
-        .blendMode(.screen)
-    }
-}
+            preparationTask = task
+            attachmentTask = Task { @MainActor [weak self, weak view] in
+                do {
+                    let resources = try await task.value
+                    try Task.checkCancellation()
+                    guard
+                        let self,
+                        self.preparationGate.consume(generation),
+                        let view
+                    else {
+                        return
+                    }
 
-private struct StickerPeelSheen: View, Animatable {
-    let image: UIImage
-    var progress: Double
-
-    nonisolated var animatableData: Double {
-        get { progress }
-        set { progress = newValue }
-    }
-
-    var body: some View {
-        Image(uiImage: image)
-            .resizable()
-            .scaledToFit()
-            .overlay {
-                GeometryReader { proxy in
-                    let travel = proxy.size.width * 1.3
-
-                    LinearGradient(
-                        colors: [
-                            .white.opacity(0),
-                            .white.opacity(0.38),
-                            .white.opacity(0)
-                        ],
-                        startPoint: .top,
-                        endPoint: .bottom
+                    view.device = resources.device
+                    let renderer = DustParticleRenderer(
+                        view: view,
+                        resources: resources,
+                        imageRect: self.latestImageRect,
+                        duration: duration,
+                        onFirstFramePresented: { [weak self] in
+                            guard
+                                let self,
+                                self.firstFrameGate.consume(firstFrameGeneration)
+                            else {
+                                return
+                            }
+                            onFirstFramePresented()
+                        },
+                        onCompleted: onCompleted,
+                        onFailure: onFailure
                     )
-                    .frame(width: proxy.size.width * 0.34, height: proxy.size.height * 1.18)
-                    .rotationEffect(.degrees(-18))
-                    .blur(radius: 10)
-                    .offset(x: -travel * 0.55 + travel * progress)
+                    self.renderer = renderer
+                    self.preparationTask = nil
+                    self.attachmentTask = nil
+                    view.delegate = renderer
+                    view.isPaused = false
+                } catch is CancellationError {
+                    return
+                } catch {
+                    guard
+                        let self,
+                        self.preparationGate.consume(generation)
+                    else {
+                        return
+                    }
+                    self.preparationTask = nil
+                    self.attachmentTask = nil
+                    self.firstFrameGate.cancel()
+                    Self.logger.error(
+                        "Metal dust reveal setup failed: \(error.localizedDescription, privacy: .public)"
+                    )
+                    self.reportFailure(onFailure, progress: 0)
                 }
-                .mask(
-                    Image(uiImage: image)
-                        .resizable()
-                        .scaledToFit()
-                )
-                .blendMode(.screen)
-                .opacity(sin(min(progress, 1) * .pi) * 0.7)
             }
-            .padding(16)
-            .allowsHitTesting(false)
+        }
+
+        func update(imageRect: CGRect) {
+            latestImageRect = imageRect
+            renderer?.imageRect = imageRect
+        }
+
+        func stop() {
+            preparationGate.cancel()
+            firstFrameGate.cancel()
+            preparationTask?.cancel()
+            attachmentTask?.cancel()
+            preparationTask = nil
+            attachmentTask = nil
+            renderer?.stop()
+            renderer = nil
+        }
+
+        private func reportFailure(
+            _ action: @escaping @MainActor (Double) -> Void,
+            progress: Double
+        ) {
+            guard !didReportFailure else { return }
+            didReportFailure = true
+            action(progress)
+        }
+
+        private static let logger = Logger(
+            subsystem: Bundle.main.bundleIdentifier ?? "CatLocal",
+            category: "DustReveal"
+        )
     }
 }
 
-private struct CutoutMoteField: View, Animatable {
-    var progress: Double
-    let anchorBounds: CGRect?
+struct DustRendererResources: @unchecked Sendable {
+    let device: MTLDevice
+    let commandQueue: MTLCommandQueue
+    let backgroundPipeline: MTLRenderPipelineState
+    let particlePipeline: MTLRenderPipelineState
+    let sourceTexture: MTLTexture
+    let cutoutTexture: MTLTexture
+    let particleCount: Int
+}
 
-    nonisolated var animatableData: Double {
-        get { progress }
-        set { progress = newValue }
-    }
-
-    private let motes: [Mote] = [
-        Mote(x: 0.24, y: 0.30, dx: -12, dy: -24, size: 3, delay: 0.00, color: .white),
-        Mote(x: 0.74, y: 0.28, dx: 16, dy: -22, size: 4, delay: 0.08, color: Color(red: 1.0, green: 0.92, blue: 0.74)),
-        Mote(x: 0.18, y: 0.62, dx: -18, dy: 12, size: 3, delay: 0.18, color: CatLocalTheme.warning),
-        Mote(x: 0.78, y: 0.66, dx: 18, dy: 14, size: 3, delay: 0.26, color: .white),
-        Mote(x: 0.50, y: 0.16, dx: 4, dy: -28, size: 3, delay: 0.34, color: Color(red: 1.0, green: 0.96, blue: 0.82))
-    ]
-
-    var body: some View {
-        Canvas { context, size in
-            guard progress > 0 else { return }
-
-            let rect = resolvedRect(in: size).insetBy(dx: -16, dy: -16)
-            for mote in motes {
-                let localProgress = min(max((progress - mote.delay) / 0.62, 0), 1)
-                guard localProgress > 0 else { continue }
-
-                let alpha = pow(1 - localProgress, 0.9) * 0.68
-                let radius = mote.size * CGFloat(0.82 + localProgress * 0.6)
-                let position = CGPoint(
-                    x: rect.minX + rect.width * mote.x + mote.dx * CGFloat(localProgress),
-                    y: rect.minY + rect.height * mote.y + mote.dy * CGFloat(localProgress)
-                )
-                let ellipse = CGRect(
-                    x: position.x - radius / 2,
-                    y: position.y - radius / 2,
-                    width: radius,
-                    height: radius
-                )
-                context.fill(
-                    Path(ellipseIn: ellipse),
-                    with: .color(mote.color.opacity(alpha))
-                )
-            }
+enum DustRendererResourcePreparer {
+    static func prepare(
+        sourceImage: SendableImage,
+        cutoutImage: SendableImage,
+        pixelFormat: MTLPixelFormat
+    ) throws -> DustRendererResources {
+        try Task.checkCancellation()
+        guard let device = MTLCreateSystemDefaultDevice() else {
+            throw DustRendererError.metalUnavailable
         }
-        .blendMode(.screen)
-    }
+        guard
+            let sourceCGImage = sourceImage.value.cgImage,
+            let cutoutCGImage = cutoutImage.value.cgImage
+        else {
+            throw DustRendererError.imageUnavailable
+        }
+        guard DustRevealGeometry.imagesAreAligned(
+            originalSize: CGSize(width: sourceCGImage.width, height: sourceCGImage.height),
+            cutoutSize: CGSize(width: cutoutCGImage.width, height: cutoutCGImage.height)
+        ) else {
+            throw DustRendererError.imageDimensionsMismatch
+        }
+        guard let commandQueue = device.makeCommandQueue() else {
+            throw DustRendererError.commandQueueUnavailable
+        }
+        guard let library = device.makeDefaultLibrary() else {
+            throw DustRendererError.shaderLibraryUnavailable
+        }
 
-    private func resolvedRect(in size: CGSize) -> CGRect {
-        let normalized = anchorBounds ?? CGRect(x: 0.22, y: 0.16, width: 0.56, height: 0.68)
-        return CGRect(
-            x: normalized.minX * size.width,
-            y: normalized.minY * size.height,
-            width: normalized.width * size.width,
-            height: normalized.height * size.height
+        try Task.checkCancellation()
+        let loader = MTKTextureLoader(device: device)
+        let options: [MTKTextureLoader.Option: Any] = [
+            .origin: MTKTextureLoader.Origin.topLeft,
+            .SRGB: true,
+            .textureUsage: MTLTextureUsage.shaderRead.rawValue
+        ]
+        let sourceTexture = try loader.newTexture(cgImage: sourceCGImage, options: options)
+        try Task.checkCancellation()
+        let cutoutTexture = try loader.newTexture(cgImage: cutoutCGImage, options: options)
+        try Task.checkCancellation()
+        let backgroundPipeline = try makePipeline(
+            device: device,
+            library: library,
+            vertexFunction: "dustBackgroundVertex",
+            fragmentFunction: "dustBackgroundFragment",
+            pixelFormat: pixelFormat
+        )
+        let particlePipeline = try makePipeline(
+            device: device,
+            library: library,
+            vertexFunction: "dustParticleVertex",
+            fragmentFunction: "dustParticleFragment",
+            pixelFormat: pixelFormat
+        )
+        try Task.checkCancellation()
+
+        return DustRendererResources(
+            device: device,
+            commandQueue: commandQueue,
+            backgroundPipeline: backgroundPipeline,
+            particlePipeline: particlePipeline,
+            sourceTexture: sourceTexture,
+            cutoutTexture: cutoutTexture,
+            particleCount: adaptiveParticleCount(
+                pixelCount: sourceCGImage.width * sourceCGImage.height
+            )
         )
     }
 
-    private struct Mote {
-        let x: CGFloat
-        let y: CGFloat
-        let dx: CGFloat
-        let dy: CGFloat
-        let size: CGFloat
-        let delay: Double
-        let color: Color
+    private static func adaptiveParticleCount(pixelCount: Int) -> Int {
+        min(max(pixelCount / 14, 45_000), 80_000)
+    }
+
+    private static func makePipeline(
+        device: MTLDevice,
+        library: MTLLibrary,
+        vertexFunction: String,
+        fragmentFunction: String,
+        pixelFormat: MTLPixelFormat
+    ) throws -> MTLRenderPipelineState {
+        guard
+            let vertex = library.makeFunction(name: vertexFunction),
+            let fragment = library.makeFunction(name: fragmentFunction)
+        else {
+            throw DustRendererError.shaderFunctionUnavailable
+        }
+
+        let descriptor = MTLRenderPipelineDescriptor()
+        descriptor.vertexFunction = vertex
+        descriptor.fragmentFunction = fragment
+        descriptor.colorAttachments[0].pixelFormat = pixelFormat
+        descriptor.colorAttachments[0].isBlendingEnabled = true
+        descriptor.colorAttachments[0].sourceRGBBlendFactor = .sourceAlpha
+        descriptor.colorAttachments[0].destinationRGBBlendFactor = .oneMinusSourceAlpha
+        descriptor.colorAttachments[0].sourceAlphaBlendFactor = .one
+        descriptor.colorAttachments[0].destinationAlphaBlendFactor = .oneMinusSourceAlpha
+        return try device.makeRenderPipelineState(descriptor: descriptor)
+    }
+}
+
+@MainActor
+final class DustParticleRenderer: NSObject, MTKViewDelegate {
+    var imageRect: CGRect
+
+    private weak var view: MTKView?
+    private let commandQueue: MTLCommandQueue
+    private let backgroundPipeline: MTLRenderPipelineState
+    private let particlePipeline: MTLRenderPipelineState
+    private let sourceTexture: MTLTexture
+    private let cutoutTexture: MTLTexture
+    private let particleCount: Int
+    private let duration: TimeInterval
+    private let onFirstFramePresented: @MainActor () -> Void
+    private let onCompleted: @MainActor () -> Void
+    private let onFailure: @MainActor (Double) -> Void
+    private let commandCompletionTracker = DustCommandCompletionTracker()
+    private let firstFramePresentationGate = DustFirstFramePresentationGate()
+    private var startTime: CFTimeInterval?
+    private var hasFinished = false
+    private var hasFailed = false
+    private var isStopped = false
+    private var isFinishing = false
+    private var unavailableFrameCount = 0
+    private var lastSubmittedProgress = 0.0
+    private var hasPresentedFirstFrame = false
+
+    init(
+        view: MTKView,
+        resources: DustRendererResources,
+        imageRect: CGRect,
+        duration: TimeInterval,
+        onFirstFramePresented: @escaping @MainActor () -> Void,
+        onCompleted: @escaping @MainActor () -> Void,
+        onFailure: @escaping @MainActor (Double) -> Void
+    ) {
+        commandQueue = resources.commandQueue
+        backgroundPipeline = resources.backgroundPipeline
+        particlePipeline = resources.particlePipeline
+        sourceTexture = resources.sourceTexture
+        cutoutTexture = resources.cutoutTexture
+        particleCount = resources.particleCount
+        self.imageRect = imageRect
+        self.duration = duration
+        self.onFirstFramePresented = onFirstFramePresented
+        self.onCompleted = onCompleted
+        self.onFailure = onFailure
+        self.view = view
+        super.init()
+    }
+
+    func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {}
+
+    func draw(in view: MTKView) {
+        guard !isStopped, !hasFinished, !hasFailed, !isFinishing else { return }
+        guard let passDescriptor = view.currentRenderPassDescriptor,
+              let drawable = view.currentDrawable else {
+            unavailableFrameCount += 1
+            if unavailableFrameCount >= 30 {
+                fail(with: .drawableUnavailable)
+            }
+            return
+        }
+        unavailableFrameCount = 0
+        guard let commandBuffer = commandQueue.makeCommandBuffer() else {
+            fail(with: .commandBufferUnavailable)
+            return
+        }
+        guard let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: passDescriptor) else {
+            fail(with: .renderEncoderUnavailable)
+            return
+        }
+
+        let now = CACurrentMediaTime()
+        let startedAt = startTime ?? now
+        startTime = startedAt
+        let elapsed = now - startedAt
+        let progress = DustRevealTimeline.progress(elapsed: elapsed, duration: duration)
+        var uniforms = makeUniforms(view: view, progress: progress)
+
+        encoder.setRenderPipelineState(backgroundPipeline)
+        encoder.setVertexBytes(&uniforms, length: MemoryLayout<DustRevealUniforms>.stride, index: 0)
+        encoder.setFragmentBytes(&uniforms, length: MemoryLayout<DustRevealUniforms>.stride, index: 0)
+        encoder.setFragmentTexture(sourceTexture, index: 0)
+        encoder.setFragmentTexture(cutoutTexture, index: 1)
+        encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 6)
+
+        encoder.setRenderPipelineState(particlePipeline)
+        encoder.setVertexBytes(&uniforms, length: MemoryLayout<DustRevealUniforms>.stride, index: 0)
+        encoder.setVertexTexture(sourceTexture, index: 0)
+        encoder.setVertexTexture(cutoutTexture, index: 1)
+        encoder.drawPrimitives(type: .point, vertexStart: 0, vertexCount: particleCount)
+        encoder.endEncoding()
+
+        let isTerminalFrame = DustRevealTimeline.isComplete(
+            elapsed: elapsed,
+            duration: duration
+        )
+        guard let submission = commandCompletionTracker.submit(
+            isTerminalFrame: isTerminalFrame
+        ) else {
+            isFinishing = true
+            view.isPaused = true
+            return
+        }
+        lastSubmittedProgress = Double(progress)
+        if isTerminalFrame {
+            isFinishing = true
+            view.isPaused = true
+        }
+        let completionTracker = commandCompletionTracker
+        let firstFrameGate = firstFramePresentationGate
+        if submission == 0 {
+#if targetEnvironment(simulator)
+            // The Simulator SDK omits MTLDrawable.addPresentedHandler.
+#else
+            drawable.addPresentedHandler { _ in
+                guard firstFrameGate.drawablePresented() else { return }
+                Task { @MainActor [weak self] in
+                    self?.presentFirstFrameIfNeeded()
+                }
+            }
+#endif
+        }
+        commandBuffer.addCompletedHandler { completedBuffer in
+            let succeeded = completedBuffer.status == .completed
+            let errorDescription = completedBuffer.error?.localizedDescription
+            var resolvedFirstFrame = submission == 0
+                && firstFrameGate.commandCompleted(succeeded: succeeded)
+#if targetEnvironment(simulator)
+            if submission == 0, succeeded {
+                resolvedFirstFrame = firstFrameGate.drawablePresented() || resolvedFirstFrame
+            }
+#endif
+            let outcome = completionTracker.complete(
+                submission: submission,
+                succeeded: succeeded,
+                errorDescription: errorDescription
+            )
+            guard resolvedFirstFrame || outcome != nil else { return }
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                if resolvedFirstFrame {
+                    self.presentFirstFrameIfNeeded()
+                }
+                if let outcome {
+                    self.handleCommandCompletion(outcome)
+                }
+            }
+        }
+        commandBuffer.present(drawable)
+        commandBuffer.commit()
+    }
+
+    func stop() {
+        guard !isStopped else { return }
+        isStopped = true
+        commandCompletionTracker.cancel()
+        firstFramePresentationGate.cancel()
+        view?.isPaused = true
+        view = nil
+    }
+
+    private func makeUniforms(view: MTKView, progress: Float) -> DustRevealUniforms {
+        let scale = view.contentScaleFactor
+        let pixelRect = CGRect(
+            x: imageRect.minX * scale,
+            y: imageRect.minY * scale,
+            width: imageRect.width * scale,
+            height: imageRect.height * scale
+        )
+        let aspect = max(Float(sourceTexture.width) / Float(sourceTexture.height), 0.01)
+        let columns = max(Int(ceil(sqrt(Double(particleCount) * Double(aspect)))), 1)
+        let rows = max(Int(ceil(Double(particleCount) / Double(columns))), 1)
+
+        return DustRevealUniforms(
+            imageRect: SIMD4(
+                Float(pixelRect.minX),
+                Float(pixelRect.minY),
+                Float(pixelRect.width),
+                Float(pixelRect.height)
+            ),
+            drawableSize: SIMD2(Float(view.drawableSize.width), Float(view.drawableSize.height)),
+            progress: progress,
+            particleSize: Float(max(1.5, min(3.4, scale * 1.15))),
+            backgroundAlphaThreshold: Float(DustRevealAlpha.backgroundThreshold),
+            particleInfo: SIMD4(
+                UInt32(particleCount),
+                UInt32(columns),
+                UInt32(rows),
+                0
+            )
+        )
+    }
+
+    private func finish() {
+        guard !hasFinished, !isStopped else { return }
+        hasFinished = true
+        view?.isPaused = true
+        view?.isHidden = true
+        onCompleted()
+    }
+
+    private func presentFirstFrameIfNeeded() {
+        guard !isStopped, !hasFinished, !hasFailed else { return }
+        guard !hasPresentedFirstFrame else { return }
+        hasPresentedFirstFrame = true
+        onFirstFramePresented()
+    }
+
+    private func handleCommandCompletion(_ outcome: DustCommandCompletionTracker.Outcome) {
+        guard !isStopped, !hasFinished, !hasFailed else { return }
+
+        switch outcome {
+        case .finish:
+            finish()
+        case .fallback(let errorDescription):
+            fail(with: .commandBufferExecutionFailed(errorDescription))
+        }
+    }
+
+    private func fail(with error: DustRendererError) {
+        guard !hasFailed, !hasFinished, !isStopped else { return }
+        hasFailed = true
+        commandCompletionTracker.cancel()
+        firstFramePresentationGate.cancel()
+        Self.logger.error("Metal dust reveal stopped: \(error.localizedDescription, privacy: .public)")
+        view?.isPaused = true
+        onFailure(lastSubmittedProgress)
+    }
+
+    private static let logger = Logger(
+        subsystem: Bundle.main.bundleIdentifier ?? "CatLocal",
+        category: "DustReveal"
+    )
+}
+
+private struct DustRevealUniforms {
+    var imageRect: SIMD4<Float>
+    var drawableSize: SIMD2<Float>
+    var progress: Float
+    var particleSize: Float
+    var backgroundAlphaThreshold: Float
+    var particleInfo: SIMD4<UInt32>
+}
+
+private enum DustRendererError: LocalizedError {
+    case metalUnavailable
+    case imageUnavailable
+    case imageDimensionsMismatch
+    case commandQueueUnavailable
+    case shaderLibraryUnavailable
+    case shaderFunctionUnavailable
+    case drawableUnavailable
+    case commandBufferUnavailable
+    case commandBufferExecutionFailed(String?)
+    case renderEncoderUnavailable
+
+    var errorDescription: String? {
+        switch self {
+        case .metalUnavailable:
+            "Metal is unavailable on this device."
+        case .imageUnavailable:
+            "The reveal images could not be converted to textures."
+        case .imageDimensionsMismatch:
+            "The original and cutout image dimensions do not align."
+        case .commandQueueUnavailable:
+            "The Metal command queue could not be created."
+        case .shaderLibraryUnavailable:
+            "The Metal shader library could not be loaded."
+        case .shaderFunctionUnavailable:
+            "The Metal dust shader functions could not be loaded."
+        case .drawableUnavailable:
+            "The Metal drawable remained unavailable."
+        case .commandBufferUnavailable:
+            "A Metal command buffer could not be created."
+        case .commandBufferExecutionFailed(let details):
+            if let details, !details.isEmpty {
+                "The Metal command buffer failed: \(details)"
+            } else {
+                "The Metal command buffer failed during execution."
+            }
+        case .renderEncoderUnavailable:
+            "A Metal render encoder could not be created."
+        }
     }
 }
 
@@ -464,115 +1075,5 @@ private extension View {
             .shadow(color: .white.opacity(0.98), radius: 0, x: 3, y: -3)
             .shadow(color: .white.opacity(0.98), radius: 0, x: -3, y: -3)
             .shadow(color: .white.opacity(0.9), radius: 4, x: 0, y: 1)
-    }
-}
-
-enum DustingAnchorSampler {
-    static let defaultMaximumAnchors = 8
-
-    static func visibleBounds(
-        in image: CGImage,
-        alphaThreshold: UInt8 = 18
-    ) -> CGRect? {
-        let width = image.width
-        let height = image.height
-        guard width > 0, height > 0 else { return nil }
-
-        let bytesPerPixel = 4
-        let bytesPerRow = width * bytesPerPixel
-        var pixels = [UInt8](repeating: 0, count: height * bytesPerRow)
-        guard let context = CGContext(
-            data: &pixels,
-            width: width,
-            height: height,
-            bitsPerComponent: 8,
-            bytesPerRow: bytesPerRow,
-            space: CGColorSpaceCreateDeviceRGB(),
-            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-        ) else {
-            return nil
-        }
-
-        context.clear(CGRect(x: 0, y: 0, width: width, height: height))
-        context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
-
-        var minX = width
-        var minY = height
-        var maxX = -1
-        var maxY = -1
-
-        for y in 0..<height {
-            for x in 0..<width {
-                let offset = (y * bytesPerRow) + (x * bytesPerPixel)
-                guard pixels[offset + 3] > alphaThreshold else { continue }
-                minX = min(minX, x)
-                minY = min(minY, y)
-                maxX = max(maxX, x)
-                maxY = max(maxY, y)
-            }
-        }
-
-        guard maxX >= minX, maxY >= minY else { return nil }
-        return CGRect(
-            x: CGFloat(minX) / CGFloat(width),
-            y: CGFloat(minY) / CGFloat(height),
-            width: CGFloat(maxX - minX + 1) / CGFloat(width),
-            height: CGFloat(maxY - minY + 1) / CGFloat(height)
-        )
-    }
-
-    static func sampleVisibleAnchors(
-        in image: CGImage,
-        maximumAnchors: Int = defaultMaximumAnchors,
-        alphaThreshold: UInt8 = 18
-    ) -> [CGPoint] {
-        guard maximumAnchors > 0 else { return [] }
-
-        let width = image.width
-        let height = image.height
-        guard width > 0, height > 0 else { return [] }
-
-        let bytesPerPixel = 4
-        let bytesPerRow = width * bytesPerPixel
-        var pixels = [UInt8](repeating: 0, count: height * bytesPerRow)
-        guard let context = CGContext(
-            data: &pixels,
-            width: width,
-            height: height,
-            bitsPerComponent: 8,
-            bytesPerRow: bytesPerRow,
-            space: CGColorSpaceCreateDeviceRGB(),
-            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-        ) else {
-            return []
-        }
-
-        context.clear(CGRect(x: 0, y: 0, width: width, height: height))
-        context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
-
-        let targetSamples = max(maximumAnchors * 4, maximumAnchors)
-        let step = max(1, Int(sqrt(Double(width * height) / Double(targetSamples))))
-        var anchors: [CGPoint] = []
-        anchors.reserveCapacity(maximumAnchors)
-
-        for y in stride(from: 0, to: height, by: step) {
-            for x in stride(from: 0, to: width, by: step) {
-                let offset = (y * bytesPerRow) + (x * bytesPerPixel)
-                guard pixels[offset + 3] > alphaThreshold else { continue }
-                anchors.append(
-                    CGPoint(
-                        x: CGFloat(x) / CGFloat(max(width - 1, 1)),
-                        y: CGFloat(y) / CGFloat(max(height - 1, 1))
-                    )
-                )
-            }
-        }
-
-        guard anchors.count > maximumAnchors else { return anchors }
-        let stride = max(1, anchors.count / maximumAnchors)
-        return anchors.enumerated()
-            .compactMap { index, anchor in index.isMultiple(of: stride) ? anchor : nil }
-            .prefix(maximumAnchors)
-            .map(\.self)
     }
 }

@@ -71,6 +71,7 @@ struct LiveInteractiveCardView<Content: View>: View {
                 axis: (x: 0, y: 1, z: 0),
                 perspective: 0.66
             )
+            .shadow(color: CatLocalTheme.shadow.opacity(0.27), radius: 17, y: 9)
             .gesture(dragGesture(size: size))
             .accessibilityAdjustableAction { direction in
                 adjustLighting(direction: direction, size: size)
