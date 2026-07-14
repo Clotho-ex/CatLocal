@@ -4,6 +4,7 @@ import SwiftUI
 struct FocusedCardView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.catLocalCardMotionEnabled) private var cardMotionEnabled
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @AppStorage(CatLocalUserDefaults.hasSeenFocusedCardGlintHintKey) private var hasSeenFocusedCardGlintHint = false
 
@@ -40,6 +41,11 @@ struct FocusedCardView: View {
                     isEditing = true
                 } label: {
                     Image(systemName: "pencil")
+                        .frame(width: 24, height: 24)
+                }
+                .transaction { transaction in
+                    transaction.animation = nil
+                    transaction.disablesAnimations = true
                 }
                 .accessibilityLabel("Edit")
             }
@@ -143,8 +149,12 @@ struct FocusedCardView: View {
         return CGSize(width: focusedCardMaxWidth, height: focusedCardMaxWidth / 0.64)
     }
 
+    private var cardMotionIsReduced: Bool {
+        reduceMotion || !cardMotionEnabled
+    }
+
     private var showsFirstGlintMascot: Bool {
-        !hasSeenFocusedCardGlintHint && !reduceMotion && !isCardInteracting
+        !hasSeenFocusedCardGlintHint && !cardMotionIsReduced && !isCardInteracting
     }
 
     private var lightGuidance: some View {
@@ -165,12 +175,12 @@ struct FocusedCardView: View {
                 lightHintPill
             }
         }
-        .opacity(isCardInteracting && !reduceMotion ? 0 : 1)
-        .offset(y: isCardInteracting && !reduceMotion ? 8 : 0)
+        .opacity(isCardInteracting && !cardMotionIsReduced ? 0 : 1)
+        .offset(y: isCardInteracting && !cardMotionIsReduced ? 8 : 0)
         .animation(.easeInOut(duration: 0.16), value: isCardInteracting)
-        .animation(reduceMotion ? nil : .smooth(duration: 0.2, extraBounce: 0), value: showsFirstGlintMascot)
+        .animation(cardMotionIsReduced ? nil : .smooth(duration: 0.2, extraBounce: 0), value: showsFirstGlintMascot)
         .allowsHitTesting(false)
-        .accessibilityHidden(isCardInteracting && !reduceMotion)
+        .accessibilityHidden(isCardInteracting && !cardMotionIsReduced)
     }
 
     private func glintHintMascot(size: CGFloat) -> some View {
@@ -184,11 +194,11 @@ struct FocusedCardView: View {
 
     private var lightHintPill: some View {
         Label {
-            Text(reduceMotion ? "Lighting motion is reduced" : "Drag to catch the light")
+            Text(cardMotionIsReduced ? "Card motion is reduced" : "Drag to catch the light")
                 .lineLimit(dynamicTypeSize.isAccessibilitySize ? 3 : 2)
                 .fixedSize(horizontal: false, vertical: true)
         } icon: {
-            Image(systemName: reduceMotion ? "figure.stand" : "gyroscope")
+            Image(systemName: cardMotionIsReduced ? "figure.stand" : "gyroscope")
                 .imageScale(.medium)
                 .accessibilityHidden(true)
         }

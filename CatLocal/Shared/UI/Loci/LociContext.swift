@@ -50,12 +50,6 @@ enum LociContext: String, CaseIterable, Identifiable {
         }
     }
 
-    var mascotAnimation: LociMascotAnimation { motion }
-
-    var mascotState: LociMascotState {
-        LociMascotState.state(for: self)
-    }
-
     var title: String {
         switch self {
         case .emptyCollection:

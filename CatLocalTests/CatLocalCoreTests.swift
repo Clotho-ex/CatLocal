@@ -7,13 +7,35 @@ import UIKit
 
 struct CatLocalCoreTests {
     @Test
+    func preferenceCatalogUsesStablePersistedValues() {
+        #expect(CatLocalAppearance.allCases == [.system, .light, .dark])
+        #expect(CatLocalHomeView.allCases == [.cards, .catlas])
+        #expect(CatLocalSortOrder.allCases == [.number, .place, .alphabetical])
+
+        #expect(CatLocalAppearance.allCases.map(\.rawValue) == ["system", "light", "dark"])
+        #expect(CatLocalHomeView.allCases.map(\.rawValue) == ["cards", "catlas"])
+        #expect(CatLocalSortOrder.allCases.map(\.rawValue) == ["number", "place", "alphabetical"])
+    }
+
+    @Test
+    func invalidPersistedPreferencesRecoverToSafeDefaults() {
+        #expect(CatLocalAppearance.resolved("unknown") == .system)
+        #expect(CatLocalHomeView.resolved("unknown") == .cards)
+        #expect(CatLocalSortOrder.resolved("unknown") == .number)
+    }
+
+    @Test
+    func appearancePreferenceMapsToSwiftUIColorSchemes() {
+        #expect(CatLocalAppearance.system.preferredColorScheme == nil)
+        #expect(CatLocalAppearance.light.preferredColorScheme == .light)
+        #expect(CatLocalAppearance.dark.preferredColorScheme == .dark)
+    }
+
+    @Test
     func lociPoseRawValuesMatchAssetNames() {
         #expect(LociPose.allCases.map(\.rawValue) == [
-            "loci_neutral",
             "loci_presenting",
             "loci_curious",
-            "loci_greeting",
-            "loci_icon",
             "loci_noCatFound",
             "loci_inspecting",
             "loci_cardReady",
@@ -73,7 +95,6 @@ struct CatLocalCoreTests {
         for (context, pose, motion) in expected {
             #expect(context.pose == pose)
             #expect(context.motion == motion)
-            #expect(context.mascotAnimation == motion)
         }
     }
 
@@ -107,10 +128,6 @@ struct CatLocalCoreTests {
             .successPop,
             .errorTilt
         ])
-        #expect(LociMascotAnimation.idle.isContinuous)
-        #expect(LociMascotAnimation.thinking.isContinuous)
-        #expect(!LociMascotAnimation.successPop.isContinuous)
-        #expect(!LociMascotAnimation.errorTilt.isContinuous)
     }
 
     @Test
@@ -543,6 +560,35 @@ struct CatLocalCoreTests {
     }
 
     @Test
+    func visionCutoutPreservesPawsBeyondDetectionBounds() async throws {
+        let original = renderedImage(size: CGSize(width: 100, height: 100), opaque: true) { context in
+            UIColor.systemOrange.setFill()
+            context.fill(CGRect(x: 0, y: 0, width: 100, height: 100))
+        }
+        let mask = try oneComponentMask(
+            size: CGSize(width: 100, height: 100),
+            visibleRects: [
+                CGRect(x: 35, y: 25, width: 30, height: 40),
+                CGRect(x: 37, y: 65, width: 11, height: 18),
+                CGRect(x: 52, y: 65, width: 11, height: 18)
+            ]
+        )
+        let detectionBounds = CGRect(x: 0.35, y: 0.35, width: 0.30, height: 0.40)
+
+        let processor = CatVisionProcessor()
+        #expect(processor.maskOverlapScore(mask, boundingBox: detectionBounds) > 0.9)
+
+        let cutout = try await processor.makeTransparentCutout(
+            from: try #require(original.cgImage),
+            mask: CIImage(cvPixelBuffer: mask)
+        )
+
+        #expect(try alphaValue(in: cutout, x: 42, y: 75) > 200)
+        #expect(try alphaValue(in: cutout, x: 57, y: 75) > 200)
+        #expect(try alphaValue(in: cutout, x: 10, y: 90) == 0)
+    }
+
+    @Test
     func visionCutoutRejectsWholeRectangleMask() async throws {
         let original = renderedImage(size: CGSize(width: 80, height: 80), opaque: true) { context in
             UIColor.systemOrange.setFill()
@@ -560,26 +606,6 @@ struct CatLocalCoreTests {
                 mask: CIImage(cgImage: try #require(mask.cgImage))
             )
         }
-    }
-
-    @Test
-    func catCropExpandsDetectionAndStaysInsideImageBounds() {
-        let processor = CatVisionProcessor()
-        let crop = processor.expandedCatCropRect(
-            for: CGRect(x: 0.4, y: 0.25, width: 0.2, height: 0.3),
-            imageWidth: 1_000,
-            imageHeight: 800
-        )
-
-        let detectedPixelRect = CGRect(x: 400, y: 360, width: 200, height: 240)
-        #expect(crop.contains(detectedPixelRect.origin))
-        #expect(crop.contains(CGPoint(x: detectedPixelRect.maxX, y: detectedPixelRect.maxY)))
-        #expect(crop.width > detectedPixelRect.width)
-        #expect(crop.height > detectedPixelRect.height)
-        #expect(crop.minX >= 0)
-        #expect(crop.minY >= 0)
-        #expect(crop.maxX <= 1_000)
-        #expect(crop.maxY <= 800)
     }
 
     @Test
@@ -693,5 +719,50 @@ struct CatLocalCoreTests {
 
         context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
         return pixels[(y * bytesPerRow) + (x * bytesPerPixel) + 3]
+    }
+
+    private func oneComponentMask(
+        size: CGSize,
+        visibleRects: [CGRect]
+    ) throws -> CVPixelBuffer {
+        var buffer: CVPixelBuffer?
+        let status = CVPixelBufferCreate(
+            kCFAllocatorDefault,
+            Int(size.width),
+            Int(size.height),
+            kCVPixelFormatType_OneComponent8,
+            nil,
+            &buffer
+        )
+        guard status == kCVReturnSuccess, let buffer else {
+            throw CatImageStoreError.imageEncodingFailed
+        }
+
+        CVPixelBufferLockBaseAddress(buffer, [])
+        defer { CVPixelBufferUnlockBaseAddress(buffer, []) }
+        guard let baseAddress = CVPixelBufferGetBaseAddress(buffer) else {
+            throw CatImageStoreError.imageEncodingFailed
+        }
+
+        let width = CVPixelBufferGetWidth(buffer)
+        let height = CVPixelBufferGetHeight(buffer)
+        let rowBytes = CVPixelBufferGetBytesPerRow(buffer)
+        memset(baseAddress, 0, rowBytes * height)
+
+        for rect in visibleRects {
+            let minX = max(0, Int(rect.minX))
+            let maxX = min(width, Int(rect.maxX))
+            let minY = max(0, Int(rect.minY))
+            let maxY = min(height, Int(rect.maxY))
+            for y in minY..<maxY {
+                let row = baseAddress
+                    .advanced(by: y * rowBytes)
+                    .assumingMemoryBound(to: UInt8.self)
+                for x in minX..<maxX {
+                    row[x] = 255
+                }
+            }
+        }
+        return buffer
     }
 }

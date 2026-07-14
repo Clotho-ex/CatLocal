@@ -8,13 +8,4 @@ enum LociMascotAnimation: String, CaseIterable, Identifiable {
     case errorTilt
 
     var id: String { rawValue }
-
-    var isContinuous: Bool {
-        switch self {
-        case .idle, .thinking:
-            return true
-        case .none, .successPop, .errorTilt:
-            return false
-        }
-    }
 }

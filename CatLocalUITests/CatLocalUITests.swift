@@ -228,14 +228,42 @@ final class CatLocalUITests: XCTestCase {
         XCTAssertTrue(settingsButton.waitForExistence(timeout: 5))
         selectTab(settingsButton)
         XCTAssertTrue(app.staticTexts["Settings"].waitForExistence(timeout: 8))
-        XCTAssertTrue(app.staticTexts["Privacy Receipt"].exists)
+
+        XCTAssertTrue(app.descendants(matching: .any)["settings-appearance-picker"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["settings-card-motion-toggle"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["settings-haptics-toggle"].exists)
+        XCTAssertFalse(app.staticTexts["Home View"].exists)
+        XCTAssertFalse(app.staticTexts["Sort Order"].exists)
+
+        let storageSummary = app.descendants(matching: .any)["settings-storage-summary"]
+        if !storageSummary.waitForExistence(timeout: 3) {
+            app.swipeUp()
+        }
+        XCTAssertTrue(storageSummary.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Local Storage"].exists)
+        XCTAssertFalse(app.staticTexts["CatLocal Data"].exists)
+        XCTAssertTrue(app.staticTexts["No cats saved yet"].exists)
+        XCTAssertTrue(
+            app.staticTexts
+                .matching(NSPredicate(format: "label CONTAINS %@", "Zero KB"))
+                .firstMatch
+                .exists
+        )
+
+        let privacyReceipt = app.descendants(matching: .any)["settings-privacy-receipt"]
+        if !privacyReceipt.waitForExistence(timeout: 3) {
+            app.swipeUp()
+        }
+        XCTAssertTrue(privacyReceipt.waitForExistence(timeout: 5))
+        tapWhenHittable(privacyReceipt)
+
+        XCTAssertTrue(app.navigationBars["Privacy Receipt"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Photos"].exists)
         XCTAssertTrue(app.staticTexts["Recognition"].exists)
         XCTAssertTrue(app.staticTexts["Location"].exists)
         XCTAssertTrue(app.staticTexts["Network"].exists)
         XCTAssertTrue(app.staticTexts["The collection requires no account, upload, cloud AI, or model-training use."].exists)
-        XCTAssertTrue(app.staticTexts["Local Storage"].exists)
-        XCTAssertFalse(app.staticTexts["Includes card details, notes, typed Catlas labels, originals, cutouts, and thumbnails."].exists)
+        XCTAssertTrue(app.staticTexts["EXIF and GPS metadata are removed before images are stored in CatLocal's private app container."].exists)
 
         app.tabBars.buttons["Home"].tap()
         let cameraButton = app.tabBars.buttons["Camera"]
@@ -266,14 +294,17 @@ final class CatLocalUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["CatLocal"].waitForExistence(timeout: 8))
         let settingsButton = app.tabBars.buttons["Settings"]
         XCTAssertTrue(settingsButton.waitForExistence(timeout: 5))
-        settingsButton.tap()
+        selectTab(settingsButton)
         XCTAssertTrue(app.staticTexts["Settings"].waitForExistence(timeout: 8))
 
-        let deleteAllButton = app.buttons["Delete All Cats"]
+        let deleteAllButton = app.descendants(matching: .any)["settings-delete-all-cats"]
         if !deleteAllButton.waitForExistence(timeout: 3) {
             app.swipeUp()
         }
         XCTAssertTrue(deleteAllButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Delete All Cats"].exists)
+        XCTAssertLessThan(deleteAllButton.frame.width, app.windows.firstMatch.frame.width * 0.7)
+        XCTAssertEqual(deleteAllButton.frame.midX, app.windows.firstMatch.frame.midX, accuracy: 4)
         deleteAllButton.tap()
 
         XCTAssertTrue(app.staticTexts["Delete every cat?"].waitForExistence(timeout: 5))
@@ -295,11 +326,19 @@ final class CatLocalUITests: XCTestCase {
 
         let atlasButton = app.buttons["Catlas"]
         XCTAssertTrue(atlasButton.waitForExistence(timeout: 5))
-        atlasButton.tap()
+        selectTab(atlasButton)
 
         XCTAssertTrue(app.staticTexts["2 places typed by you."].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["Ferry Steps, 1 cat"].exists)
         XCTAssertTrue(app.buttons["Garden Wall, 1 cat"].exists)
+
+        let misoRow = app.descendants(matching: .any)["catlas-cat-row-Miso"]
+        XCTAssertTrue(misoRow.exists)
+        XCTAssertGreaterThanOrEqual(misoRow.frame.height, 64)
+
+        let simitRow = app.descendants(matching: .any)["catlas-cat-row-Simit"]
+        XCTAssertTrue(simitRow.exists)
+        XCTAssertGreaterThanOrEqual(simitRow.frame.height, 64)
 
         app.swipeUp()
         XCTAssertTrue(app.staticTexts["Unplaced for now"].waitForExistence(timeout: 5))
@@ -462,9 +501,22 @@ final class CatLocalUITests: XCTestCase {
         contourFamilyButton.tap()
         XCTAssertTrue(app.staticTexts["5 styles"].waitForExistence(timeout: 5))
 
-        let nicknameField = app.textFields["Nickname (optional)"]
+        let nicknameField = app.textFields["Nickname"]
         XCTAssertTrue(nicknameField.waitForExistence(timeout: 5))
         XCTAssertEqual(nicknameField.value as? String, "Pixel")
+        XCTAssertTrue(app.textFields["Memory Place"].exists)
+
+        let placeDetailField = app.descendants(matching: .any)["Place Detail"]
+        if !placeDetailField.waitForExistence(timeout: 1) {
+            app.swipeUp()
+        }
+        XCTAssertTrue(placeDetailField.waitForExistence(timeout: 5))
+
+        let noteHeading = app.staticTexts["Encounter Note"]
+        if !noteHeading.waitForExistence(timeout: 1) {
+            app.swipeUp()
+        }
+        XCTAssertTrue(noteHeading.waitForExistence(timeout: 5))
     }
 
     func testValidationImportShowsCutoutRevealBeforeEditor() {

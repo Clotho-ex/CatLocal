@@ -8,12 +8,13 @@ import SwiftUI
 /// older devices should be continuously monitored.
 struct LiveInteractiveCardView<Content: View>: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.catLocalCardMotionEnabled) private var cardMotionEnabled
+    @Environment(\.catLocalHapticsEnabled) private var hapticsEnabled
 
     let width: CGFloat?
     let height: CGFloat?
     let maxTiltAngle: CGFloat
     let cornerRadius: CGFloat
-    let hapticsEnabled: Bool
     let onInteractionChanged: ((Bool) -> Void)?
     @ViewBuilder let content: (_ rotateX: CGFloat, _ rotateY: CGFloat, _ isInteracting: Bool) -> Content
 
@@ -32,7 +33,6 @@ struct LiveInteractiveCardView<Content: View>: View {
         height: CGFloat? = 220,
         maxTiltAngle: CGFloat = 12,
         cornerRadius: CGFloat = 34,
-        hapticsEnabled: Bool = true,
         onInteractionChanged: ((Bool) -> Void)? = nil,
         @ViewBuilder content: @escaping (_ rotateX: CGFloat, _ rotateY: CGFloat, _ isInteracting: Bool) -> Content
     ) {
@@ -40,7 +40,6 @@ struct LiveInteractiveCardView<Content: View>: View {
         self.height = height
         self.maxTiltAngle = maxTiltAngle
         self.cornerRadius = cornerRadius
-        self.hapticsEnabled = hapticsEnabled
         self.onInteractionChanged = onInteractionChanged
         self.content = content
     }
@@ -53,7 +52,7 @@ struct LiveInteractiveCardView<Content: View>: View {
                 content(rotateX, rotateY, isInteracting)
                     .frame(width: size.width, height: size.height)
 
-                if !reduceMotion {
+                if !motionIsReduced {
                     spotlight(size: size)
                         .opacity(isInteracting ? 1 : 0)
                         .animation(.easeInOut(duration: 0.18), value: isInteracting)
@@ -63,12 +62,12 @@ struct LiveInteractiveCardView<Content: View>: View {
             .compositingGroup()
             .contentShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
             .rotation3DEffect(
-                .degrees(reduceMotion ? 0 : rotateX),
+                .degrees(motionIsReduced ? 0 : rotateX),
                 axis: (x: 1, y: 0, z: 0),
                 perspective: 0.66
             )
             .rotation3DEffect(
-                .degrees(reduceMotion ? 0 : rotateY),
+                .degrees(motionIsReduced ? 0 : rotateY),
                 axis: (x: 0, y: 1, z: 0),
                 perspective: 0.66
             )
@@ -77,13 +76,13 @@ struct LiveInteractiveCardView<Content: View>: View {
                 adjustLighting(direction: direction, size: size)
             }
             .accessibilityLabel("Card lighting")
-            .accessibilityValue(lightingPosition.accessibilityValue)
-            .accessibilityHint("Swipe up or down to move the light.")
+            .accessibilityValue(motionIsReduced ? "Motion reduced" : lightingPosition.accessibilityValue)
+            .accessibilityHint(motionIsReduced ? "Card motion is reduced." : "Swipe up or down to move the light.")
             .onAppear {
                 spotlightLocation = CGPoint(x: size.width / 2, y: size.height / 2)
                 lightingPosition = .center
             }
-            .onChange(of: reduceMotion) { _, isReduced in
+            .onChange(of: motionIsReduced) { _, isReduced in
                 if isReduced {
                     resetInteraction(size: size)
                 }
@@ -91,10 +90,14 @@ struct LiveInteractiveCardView<Content: View>: View {
             .onChange(of: isInteracting) { _, isInteracting in
                 onInteractionChanged?(isInteracting)
             }
-            .sensoryFeedback(.selection, trigger: selectionFeedbackTrigger)
-            .sensoryFeedback(.impact(flexibility: .rigid, intensity: 1), trigger: limitFeedbackTrigger)
+            .catSensoryFeedback(.selection, trigger: selectionFeedbackTrigger)
+            .catSensoryFeedback(.impact(flexibility: .rigid, intensity: 1), trigger: limitFeedbackTrigger)
         }
         .frame(width: width, height: height)
+    }
+
+    private var motionIsReduced: Bool {
+        reduceMotion || !cardMotionEnabled
     }
 
     private func spotlight(size: CGSize) -> some View {
@@ -123,7 +126,7 @@ struct LiveInteractiveCardView<Content: View>: View {
     private func dragGesture(size: CGSize) -> some Gesture {
         DragGesture(minimumDistance: 0)
             .onChanged { value in
-                guard !reduceMotion else { return }
+                guard !motionIsReduced else { return }
 
                 let tilt = LiveInteractiveCardMath.tilt(
                     for: value.location,
@@ -181,7 +184,7 @@ struct LiveInteractiveCardView<Content: View>: View {
     }
 
     private func adjustLighting(direction: AccessibilityAdjustmentDirection, size: CGSize) {
-        guard !reduceMotion else { return }
+        guard !motionIsReduced else { return }
 
         let nextPosition: LiveInteractiveCardLightingPosition?
         switch direction {

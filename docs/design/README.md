@@ -44,20 +44,16 @@ careful with the user's photos.
 - No heavy glass blobs, dark sci-fi panels, loud gradients, or premium effects
   in scrolling grids.
 
-The reference image `docs/design/sunlit-gallery-archive.png` is a mood target,
-not a literal layout spec.
-
 ## Experience Shape
 
 - Onboarding stays optional: Welcome and Privacy offer a quiet `Skip to Home`
   action, while the full three-page path remains available. Privacy education
   stays retrievable through the Settings privacy receipt. Keep onboarding
-  progress as a full-width linear bar in the top safe-area header, with the step
-  label leading and `Skip to Home` trailing. The header, fitted page content, and
-  transparent footer actions occupy separate layout regions so controls never
+  progress as three full-width segments in the top safe-area header, with the
+  step label leading and `Skip to Home` trailing. The header, fitted page content,
+  and transparent footer actions occupy separate layout regions so controls never
   cover content or introduce a second surface over the background. Each page uses
-  one top-aligned rhythm: hero, title and detail, then supporting proof points.
-  Move those regions through layout spacing rather than visual-only offsets.
+  one rhythm: hero, left-aligned title and detail, then supporting proof points.
 - Home opens as the private collection. Empty Home should make the first action
   clear without feeling like a marketing page.
 - Capture and private import are equal first-class starts.

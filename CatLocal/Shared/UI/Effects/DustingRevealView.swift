@@ -3,6 +3,7 @@ import UIKit
 
 struct CutoutSpotlightRevealView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.catLocalCardMotionEnabled) private var cardMotionEnabled
 
     let sourceImage: UIImage?
     let cutoutImage: UIImage
@@ -63,9 +64,9 @@ struct CutoutSpotlightRevealView: View {
             .padding(.horizontal, CatLocalTheme.screenHorizontalPadding)
         }
         .task { await startRevealIfNeeded() }
-        .sensoryFeedback(.impact(flexibility: .soft, intensity: 0.42), trigger: liftFeedbackTrigger)
-        .sensoryFeedback(.selection, trigger: edgeFeedbackTrigger)
-        .sensoryFeedback(.success, trigger: landingFeedbackTrigger)
+        .catSensoryFeedback(.impact(flexibility: .soft, intensity: 0.42), trigger: liftFeedbackTrigger)
+        .catSensoryFeedback(.selection, trigger: edgeFeedbackTrigger)
+        .catSensoryFeedback(.success, trigger: landingFeedbackTrigger)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Lifting the cat subject")
         .accessibilityIdentifier("cutout-reveal")
@@ -82,7 +83,7 @@ struct CutoutSpotlightRevealView: View {
 
             sourceBackdrop
 
-            if !reduceMotion {
+            if !motionIsReduced {
                 CutoutSpotlightBeam(progress: spotlightProgress)
                     .allowsHitTesting(false)
             }
@@ -93,11 +94,11 @@ struct CutoutSpotlightRevealView: View {
                 .padding(20)
                 .opacity(haloOpacity)
                 .scaleEffect(haloScale)
-                .blur(radius: reduceMotion ? 0 : 15)
+                .blur(radius: motionIsReduced ? 0 : 15)
                 .blendMode(.screen)
                 .accessibilityHidden(true)
 
-            if !reduceMotion {
+            if !motionIsReduced {
                 StickerPeelSheen(
                     image: cutoutImage,
                     progress: peelSheenProgress
@@ -129,7 +130,7 @@ struct CutoutSpotlightRevealView: View {
             .offset(y: stickerYOffset)
             .accessibilityHidden(true)
 
-            if !reduceMotion {
+            if !motionIsReduced {
                 CutoutMoteField(
                     progress: moteProgress,
                     anchorBounds: anchorBounds
@@ -161,7 +162,7 @@ struct CutoutSpotlightRevealView: View {
         guard !hasStarted else { return }
         hasStarted = true
 
-        if reduceMotion {
+        if motionIsReduced {
             withAnimation(.easeOut(duration: 0.22)) {
                 sourceOpacity = sourceImage == nil ? 0 : 0.18
                 stickerScale = 1
@@ -235,6 +236,10 @@ struct CutoutSpotlightRevealView: View {
 
         try? await Task.sleep(for: .milliseconds(350))
         complete()
+    }
+
+    private var motionIsReduced: Bool {
+        reduceMotion || !cardMotionEnabled
     }
 
     private static func visibleBounds(for image: SendableImage) async -> CGRect? {

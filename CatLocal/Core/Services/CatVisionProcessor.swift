@@ -12,7 +12,7 @@ protocol CatAnalyzing: Sendable {
 
 actor CatVisionProcessor: CatAnalyzing {
     private let context = CIContext(options: [.useSoftwareRenderer: false])
-    private let catCropExpansion: CGFloat = 0.28
+    private let minimumInstanceOverlapScore: Float = 0.08
 
     func detectCats(in image: SendableImage) async throws -> [CatDetection] {
         try Task.checkCancellation()
@@ -49,13 +49,7 @@ actor CatVisionProcessor: CatAnalyzing {
             throw CatVisionError.unreadableImage
         }
 
-        if let detection {
-            let output = try makeCatFocusedCutout(from: cgImage, detection: detection)
-            return SendableImage(value: UIImage(cgImage: output))
-        }
-
         // Explicit fallback path for "Use the foreground anyway" when cat detection fails.
-        // The normal cat path uses a cropped ROI so nearby foreground objects do not win.
         let handler = VNImageRequestHandler(cgImage: cgImage)
         let request = VNGenerateForegroundInstanceMaskRequest()
         try handler.perform([request])
@@ -65,7 +59,18 @@ actor CatVisionProcessor: CatAnalyzing {
             throw CatVisionError.noForeground
         }
 
-        let instances = observation.allInstances
+        let instances: IndexSet
+        if let detection {
+            guard let selected = bestMatchingInstance(
+                in: observation,
+                overlapping: detection.boundingBox
+            ) else {
+                throw CatVisionError.noMatchingForeground
+            }
+            instances = IndexSet(integer: selected)
+        } else {
+            instances = observation.allInstances
+        }
         guard !instances.isEmpty else {
             throw CatVisionError.noForeground
         }
@@ -80,137 +85,74 @@ actor CatVisionProcessor: CatAnalyzing {
         return SendableImage(value: UIImage(cgImage: output))
     }
 
-    private func makeCatFocusedCutout(
-        from image: CGImage,
-        detection: CatDetection
-    ) throws -> CGImage {
-        try Task.checkCancellation()
-        let cropRect = expandedCatCropRect(
-            for: detection.boundingBox,
-            imageWidth: image.width,
-            imageHeight: image.height,
-            expansion: catCropExpansion
-        )
-        guard
-            cropRect.width > 0,
-            cropRect.height > 0,
-            let croppedImage = image.cropping(to: cropRect)
-        else {
-            throw CatVisionError.cutoutFailed
-        }
-
-        let handler = VNImageRequestHandler(cgImage: croppedImage)
-        let request = VNGenerateForegroundInstanceMaskRequest()
-        try handler.perform([request])
-        try Task.checkCancellation()
-
-        guard let observation = request.results?.first else {
-            throw CatVisionError.noForeground
-        }
-        guard let selected = bestCenteredInstance(in: observation) else {
-            throw CatVisionError.noMatchingForeground
-        }
-
-        let maskBuffer = try observation.generateScaledMaskForImage(
-            forInstances: IndexSet(integer: selected),
-            from: handler
-        )
-        try Task.checkCancellation()
-        return try makeTransparentCutout(
-            from: croppedImage,
-            mask: CIImage(cvPixelBuffer: maskBuffer)
-        )
-    }
-
-    nonisolated func expandedCatCropRect(
-        for boundingBox: CGRect,
-        imageWidth: Int,
-        imageHeight: Int,
-        expansion: CGFloat = 0.28
-    ) -> CGRect {
-        let imageSize = CGSize(width: imageWidth, height: imageHeight)
-        let pixelBox = CGRect(
-            x: boundingBox.minX * imageSize.width,
-            y: (1 - boundingBox.maxY) * imageSize.height,
-            width: boundingBox.width * imageSize.width,
-            height: boundingBox.height * imageSize.height
-        )
-
-        let minimumPadding = max(imageSize.width, imageSize.height) * 0.035
-        let padX = max(pixelBox.width * expansion, minimumPadding)
-        let padY = max(pixelBox.height * expansion, minimumPadding)
-        let expanded = pixelBox.insetBy(dx: -padX, dy: -padY)
-        let imageBounds = CGRect(origin: .zero, size: imageSize)
-        return expanded.intersection(imageBounds).integral
-    }
-
-    private func bestCenteredInstance(in observation: VNInstanceMaskObservation) -> Int? {
+    private func bestMatchingInstance(
+        in observation: VNInstanceMaskObservation,
+        overlapping boundingBox: CGRect
+    ) -> Int? {
         var bestInstance: Int?
         var bestScore: Float = -1
 
         for instance in observation.allInstances {
-            guard
-                let mask = try? observation.generateMask(forInstances: IndexSet(integer: instance)),
-                let score = centeredMaskScore(mask)
-            else {
+            guard let mask = try? observation.generateMask(
+                forInstances: IndexSet(integer: instance)
+            ) else {
                 continue
             }
 
+            let score = maskOverlapScore(mask, boundingBox: boundingBox)
             if score > bestScore {
                 bestScore = score
                 bestInstance = instance
             }
         }
 
-        return bestInstance
+        return bestScore >= minimumInstanceOverlapScore ? bestInstance : nil
     }
 
-    private func centeredMaskScore(_ mask: CVPixelBuffer) -> Float? {
+    nonisolated func maskOverlapScore(
+        _ mask: CVPixelBuffer,
+        boundingBox: CGRect
+    ) -> Float {
         CVPixelBufferLockBaseAddress(mask, .readOnly)
         defer { CVPixelBufferUnlockBaseAddress(mask, .readOnly) }
 
-        guard let baseAddress = CVPixelBufferGetBaseAddress(mask) else { return nil }
+        guard let baseAddress = CVPixelBufferGetBaseAddress(mask) else { return 0 }
         let width = CVPixelBufferGetWidth(mask)
         let height = CVPixelBufferGetHeight(mask)
         let rowBytes = CVPixelBufferGetBytesPerRow(mask)
         let pixelFormat = CVPixelBufferGetPixelFormatType(mask)
-        guard width > 0, height > 0 else { return nil }
+        guard width > 0, height > 0 else { return 0 }
 
-        var visible: Float = 0
-        var weightedX: Float = 0
-        var weightedY: Float = 0
-        var samples: Float = 0
-        let strideX = max(1, width / 64)
-        let strideY = max(1, height / 64)
+        let minX = max(0, Int(boundingBox.minX * CGFloat(width)))
+        let maxX = min(width - 1, Int(boundingBox.maxX * CGFloat(width)))
+        let minY = max(0, Int((1 - boundingBox.maxY) * CGFloat(height)))
+        let maxY = min(height - 1, Int((1 - boundingBox.minY) * CGFloat(height)))
+        guard minX <= maxX, minY <= maxY else { return 0 }
 
-        for y in stride(from: 0, to: height, by: strideY) {
-            for x in stride(from: 0, to: width, by: strideX) {
-                guard let value = maskValue(
+        var sum: Float = 0
+        var samples = 0
+        let strideX = max(1, (maxX - minX) / 24)
+        let strideY = max(1, (maxY - minY) / 24)
+
+        for y in stride(from: minY, through: maxY, by: strideY) {
+            for x in stride(from: minX, through: maxX, by: strideX) {
+                if let value = maskValue(
                     baseAddress: baseAddress,
                     rowBytes: rowBytes,
                     pixelFormat: pixelFormat,
                     x: x,
                     y: y
-                ) else {
-                    continue
+                ) {
+                    sum += value
+                    samples += 1
                 }
-                samples += 1
-                guard value > 0.12 else { continue }
-                visible += value
-                weightedX += Float(x) * value
-                weightedY += Float(y) * value
             }
         }
 
-        guard samples > 0, visible / samples > 0.01 else { return nil }
-        let centerX = weightedX / visible / Float(width)
-        let centerY = weightedY / visible / Float(height)
-        let distanceFromCenter = hypot(centerX - 0.5, centerY - 0.5)
-        let centrality = max(0, 1 - distanceFromCenter * 1.35)
-        return (visible / samples) * centrality
+        return samples == 0 ? 0 : sum / Float(samples)
     }
 
-    private func maskValue(
+    nonisolated private func maskValue(
         baseAddress: UnsafeMutableRawPointer,
         rowBytes: Int,
         pixelFormat: OSType,

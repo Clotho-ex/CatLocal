@@ -1917,7 +1917,7 @@ struct CardStylePicker<Preview: View>: View {
             guard style.family != selectedFamily else { return }
             selectedFamily = style.family
         }
-        .sensoryFeedback(.selection, trigger: selectionFeedbackTrigger)
+        .catSensoryFeedback(.selection, trigger: selectionFeedbackTrigger)
     }
 
     private var familySelector: some View {
@@ -2104,7 +2104,7 @@ struct CardStyleCarousel<Preview: View>: View {
                 centeredItemID = centeredItemID(for: selectedStyle)
             }
         }
-        .sensoryFeedback(.selection, trigger: selectionFeedbackTrigger)
+        .catSensoryFeedback(.selection, trigger: selectionFeedbackTrigger)
     }
 
     private var styleCount: Int {

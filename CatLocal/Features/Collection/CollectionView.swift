@@ -18,8 +18,8 @@ struct CollectionView: View {
     @State private var editingIntent: CatRecordEditIntent = .card
     @State private var removalRecord: CatRecord?
     @State private var selectedAtlasRoute: AtlasRoute?
-    @State private var collectionMode: CollectionMode = .cards
-    @State private var sortOption: CatSortOption = .number
+    @AppStorage(CatLocalUserDefaults.homeViewKey) private var collectionMode = CatLocalHomeView.cards
+    @AppStorage(CatLocalUserDefaults.sortOrderKey) private var sortOption = CatLocalSortOrder.number
     @State private var isSelectionMode = false
     @State private var selectedRecordIDs = Set<UUID>()
     @State private var deletingRecordID: UUID?
@@ -194,11 +194,11 @@ struct CollectionView: View {
         }
         .toolbar(hidesTabBar ? .hidden : .visible, for: .tabBar)
         .animation(selectionModeAnimation, value: isSelectionMode)
-        .sensoryFeedback(.success, trigger: collectionCountDelightTrigger)
-        .sensoryFeedback(.selection, trigger: collectionModeDelightTrigger)
-        .sensoryFeedback(.selection, trigger: collectionSelectionFeedbackTrigger)
-        .sensoryFeedback(.success, trigger: collectionDeletionFeedbackTrigger)
-        .sensoryFeedback(.selection, trigger: sortDelightTrigger)
+        .catSensoryFeedback(.success, trigger: collectionCountDelightTrigger)
+        .catSensoryFeedback(.selection, trigger: collectionModeDelightTrigger)
+        .catSensoryFeedback(.selection, trigger: collectionSelectionFeedbackTrigger)
+        .catSensoryFeedback(.success, trigger: collectionDeletionFeedbackTrigger)
+        .catSensoryFeedback(.selection, trigger: sortDelightTrigger)
         .accessibilityIdentifier("collection-screen")
     }
 
@@ -303,18 +303,18 @@ struct CollectionView: View {
     }
 
     private var summaryCountLabel: String {
-        if collectionMode == .atlas && !records.isEmpty {
+        if collectionMode == .catlas && !records.isEmpty {
             return atlasPlaceCountText
         }
         return savedCountText(records.count)
     }
 
     private var summaryIconName: String {
-        collectionMode == .atlas ? "mappin.and.ellipse" : "pawprint.fill"
+        collectionMode == .catlas ? "mappin.and.ellipse" : "pawprint.fill"
     }
 
     private var summaryAccent: Color {
-        collectionMode == .atlas ? CatAttentionRole.info.accent : CatAttentionRole.success.accent
+        collectionMode == .catlas ? CatAttentionRole.info.accent : CatAttentionRole.success.accent
     }
 
     private var summaryDelightTrigger: Int {
@@ -323,7 +323,7 @@ struct CollectionView: View {
 
     private var modePicker: some View {
         Picker("Home view", selection: collectionModeSelection) {
-            ForEach(CollectionMode.allCases) { mode in
+            ForEach(CatLocalHomeView.allCases) { mode in
                 Text(mode.title).tag(mode)
             }
         }
@@ -331,7 +331,7 @@ struct CollectionView: View {
         .accessibilityIdentifier("collection-mode-picker")
     }
 
-    private var collectionModeSelection: Binding<CollectionMode> {
+    private var collectionModeSelection: Binding<CatLocalHomeView> {
         Binding(
             get: { collectionMode },
             set: { mode in
@@ -345,12 +345,12 @@ struct CollectionView: View {
             switch collectionMode {
             case .cards:
                 catGridSection
-                    .id(CollectionMode.cards)
+                    .id(CatLocalHomeView.cards)
                     .transition(collectionModeTransition(for: .cards))
-            case .atlas:
+            case .catlas:
                 catlas
-                    .id(CollectionMode.atlas)
-                    .transition(collectionModeTransition(for: .atlas))
+                    .id(CatLocalHomeView.catlas)
+                    .transition(collectionModeTransition(for: .catlas))
             }
         }
         .frame(maxWidth: .infinity, alignment: .topLeading)
@@ -358,7 +358,7 @@ struct CollectionView: View {
         .animation(collectionModeAnimation, value: collectionMode)
     }
 
-    private func collectionModeTransition(for mode: CollectionMode) -> AnyTransition {
+    private func collectionModeTransition(for mode: CatLocalHomeView) -> AnyTransition {
         guard !reduceMotion else { return .opacity }
 
         switch mode {
@@ -367,7 +367,7 @@ struct CollectionView: View {
                 insertion: .move(edge: .leading).combined(with: .opacity),
                 removal: .move(edge: .leading).combined(with: .opacity)
             )
-        case .atlas:
+        case .catlas:
             return .asymmetric(
                 insertion: .move(edge: .trailing).combined(with: .opacity),
                 removal: .move(edge: .trailing).combined(with: .opacity)
@@ -835,13 +835,13 @@ struct CollectionView: View {
 
     private func sortPicker(title: String) -> some View {
         Picker(title, selection: sortSelection) {
-            ForEach(CatSortOption.allCases) { option in
+            ForEach(CatLocalSortOrder.allCases) { option in
                 Label(option.title, systemImage: option.systemImage).tag(option)
             }
         }
     }
 
-    private var sortSelection: Binding<CatSortOption> {
+    private var sortSelection: Binding<CatLocalSortOrder> {
         Binding(
             get: { sortOption },
             set: { option in
@@ -1093,7 +1093,7 @@ struct CollectionView: View {
         endSelectionMode()
     }
 
-    private func setCollectionMode(_ mode: CollectionMode) {
+    private func setCollectionMode(_ mode: CatLocalHomeView) {
         guard mode != collectionMode else { return }
         withAnimation(collectionModeAnimation) {
             collectionMode = mode
@@ -1321,229 +1321,176 @@ private struct AtlasFolderButton: View {
     let isHighlighted: Bool
 
     var body: some View {
-        let bodyShape = RoundedRectangle(cornerRadius: 16, style: .continuous)
+        let shape = RoundedRectangle(cornerRadius: 16, style: .continuous)
 
-        folderLayout
-        .padding(.horizontal, 15)
-        .padding(.vertical, 14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background {
-            folderBackground(in: bodyShape)
-        }
-        .overlay { rowOutline(bodyShape) }
-        .shadow(color: CatLocalTheme.shadow.opacity(rowShadowOpacity), radius: 5, y: 2)
-        .contentShape(Rectangle())
-    }
+        VStack(spacing: 0) {
+            folderHeader
+                .padding(12)
 
-    private var baseGroupBackground: Color {
-        group.isUnplaced ? CatLocalTheme.elevatedSurface.opacity(0.72) : CatLocalTheme.cardSurface.opacity(0.76)
-    }
+            Rectangle()
+                .fill(CatLocalTheme.separator.opacity(0.72))
+                .frame(height: 1)
+                .padding(.horizontal, 12)
 
-    private var rowShadowOpacity: Double {
-        if isHighlighted {
-            return 0.08
-        }
-        return group.isUnplaced ? 0.05 : 0.06
-    }
+            VStack(spacing: 0) {
+                ForEach(visibleRecords) { record in
+                    AtlasCatRecordRow(record: record)
 
-    @ViewBuilder
-    private func folderBackground(in shape: RoundedRectangle) -> some View {
-        shape
-            .fill(baseGroupBackground)
-
-        if isHighlighted {
-            shape
-                .fill(CatAttentionRole.success.wash.opacity(0.22))
-        }
-    }
-
-    @ViewBuilder
-    private var folderLayout: some View {
-        if dynamicTypeSize.isAccessibilitySize {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack(alignment: .center, spacing: 12) {
-                    folderText
-                    Spacer(minLength: 8)
-                    chevron
-                }
-
-                AtlasArchivePreview(records: group.records)
-            }
-        } else {
-            ViewThatFits(in: .horizontal) {
-                HStack(alignment: .center, spacing: 14) {
-                    folderText
-                    Spacer(minLength: 8)
-                    AtlasArchivePreview(records: group.records)
-                    chevron
-                }
-
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack(alignment: .center, spacing: 12) {
-                        folderText
-                        Spacer(minLength: 8)
-                        chevron
+                    if record.id != visibleRecords.last?.id {
+                        Rectangle()
+                            .fill(CatLocalTheme.separator.opacity(0.56))
+                            .frame(height: 1)
+                            .padding(.leading, 96)
                     }
+                }
 
-                    AtlasArchivePreview(records: group.records)
+                if hiddenRecordCount > 0 {
+                    moreCatsRow
                 }
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background { shape.fill(groupBackground) }
+        .overlay { shape.stroke(groupOutline, lineWidth: isHighlighted ? 1.35 : 1) }
+        .clipShape(shape)
+        .contentShape(shape)
     }
 
-    private var folderText: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Image(systemName: group.isUnplaced ? "tray" : "mappin.and.ellipse")
-                    .font(.system(size: 12, weight: .semibold))
-                    .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(group.isUnplaced ? CatLocalTheme.secondaryText : CatAttentionRole.info.accent)
-                    .accessibilityHidden(true)
-
-                Text(group.displayTitle)
-                    .font(CatTypography.supportingEmphasized)
-                    .foregroundStyle(CatLocalTheme.ink)
-                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
-            }
-
-            Text(countText)
-                .font(CatTypography.finePrint)
-                .foregroundStyle(CatLocalTheme.secondaryText)
-                .contentTransition(.numericText())
-                .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
-        }
+    private var visibleRecords: [CatRecord] {
+        Array(group.records.prefix(3))
     }
 
-    private var chevron: some View {
-        Image(systemName: "chevron.right")
-            .font(CatTypography.metadata)
-            .imageScale(.small)
-            .foregroundStyle(CatLocalTheme.secondaryText.opacity(0.72))
-            .frame(width: 22, height: 22)
-            .accessibilityHidden(true)
+    private var hiddenRecordCount: Int {
+        max(group.records.count - visibleRecords.count, 0)
     }
 
-    @ViewBuilder
-    private func rowOutline(_ shape: RoundedRectangle) -> some View {
-        shape.stroke(
-            rowOutlineColor,
-            lineWidth: isHighlighted ? 1.35 : 1
-        )
-    }
-
-    private var rowOutlineColor: Color {
+    private var groupBackground: Color {
         if isHighlighted {
-            return CatAttentionRole.success.stroke.opacity(0.62)
+            return CatAttentionRole.success.wash.opacity(0.30)
         }
         return group.isUnplaced
-            ? CatLocalTheme.imageOutline.opacity(0.52)
+            ? CatLocalTheme.elevatedSurface.opacity(0.70)
+            : CatLocalTheme.cardSurface.opacity(0.88)
+    }
+
+    private var groupOutline: Color {
+        isHighlighted
+            ? CatAttentionRole.success.stroke.opacity(0.62)
             : CatLocalTheme.imageOutline.opacity(0.46)
     }
-}
 
-private struct AtlasArchivePreview: View {
-    let records: [CatRecord]
+    private var folderHeader: some View {
+        HStack(alignment: .center, spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Image(systemName: group.isUnplaced ? "tray" : "mappin.and.ellipse")
+                        .font(CatTypography.metadata.weight(.semibold))
+                        .symbolRenderingMode(.hierarchical)
+                        .foregroundStyle(group.isUnplaced ? CatLocalTheme.secondaryText : CatAttentionRole.info.accent)
+                        .accessibilityHidden(true)
 
-    var body: some View {
-        ZStack(alignment: .bottomTrailing) {
-            if let firstRecord = records.first {
-                AtlasArchiveThumbnail(record: firstRecord)
-            } else {
-                AtlasArchiveEmptyThumbnail()
-            }
+                    Text(group.displayTitle)
+                        .font(CatTypography.supportingEmphasized)
+                        .foregroundStyle(CatLocalTheme.ink)
+                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
+                }
 
-            if additionalCount > 0 {
-                AtlasArchiveCountBadge(count: additionalCount)
-            }
-        }
-        .frame(width: Self.previewSize, height: Self.previewSize)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(thumbnailSummary)
-    }
-
-    private static let previewSize: CGFloat = 56
-
-    private var additionalCount: Int {
-        max(records.count - 1, 0)
-    }
-
-    private var thumbnailSummary: String {
-        records.count == 1 ? "1 cat thumbnail" : "\(records.count) cat thumbnails"
-    }
-}
-
-private struct AtlasArchiveCountBadge: View {
-    let count: Int
-
-    var body: some View {
-        Text("+\(count)")
-            .font(CatTypography.finePrint)
-            .foregroundStyle(CatLocalTheme.ink)
-            .padding(.horizontal, 6)
-            .frame(minWidth: 24, minHeight: 20)
-            .background(
-                CatLocalTheme.elevatedSurface.opacity(0.94),
-                in: Capsule(style: .continuous)
-            )
-            .overlay {
-                Capsule(style: .continuous)
-                    .stroke(CatLocalTheme.imageOutline.opacity(0.46), lineWidth: 1)
-            }
-            .accessibilityHidden(true)
-    }
-}
-
-private struct AtlasArchiveEmptyThumbnail: View {
-    var body: some View {
-        RoundedRectangle(cornerRadius: 13, style: .continuous)
-            .fill(CatLocalTheme.elevatedSurface.opacity(0.88))
-            .overlay {
-                Image(systemName: "cat.fill")
-                    .font(.system(size: 18, weight: .semibold))
+                Text(countText)
+                    .font(CatTypography.finePrint)
                     .foregroundStyle(CatLocalTheme.secondaryText)
+                    .contentTransition(.numericText())
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
             }
-            .overlay {
-                RoundedRectangle(cornerRadius: 13, style: .continuous)
-                    .stroke(CatLocalTheme.imageOutline.opacity(0.42), lineWidth: 1)
-            }
-            .frame(width: 56, height: 56)
-            .accessibilityHidden(true)
+
+            Spacer(minLength: 8)
+
+            Image(systemName: "chevron.right")
+                .font(CatTypography.metadata)
+                .imageScale(.small)
+                .foregroundStyle(CatLocalTheme.secondaryText.opacity(0.72))
+                .frame(width: 22, height: 44)
+                .accessibilityHidden(true)
+        }
+    }
+
+    private var moreCatsRow: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "ellipsis")
+                .font(CatTypography.metadata.weight(.semibold))
+                .frame(width: 24, height: 24)
+                .background(CatLocalTheme.elevatedSurface, in: Circle())
+                .accessibilityHidden(true)
+
+            Text("\(hiddenRecordCount) more \(hiddenRecordCount == 1 ? "cat" : "cats")")
+                .font(CatTypography.metadata)
+                .foregroundStyle(CatLocalTheme.secondaryText)
+
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 12)
+        .frame(minHeight: 44)
     }
 }
 
-private struct AtlasArchiveThumbnail: View {
+private struct AtlasCatRecordRow: View {
+    @ScaledMetric(relativeTo: .body) private var thumbnailSize: CGFloat = 72
+
     let record: CatRecord
 
     var body: some View {
-        StoredImageView(path: record.thumbnailImagePath, contentMode: .fill) {
+        HStack(spacing: 12) {
+            catImage
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(record.displayName)
+                    .font(CatTypography.supportingEmphasized)
+                    .foregroundStyle(CatLocalTheme.primaryText)
+                    .lineLimit(2)
+
+                Text(record.capturedAt, format: .dateTime.month(.abbreviated).day().year())
+                    .font(CatTypography.finePrint)
+                    .foregroundStyle(CatLocalTheme.secondaryText)
+                    .lineLimit(1)
+            }
+
+            Spacer(minLength: 8)
+
+            Text(record.sequence.formatted())
+                .font(CatTypography.sequence(focused: false))
+                .monospacedDigit()
+                .foregroundStyle(CatLocalTheme.primaryText)
+                .frame(width: 28, height: 28)
+                .background(CatLocalTheme.elevatedSurface, in: Circle())
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(
+            "\(record.displayName), cat number \(record.sequence.formatted()), captured \(record.capturedAt.formatted(date: .abbreviated, time: .omitted))"
+        )
+        .accessibilityIdentifier("catlas-cat-row-\(record.displayName)")
+    }
+
+    private var resolvedThumbnailSize: CGFloat {
+        min(thumbnailSize, 92)
+    }
+
+    private var catImage: some View {
+        StoredImageView(path: record.thumbnailImagePath, contentMode: .fit) {
             Image(systemName: "cat.fill")
-                .font(.system(size: 18, weight: .semibold))
+                .font(.system(size: 26, weight: .semibold))
                 .foregroundStyle(CatLocalTheme.secondaryText)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(CatLocalTheme.elevatedSurface.opacity(0.88))
         }
-        .frame(width: 56, height: 56)
-        .clipped()
+        .padding(6)
+        .frame(width: resolvedThumbnailSize, height: resolvedThumbnailSize)
+        .background(CatLocalTheme.elevatedSurface.opacity(0.84))
         .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 13, style: .continuous)
-                .stroke(CatLocalTheme.imageOutline.opacity(0.42), lineWidth: 1)
+                .stroke(CatLocalTheme.imageOutline.opacity(0.44), lineWidth: 1)
         }
         .accessibilityHidden(true)
-    }
-}
-
-private enum CollectionMode: String, CaseIterable, Identifiable {
-    case cards
-    case atlas
-
-    var id: String { rawValue }
-
-    var title: String {
-        switch self {
-        case .cards: "Cards"
-        case .atlas: "Catlas"
-        }
     }
 }
 
@@ -1566,30 +1513,6 @@ private enum CatRecordEditIntent {
             nil
         case .memoryPlace:
             .location
-        }
-    }
-}
-
-private enum CatSortOption: String, CaseIterable, Identifiable {
-    case number
-    case place
-    case alphabetical
-
-    var id: String { rawValue }
-
-    var title: String {
-        switch self {
-        case .number: "Number"
-        case .place: "Place"
-        case .alphabetical: "A-Z"
-        }
-    }
-
-    var systemImage: String {
-        switch self {
-        case .number: "number"
-        case .place: "mappin.and.ellipse"
-        case .alphabetical: "textformat.abc"
         }
     }
 }

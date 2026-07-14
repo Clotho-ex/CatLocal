@@ -23,9 +23,9 @@ struct OnboardingView: View {
                 footer
             }
         }
-        .sensoryFeedback(.impact(flexibility: .soft, intensity: 0.48), trigger: forwardFeedbackTrigger)
-        .sensoryFeedback(.selection, trigger: backwardFeedbackTrigger)
-        .sensoryFeedback(.success, trigger: completionFeedbackTrigger)
+        .catSensoryFeedback(.impact(flexibility: .soft, intensity: 0.48), trigger: forwardFeedbackTrigger)
+        .catSensoryFeedback(.selection, trigger: backwardFeedbackTrigger)
+        .catSensoryFeedback(.success, trigger: completionFeedbackTrigger)
     }
 
     private var onboardingContent: some View {

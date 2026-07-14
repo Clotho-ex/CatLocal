@@ -21,15 +21,15 @@ and implementation decisions before adding secondary settings or metrics.
 
 ## Project Structure
 
-- `CatLocal/App/CatLocalApp.swift`: app entry point and SwiftData container setup.
-- `CatLocal/App/RootView.swift`: native tab shell, camera sheet routing, and iOS 26 sidebar-adaptable tab behavior.
+- `CatLocal/App/CatLocalApp.swift`: app entry point, SwiftData container setup, persisted preference contracts, and shared motion/haptic environments.
+- `CatLocal/App/RootView.swift`: native tab shell, camera sheet routing, app appearance/preferences, and iOS 26 sidebar-adaptable tab behavior.
 - `CatLocal/Core/Models/CatRecord.swift`: SwiftData source of truth for card metadata, local image filenames, capture source, sequence, notes, optional Vision bounding box, and card styles (`Archive`, `Sunstamp`, `Clear`, `Garden`, `Midnight`, `Apricot`, `Midnight Prism`, `Gold Leaf`, `Contour Light`, `Ember Lines`, `Lagoon Lines`, `Moss Lines`, `Dusk Lines`, `Pine Shadow`, `Cedar Shade`, `Fern Trace`, `Moss Veil`, `Cobalt Halo`, `Apricot Beam`, `Aurora Pool`).
 - `CatLocal/Core/Services/CameraController.swift`: camera permission, preview, capture session, and camera error copy.
 - `CatLocal/Core/Services/CatImageStore.swift`: Application Support storage, EXIF/GPS stripping, downsampling, HEIC/PNG encoding, thumbnails, storage size, and deletion cleanup.
 - `CatLocal/Core/Services/CatVisionProcessor.swift`: on-device Apple Vision cat recognition, foreground mask generation, cutout creation, and Vision error copy.
 - `CatLocal/Features/Capture/CaptureView.swift`: primary capture/import flow, processing states, multi-cat selection, card editor, fallback/error handling, and save path.
 - `CatLocal/Features/Collection/CollectionView.swift`: default tab, empty state, privacy proof points, collection summary, and card grid.
-- `CatLocal/Features/Settings/SettingsView.swift`: privacy/storage explanations, local storage size, destructive deletion, and version copy.
+- `CatLocal/Features/Settings/SettingsView.swift`: appearance, card motion, haptics, privacy receipt, local storage summary, destructive deletion, and app information.
 - `CatLocal/Shared/DesignSystem/CatLocalTheme.swift`: semantic dynamic colors, glass helper, background treatment, and editorial title helper.
 - `CatLocal/Shared/UI/Card`: card surfaces, focused-card editing, and presentation details.
 - `CatLocal/Shared/UI/Effects/LiveInteractiveCardView.swift`: live drag tilt, foil lighting, spring constants, and boundary haptics.
@@ -41,7 +41,7 @@ and implementation decisions before adding secondary settings or metrics.
 
 ## Product Goals
 
-- Make the first-use path feel like a camera-first private field journal: `Camera`, `Choose private photo`, `Looking for cats`, `Lifting the subject`, `Make it yours`, and `Add to Collection`.
+- Keep onboarding Home-first and low-pressure. From Home, the capture path uses `Camera`, `Choose private photo`, `Looking for cats`, `Lifting the subject`, `Make it yours`, and `Add to Collection`.
 - Keep the collection organized around real saved cards: `CatRecord.displayName`, plain sequence numbers, capture dates, optional notes, and card styles are the product's native data shape.
 - Treat privacy as visible product behavior, not a generic claim: use existing copy such as `On-device only`, `On this iPhone, by design`, `No Account`, `No Public Map`, and `No Model Training`.
 - Preserve local data safety: originals, cutouts, and thumbnails stay in Application Support; SwiftData stores metadata and filenames only.

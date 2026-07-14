@@ -3,11 +3,20 @@ import SwiftUI
 struct RootView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @AppStorage(CatLocalUserDefaults.hasCompletedOnboardingKey) private var hasCompletedOnboarding = false
-    @State private var selectedTab: AppTab = .home
-    @State private var lastContentTab: AppTab = .home
+    @AppStorage(CatLocalUserDefaults.appearanceKey) private var appearance = CatLocalAppearance.system
+    @AppStorage(CatLocalUserDefaults.cardMotionEnabledKey) private var cardMotionEnabled = true
+    @AppStorage(CatLocalUserDefaults.hapticsEnabledKey) private var hapticsEnabled = true
+    @State private var selectedTab: AppTab
+    @State private var lastContentTab: AppTab
     @State private var presentedSheet: AppSheet?
     @State private var homeReselectionID = 0
     @State private var contentTabFeedbackTrigger = 0
+
+    init() {
+        let initialTab: AppTab = CommandLine.arguments.contains("-ui-testing-open-settings") ? .settings : .home
+        _selectedTab = State(initialValue: initialTab)
+        _lastContentTab = State(initialValue: initialTab)
+    }
 
     var body: some View {
         ZStack {
@@ -20,11 +29,14 @@ struct RootView: View {
             }
         }
         .animation(reduceMotion ? nil : .smooth(duration: 0.24, extraBounce: 0), value: hasCompletedOnboarding)
+        .environment(\.catLocalCardMotionEnabled, cardMotionEnabled)
+        .environment(\.catLocalHapticsEnabled, hapticsEnabled)
+        .preferredColorScheme(appearance.preferredColorScheme)
     }
 
     private var appShell: some View {
         nativeTabs
-            .sensoryFeedback(.selection, trigger: contentTabFeedbackTrigger)
+            .catSensoryFeedback(.selection, trigger: contentTabFeedbackTrigger)
             .fullScreenCover(item: $presentedSheet, onDismiss: restoreContentTabSelection) { sheet in
                 switch sheet {
                 case .capture:

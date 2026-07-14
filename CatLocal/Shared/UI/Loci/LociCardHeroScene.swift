@@ -7,18 +7,6 @@ struct LociCardHeroScene: View {
     var spacing: CGFloat = 12
 
     init(
-        context: LociContext,
-        mascotSize: CGFloat = 120,
-        cardWidth: CGFloat = 136,
-        spacing: CGFloat = 12
-    ) {
-        self.state = LociMascotState.state(for: context)
-        self.mascotSize = mascotSize
-        self.cardWidth = cardWidth
-        self.spacing = spacing
-    }
-
-    init(
         state: LociMascotState,
         mascotSize: CGFloat = 120,
         cardWidth: CGFloat = 136,

@@ -47,16 +47,16 @@ their exact image names. The Loci asset folder must not provide a namespace.
 
 Required assets:
 
-- `loci_neutral`
 - `loci_presenting`
 - `loci_curious`
-- `loci_greeting`
-- `loci_icon`
 - `loci_noCatFound`
 - `loci_inspecting`
 - `loci_cardReady`
 - `loci_hint`
 - `loci_privacy`
+
+The app icon is maintained separately in `CatLocal/Resources/AppIcon.icon` and
+is not duplicated in the runtime Loci pose catalog.
 
 Asset standards:
 

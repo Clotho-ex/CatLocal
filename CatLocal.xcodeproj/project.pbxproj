@@ -24,7 +24,6 @@
 		A10C1F000000000000000014 /* LociMascotView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10C1F000000000000000004 /* LociMascotView.swift */; };
 		A10C1F000000000000000015 /* LociCardHeroScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10C1F000000000000000005 /* LociCardHeroScene.swift */; };
 		A10C1F000000000000000016 /* LociStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10C1F000000000000000006 /* LociStateView.swift */; };
-		A10C1F000000000000000017 /* LociPreviews.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10C1F000000000000000007 /* LociPreviews.swift */; };
 		A10C1F000000000000000018 /* CatLocalCardSkeletonView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10C1F000000000000000008 /* CatLocalCardSkeletonView.swift */; };
 		A40767F8673B5D8FF238D313 /* FocusedCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D58C11AD2A0BE295FE2FDE73 /* FocusedCardView.swift */; };
 		A51BF322F9A811A7B3A601F0 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 967BEF2D565B94E8EC6F4EF3 /* Foundation.framework */; };
@@ -78,7 +77,6 @@
 		A10C1F000000000000000004 /* LociMascotView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LociMascotView.swift; path = CatLocal/Shared/UI/Loci/LociMascotView.swift; sourceTree = "<group>"; };
 		A10C1F000000000000000005 /* LociCardHeroScene.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LociCardHeroScene.swift; path = CatLocal/Shared/UI/Loci/LociCardHeroScene.swift; sourceTree = "<group>"; };
 		A10C1F000000000000000006 /* LociStateView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LociStateView.swift; path = CatLocal/Shared/UI/Loci/LociStateView.swift; sourceTree = "<group>"; };
-		A10C1F000000000000000007 /* LociPreviews.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LociPreviews.swift; path = CatLocal/Shared/UI/Loci/LociPreviews.swift; sourceTree = "<group>"; };
 		A10C1F000000000000000008 /* CatLocalCardSkeletonView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CatLocalCardSkeletonView.swift; path = CatLocal/Shared/UI/Card/CatLocalCardSkeletonView.swift; sourceTree = "<group>"; };
 		A2FC4E54CFCDDB8993A0999A /* StoredImageView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = StoredImageView.swift; path = CatLocal/Shared/UI/Images/StoredImageView.swift; sourceTree = "<group>"; };
 		B00000000000000000000001 /* OnboardingView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = OnboardingView.swift; path = CatLocal/Features/Onboarding/OnboardingView.swift; sourceTree = "<group>"; };
@@ -301,7 +299,6 @@
 				A10C1F000000000000000004 /* LociMascotView.swift */,
 				A10C1F000000000000000005 /* LociCardHeroScene.swift */,
 				A10C1F000000000000000006 /* LociStateView.swift */,
-				A10C1F000000000000000007 /* LociPreviews.swift */,
 			);
 			name = Loci;
 			sourceTree = "<group>";
@@ -488,7 +485,6 @@
 				A10C1F000000000000000014 /* LociMascotView.swift in Sources */,
 				A10C1F000000000000000015 /* LociCardHeroScene.swift in Sources */,
 				A10C1F000000000000000016 /* LociStateView.swift in Sources */,
-				A10C1F000000000000000017 /* LociPreviews.swift in Sources */,
 				A10C1F000000000000000018 /* CatLocalCardSkeletonView.swift in Sources */,
 				D1A7C0DE0000000000000001 /* DustingRevealView.swift in Sources */,
 				D1A7C0DF0000000000000001 /* CardMintingSuccessView.swift in Sources */,

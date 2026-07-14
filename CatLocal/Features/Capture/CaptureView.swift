@@ -6,6 +6,7 @@ import UIKit
 
 struct CaptureView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.catLocalCardMotionEnabled) private var cardMotionEnabled
     @Environment(\.dismiss) private var dismiss
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.modelContext) private var modelContext
@@ -47,6 +48,10 @@ struct CaptureView: View {
     @FocusState private var focusedEditorField: EditorField?
 
     private let processor = CatVisionProcessor()
+
+    private var cardMotionIsReduced: Bool {
+        reduceMotion || !cardMotionEnabled
+    }
 
     var body: some View {
         ZStack {
@@ -114,9 +119,9 @@ struct CaptureView: View {
                 pendingDiscardAction = nil
             }
         }
-        .sensoryFeedback(.selection, trigger: captureSelectionFeedbackTrigger)
-        .sensoryFeedback(.warning, trigger: captureWarningFeedbackTrigger)
-        .sensoryFeedback(.impact(flexibility: .soft, intensity: 0.36), trigger: captureSaveTapFeedbackTrigger)
+        .catSensoryFeedback(.selection, trigger: captureSelectionFeedbackTrigger)
+        .catSensoryFeedback(.warning, trigger: captureWarningFeedbackTrigger)
+        .catSensoryFeedback(.impact(flexibility: .soft, intensity: 0.36), trigger: captureSaveTapFeedbackTrigger)
     }
 
     private var cameraScreen: some View {
@@ -716,7 +721,7 @@ struct CaptureView: View {
 
             StickerCutoutView(
                 image: image,
-                appliesMotion: !reduceMotion
+                appliesMotion: !cardMotionIsReduced
             )
             .frame(maxWidth: 270, maxHeight: 330)
             .position(x: proxy.size.width / 2, y: proxy.size.height / 2)
@@ -854,30 +859,30 @@ struct CaptureView: View {
                     }
                 )
 
-                editorFieldHeading("Name")
+                editorFieldHeading("Name the Cat")
 
-                TextField("Nickname (optional)", text: $nickname)
+                TextField("Nickname", text: $nickname)
                     .textInputAutocapitalization(.words)
                     .focused($focusedEditorField, equals: .nickname)
                     .catInputSurface()
 
-                editorFieldHeading("Catlas Place")
+                editorFieldHeading("Catlas")
 
-                TextField("Place label (optional)", text: $placeName)
+                TextField("Memory Place", text: $placeName)
                     .textInputAutocapitalization(.words)
                     .focused($focusedEditorField, equals: .placeName)
                     .catInputSurface()
                     .accessibilityHint("Adds a manual place label to the private Catlas")
 
-                TextField("Place detail (optional)", text: $placeDetail, axis: .vertical)
+                TextField("Place Detail", text: $placeDetail, axis: .vertical)
                     .lineLimit(1...3)
                     .textInputAutocapitalization(.sentences)
                     .focused($focusedEditorField, equals: .placeDetail)
                     .catInputSurface()
 
-                editorFieldHeading("Note")
+                editorFieldHeading("Encounter Note")
 
-                TextField("Add a note about this encounter", text: $note, axis: .vertical)
+                TextField("A note about this encounter", text: $note, axis: .vertical)
                     .lineLimit(2...5)
                     .focused($focusedEditorField, equals: .note)
                     .catInputSurface()

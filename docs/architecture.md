@@ -34,7 +34,9 @@ CatLocal/
       Images/
       Loci/
   Resources/
+    AppIcon.icon
     Assets.xcassets
+    PrivacyInfo.xcprivacy
 ```
 
 ## App Shell
@@ -48,6 +50,8 @@ CatLocal/
 
 The app uses `.tabViewStyle(.sidebarAdaptable)` rather than a custom tab bar. This keeps navigation aligned with native iOS behavior and gives iOS 26 the system Liquid Glass treatment automatically.
 
+Persisted app preferences use the keys and typed value catalogs in `CatLocalApp.swift`. `RootView` applies appearance, card-motion, and haptic choices through SwiftUI environment values. `CollectionView` persists Home view and sort changes where those controls are used, while `SettingsView` stays focused on app-wide preferences, local storage, privacy, and app information. System Reduce Motion always overrides the in-app Card Motion preference.
+
 ## Data Flow
 
 1. The user captures or imports an image in `CaptureView`.
@@ -56,6 +60,11 @@ The app uses `.tabViewStyle(.sidebarAdaptable)` rather than a custom tab bar. Th
 4. `CatImageStore` writes sanitized, downsampled image variants into Application Support.
 5. A `CatRecord` stores metadata, the optional cat bounding box, and local filenames with SwiftData.
 6. `CollectionView` queries records and renders cards through shared UI components.
+
+Foreground instance masking runs against the full prepared photo. The selected
+cat's detection bounds choose the matching Vision instance, but they must not
+crop the image before masking because imperfect detector bounds can omit paws,
+tails, or ear tips that the foreground mask would otherwise preserve.
 
 ## Persistence
 

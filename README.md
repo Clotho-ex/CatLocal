@@ -31,7 +31,7 @@ Open `CatLocal.xcodeproj` and run the shared `CatLocal` scheme.
 - `CatLocal/Core`: SwiftData model and camera/image/Vision services.
 - `CatLocal/Features`: capture, Home/Catlas, and settings screens.
 - `CatLocal/Shared`: design system and reusable UI components.
-- `CatLocal/Resources`: asset catalog.
+- `CatLocal/Resources`: runtime assets, layered app icon, and privacy manifest.
 - `docs/architecture.md`: implementation architecture and handoff notes.
 - `docs/design/README.md`: product, brand, visual system, and interaction guardrails.
 - `docs/loci-usage.md`: Loci mascot state, placement, animation, and asset rules.

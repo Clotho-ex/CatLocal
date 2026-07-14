@@ -37,20 +37,6 @@ struct LociMascotView: View {
         self.accessibilityLabel = accessibilityLabel
     }
 
-    init(
-        pose: LociPose,
-        size: CGFloat = 160,
-        animation: LociMascotAnimation,
-        accessibilityLabel: String? = nil
-    ) {
-        self.init(
-            pose: pose,
-            size: size,
-            motion: animation,
-            accessibilityLabel: accessibilityLabel
-        )
-    }
-
     var body: some View {
         ZStack {
             mascotImage

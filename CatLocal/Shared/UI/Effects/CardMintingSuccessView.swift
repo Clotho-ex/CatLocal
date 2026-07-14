@@ -2,6 +2,7 @@ import SwiftUI
 
 struct CardMintingSuccessView<Content: View>: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.catLocalCardMotionEnabled) private var cardMotionEnabled
 
     @Binding var isCustomizationDone: Bool
 
@@ -71,19 +72,23 @@ struct CardMintingSuccessView<Content: View>: View {
         .task(id: isCustomizationDone) {
             await runMintingSequence()
         }
-        .sensoryFeedback(.success, trigger: revealSuccessFeedbackTrigger)
+        .catSensoryFeedback(.success, trigger: revealSuccessFeedbackTrigger)
+    }
+
+    private var motionIsReduced: Bool {
+        reduceMotion || !cardMotionEnabled
     }
 
     private var mintedCard: some View {
         card(
             CardMintingSheenOverlay(
-                isVisible: !reduceMotion && sheenVisible,
+                isVisible: !motionIsReduced && sheenVisible,
                 hasTravelled: sheenTravelled
             )
         )
-            .scaleEffect(cardSettled || reduceMotion ? 1 : 0.965)
-            .offset(y: cardSettled || reduceMotion ? 0 : 18)
-            .opacity(cardSettled || reduceMotion ? 1 : 0)
+            .scaleEffect(cardSettled || motionIsReduced ? 1 : 0.965)
+            .offset(y: cardSettled || motionIsReduced ? 0 : 18)
+            .opacity(cardSettled || motionIsReduced ? 1 : 0)
             .frame(maxWidth: 390)
             .animation(.smooth(duration: 0.52, extraBounce: 0), value: cardSettled)
             .accessibilityElement(children: .contain)
@@ -113,7 +118,7 @@ struct CardMintingSuccessView<Content: View>: View {
             size: size
         )
         .opacity(badgeVisible ? 1 : 0)
-        .scaleEffect(badgeVisible || reduceMotion ? 1 : 0.94)
+        .scaleEffect(badgeVisible || motionIsReduced ? 1 : 0.94)
         .animation(.snappy(duration: 0.32, extraBounce: 0), value: badgeVisible)
         .accessibilityHidden(true)
     }
@@ -159,8 +164,8 @@ struct CardMintingSuccessView<Content: View>: View {
                 .stroke(badgeBorder, lineWidth: 1)
         )
         .opacity(badgeVisible ? 1 : 0)
-        .scaleEffect(badgeVisible || reduceMotion ? 1 : 0.94)
-        .offset(y: badgeVisible || reduceMotion ? 0 : 8)
+        .scaleEffect(badgeVisible || motionIsReduced ? 1 : 0.94)
+        .offset(y: badgeVisible || motionIsReduced ? 0 : 8)
         .animation(.snappy(duration: 0.34, extraBounce: 0), value: badgeVisible)
         .accessibilityLabel("Card ready")
         .accessibilityHidden(!badgeVisible)
@@ -194,7 +199,7 @@ struct CardMintingSuccessView<Content: View>: View {
         }
         .padding(.horizontal, 24)
         .padding(.bottom, 34)
-        .offset(y: buttonsVisible || reduceMotion ? 0 : 6)
+        .offset(y: buttonsVisible || motionIsReduced ? 0 : 6)
         .animation(.smooth(duration: 0.28, extraBounce: 0), value: buttonsVisible)
     }
 
@@ -244,7 +249,7 @@ struct CardMintingSuccessView<Content: View>: View {
 
         resetMintingState()
 
-        guard !reduceMotion else {
+        guard !motionIsReduced else {
             cardSettled = true
             badgeVisible = true
             buttonsVisible = true
@@ -301,7 +306,7 @@ struct CardMintingSuccessView<Content: View>: View {
 
     private func hideSavedBadge() {
         guard badgeVisible else { return }
-        if reduceMotion {
+        if motionIsReduced {
             badgeVisible = false
         } else {
             withAnimation(.easeOut(duration: 0.22)) {
