@@ -263,7 +263,13 @@ final class CatLocalUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Location"].exists)
         XCTAssertTrue(app.staticTexts["Network"].exists)
         XCTAssertTrue(app.staticTexts["The collection requires no account, upload, cloud AI, or model-training use."].exists)
-        XCTAssertTrue(app.staticTexts["EXIF and GPS metadata are removed before images are stored in CatLocal's private app container."].exists)
+        let metadataReceipt = app.staticTexts.matching(
+            NSPredicate(
+                format: "label == %@",
+                "Before storage, CatLocal redraws the selected photo and re-encodes it without source EXIF, GPS, camera/device, or orientation metadata."
+            )
+        ).firstMatch
+        XCTAssertTrue(metadataReceipt.exists)
 
         app.tabBars.buttons["Home"].tap()
         let cameraButton = app.tabBars.buttons["Camera"]
@@ -393,7 +399,7 @@ final class CatLocalUITests: XCTestCase {
         XCTAssertFalse(app.staticTexts["87%"].exists)
     }
 
-    func testValidationProcessingCanStopAndRetryWithoutLosingPhoto() {
+    func testValidationLiftKeepsFocusOnPhotoWithoutStopAction() {
         let app = XCUIApplication()
         app.launchArguments = [
             "-ui-testing-reset",
@@ -415,21 +421,8 @@ final class CatLocalUITests: XCTestCase {
         XCTAssertTrue(validationButton.waitForExistence(timeout: 8))
         validationButton.tap()
 
-        XCTAssertTrue(app.staticTexts["Looking for cats"].waitForExistence(timeout: 8))
-        let stopButton = app.buttons["Stop and return"]
-        XCTAssertTrue(stopButton.waitForExistence(timeout: 5))
-        stopButton.tap()
-
-        XCTAssertTrue(app.staticTexts["Photo kept"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["The scan stopped. Try again when you're ready, or retake the photo."].exists)
-        XCTAssertTrue(app.descendants(matching: .any)["Kept photo"].exists)
-
-        let retryButton = app.buttons["Look for Cats Again"]
-        XCTAssertTrue(retryButton.waitForExistence(timeout: 5))
-        retryButton.tap()
-
-        XCTAssertTrue(app.staticTexts["Looking for cats"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["Stop and return"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["lifting-status"].waitForExistence(timeout: 8))
+        XCTAssertFalse(app.buttons["Stop and return"].exists)
     }
 
     func testValidationImportReachesStickerEditor() {
@@ -459,6 +452,7 @@ final class CatLocalUITests: XCTestCase {
 
         let saveNowButton = app.buttons["save-cat-immediate"]
         XCTAssertTrue(saveNowButton.waitForExistence(timeout: 15))
+        XCTAssertTrue(app.descendants(matching: .any)["draft-card-inspection"].exists)
         let customizeButton = app.buttons["tap-to-customize"]
         XCTAssertTrue(customizeButton.exists)
         tapWhenHittable(customizeButton)
@@ -525,6 +519,35 @@ final class CatLocalUITests: XCTestCase {
             "-ui-testing-reset",
             "-catlocal-ui-import-fixture",
             "-catlocal-ui-synthetic-photo",
+            "-catlocal-ui-synthetic-cutout",
+            "-catlocal-ui-reduce-motion-reveal"
+        ]
+        app.launch()
+
+        XCTAssertTrue(app.staticTexts["CatLocal"].waitForExistence(timeout: 8))
+        let cameraButton = app.tabBars.buttons["Camera"]
+        XCTAssertTrue(cameraButton.waitForExistence(timeout: 5))
+        cameraButton.tap()
+
+        let validationButton = app.buttons["Use validation photo"]
+        if !validationButton.waitForExistence(timeout: 5) {
+            cameraButton.tap()
+        }
+        XCTAssertTrue(validationButton.waitForExistence(timeout: 8))
+        validationButton.tap()
+
+        let draftInspection = app.descendants(matching: .any)["draft-card-inspection"]
+        XCTAssertTrue(draftInspection.waitForExistence(timeout: 8))
+        XCTAssertTrue(app.buttons["save-cat-immediate"].exists)
+        XCTAssertTrue(app.buttons["tap-to-customize"].exists)
+    }
+
+    func testValidationImportMetalDustRevealCompletesBeforeEditor() {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "-ui-testing-reset",
+            "-catlocal-ui-import-fixture",
+            "-catlocal-ui-synthetic-photo",
             "-catlocal-ui-synthetic-cutout"
         ]
         app.launch()
@@ -541,10 +564,15 @@ final class CatLocalUITests: XCTestCase {
         XCTAssertTrue(validationButton.waitForExistence(timeout: 8))
         validationButton.tap()
 
-        let cutoutReveal = app.descendants(matching: .any)["cutout-reveal"]
-        XCTAssertTrue(cutoutReveal.waitForExistence(timeout: 8))
-        XCTAssertTrue(app.staticTexts["Lifting the subject"].exists)
-        XCTAssertTrue(app.buttons["save-cat-immediate"].waitForExistence(timeout: 15))
+        let transition = app.descendants(matching: .any)["subject-card-transition-active"]
+        XCTAssertTrue(transition.waitForExistence(timeout: 8))
+        XCTAssertFalse(app.buttons["save-cat-immediate"].exists)
+        XCTAssertFalse(app.buttons["tap-to-customize"].exists)
+
+        let draftInspection = app.descendants(matching: .any)["draft-card-inspection"]
+        XCTAssertTrue(draftInspection.waitForExistence(timeout: 8))
+        XCTAssertTrue(app.buttons["save-cat-immediate"].exists)
+        XCTAssertTrue(app.buttons["tap-to-customize"].exists)
     }
 
     func testValidationImportPromptsBeforeDiscardingDraftCutout() {
@@ -588,13 +616,15 @@ final class CatLocalUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Meet Your First Local"].waitForExistence(timeout: 5))
     }
 
-    func testValidationImportFallbackExplainsUnconfirmedCutout() {
+    func testValidationImportLetsTheUserTapTheCatWhenDetectionMisses() {
         let app = XCUIApplication()
         app.launchArguments = [
             "-ui-testing-reset",
             "-catlocal-ui-import-fixture",
             "-catlocal-ui-synthetic-photo",
-            "-catlocal-ui-force-foreground-fallback"
+            "-catlocal-ui-force-foreground-fallback",
+            "-catlocal-ui-synthetic-cutout",
+            "-catlocal-ui-skip-sticker-reveal"
         ]
         app.launch()
 
@@ -610,9 +640,34 @@ final class CatLocalUITests: XCTestCase {
         XCTAssertTrue(validationButton.waitForExistence(timeout: 8))
         validationButton.tap()
 
-        XCTAssertTrue(app.staticTexts["I couldn't find the cat clearly"].waitForExistence(timeout: 8))
-        XCTAssertTrue(app.buttons["Use Foreground Cutout"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["No confirmed cat in this photo."].exists)
-        XCTAssertTrue(app.staticTexts["You can review the foreground cutout and save only if it looks right."].exists)
+        XCTAssertTrue(app.staticTexts["Tap the cat"].waitForExistence(timeout: 8))
+        let selectionPhoto = app.descendants(matching: .any)["foreground-selection-photo"]
+        XCTAssertTrue(selectionPhoto.exists)
+        XCTAssertTrue(app.buttons["Retake"].exists)
+        XCTAssertTrue(app.buttons["Choose Private Photo"].exists)
+        XCTAssertFalse(app.buttons["Use Foreground Cutout"].exists)
+
+        let photoFrame = selectionPhoto.frame
+        XCTAssertGreaterThan(photoFrame.height, photoFrame.width)
+        selectionPhoto.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.02)).tap()
+
+        let retryGuidance = app.descendants(matching: .any)["foreground-selection-guidance"]
+        XCTAssertTrue(retryGuidance.waitForExistence(timeout: 5))
+        XCTAssertTrue(selectionPhoto.exists)
+
+        let fittedSide = min(photoFrame.width, photoFrame.height)
+        let fittedOriginX = (photoFrame.width - fittedSide) / 2
+        let fittedOriginY = (photoFrame.height - fittedSide) / 2
+        let backgroundOffset = CGVector(
+            dx: (fittedOriginX + fittedSide * 0.05) / photoFrame.width,
+            dy: (fittedOriginY + fittedSide * 0.05) / photoFrame.height
+        )
+        selectionPhoto.coordinate(withNormalizedOffset: backgroundOffset).tap()
+
+        XCTAssertTrue(selectionPhoto.waitForExistence(timeout: 5))
+        XCTAssertTrue(retryGuidance.exists)
+
+        selectionPhoto.tap()
+        XCTAssertTrue(app.buttons["save-cat-immediate"].waitForExistence(timeout: 10))
     }
 }

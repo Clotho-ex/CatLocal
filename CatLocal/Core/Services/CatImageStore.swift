@@ -1,5 +1,7 @@
+import Darwin
 import Foundation
 import ImageIO
+import OSLog
 import UniformTypeIdentifiers
 import UIKit
 
@@ -24,13 +26,25 @@ protocol CatImageStoring: Sendable {
 actor CatImageStore: CatImageStoring {
     static let shared = CatImageStore()
 
+    private static let logger = Logger(
+        subsystem: "app.catlocal.ios",
+        category: "ImageStorage"
+    )
+
     static let originalMaximumDimension: CGFloat = 1_800
     static let cutoutMaximumDimension: CGFloat = 1_400
     static let thumbnailMaximumDimension: CGFloat = 512
     static let originalCompressionQuality: CGFloat = 0.72
+    private static let storedImageFilenames: Set<String> = [
+        "original.heic",
+        "cutout.png",
+        "thumbnail.png",
+    ]
 
     private let fileManager: FileManager
     private let rootURL: URL
+    private var inFlightRecordIDs: Set<UUID> = []
+    private var finalizedRecordIDs: Set<UUID> = []
 
     init(fileManager: FileManager = .default, rootURL: URL? = nil) {
         self.fileManager = fileManager
@@ -52,6 +66,9 @@ actor CatImageStore: CatImageStoring {
         original: SendableImage,
         cutout: SendableImage
     ) async throws -> StoredCatImages {
+        inFlightRecordIDs.insert(id)
+        defer { inFlightRecordIDs.remove(id) }
+
         try fileManager.createDirectory(at: rootURL, withIntermediateDirectories: true)
 
         let directory = rootURL.appendingPathComponent(id.uuidString, isDirectory: true)
@@ -61,6 +78,7 @@ actor CatImageStore: CatImageStoring {
         )
         try fileManager.createDirectory(at: temporaryDirectory, withIntermediateDirectories: true)
 
+        var didFinalizeRecord = false
         do {
             let optimizedOriginal = Self.downsampledOpaqueImage(
                 from: original.value,
@@ -97,6 +115,9 @@ actor CatImageStore: CatImageStoring {
             } else {
                 try fileManager.moveItem(at: temporaryDirectory, to: directory)
             }
+            didFinalizeRecord = true
+            try hardenFinalRecordDirectory(directory)
+            finalizedRecordIDs.insert(id)
 
             return StoredCatImages(
                 originalPath: "\(id.uuidString)/original.heic",
@@ -104,25 +125,92 @@ actor CatImageStore: CatImageStoring {
                 thumbnailPath: "\(id.uuidString)/thumbnail.png"
             )
         } catch {
-            try? fileManager.removeItem(at: temporaryDirectory)
-            throw error
+            let saveError = error
+            let cleanupFailures = cleanupFailedSave(
+                temporaryDirectory: temporaryDirectory,
+                finalDirectory: didFinalizeRecord ? directory : nil
+            )
+            if !cleanupFailures.isEmpty {
+                throw CatImageStoreError.imageSaveCleanupFailed(
+                    saveError: saveError.localizedDescription,
+                    cleanupError: cleanupFailures.joined(separator: "; ")
+                )
+            }
+            throw saveError
         }
     }
 
     func data(at relativePath: String) async throws -> Data {
-        let url = try fileURL(for: relativePath)
+        let url = try validatedStoredImageURL(for: relativePath)
         return try Data(contentsOf: url, options: .mappedIfSafe)
     }
 
     func deleteRecord(id: UUID) async throws {
         let directory = rootURL.appendingPathComponent(id.uuidString, isDirectory: true)
-        guard fileManager.fileExists(atPath: directory.path) else { return }
+        guard fileManager.fileExists(atPath: directory.path) else {
+            finalizedRecordIDs.remove(id)
+            return
+        }
         try fileManager.removeItem(at: directory)
+        finalizedRecordIDs.remove(id)
+    }
+
+    func cleanupOrphanedDirectories(validRecordIDs: Set<UUID>) async throws {
+        guard fileManager.fileExists(atPath: rootURL.path) else { return }
+        let preservedRecordIDs = validRecordIDs
+            .union(inFlightRecordIDs)
+            .union(finalizedRecordIDs)
+
+        let contents: [URL]
+        do {
+            contents = try fileManager.contentsOfDirectory(
+                at: rootURL,
+                includingPropertiesForKeys: [.isDirectoryKey],
+                options: []
+            )
+        } catch {
+            Self.logger.error(
+                "Could not enumerate image storage for orphan cleanup: \(error.localizedDescription, privacy: .public)"
+            )
+            throw error
+        }
+
+        for url in contents {
+            let isDirectory: Bool
+            do {
+                isDirectory = try url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory == true
+            } catch {
+                Self.logger.error(
+                    "Could not inspect image storage entry \(url.lastPathComponent, privacy: .public): \(error.localizedDescription, privacy: .public)"
+                )
+                throw error
+            }
+
+            guard isDirectory else { continue }
+            let name = url.lastPathComponent
+            guard !name.contains(".tmp-") else { continue }
+            guard let id = UUID(uuidString: name), id.uuidString == name else { continue }
+            guard !preservedRecordIDs.contains(id) else { continue }
+
+            do {
+                try fileManager.removeItem(at: url)
+                Self.logger.info("Removed orphaned image directory \(name, privacy: .public)")
+            } catch {
+                Self.logger.error(
+                    "Could not remove orphaned image directory \(name, privacy: .public): \(error.localizedDescription, privacy: .public)"
+                )
+                throw error
+            }
+        }
     }
 
     func deleteAll() async throws {
-        guard fileManager.fileExists(atPath: rootURL.path) else { return }
+        guard fileManager.fileExists(atPath: rootURL.path) else {
+            finalizedRecordIDs.removeAll()
+            return
+        }
         try fileManager.removeItem(at: rootURL)
+        finalizedRecordIDs.removeAll()
     }
 
     func storageSize() async throws -> Int64 {
@@ -139,18 +227,118 @@ actor CatImageStore: CatImageStoring {
         return total
     }
 
-    private func fileURL(for relativePath: String) throws -> URL {
-        guard !relativePath.isEmpty, !relativePath.hasPrefix("/") else {
+    private func validatedStoredImageURL(for relativePath: String) throws -> URL {
+        let components = relativePath.split(
+            separator: "/",
+            omittingEmptySubsequences: false
+        ).map(String.init)
+        guard !relativePath.isEmpty,
+              !NSString(string: relativePath).isAbsolutePath,
+              components.count == 2,
+              components.allSatisfy({ !$0.isEmpty && $0 != "." && $0 != ".." }),
+              let recordID = UUID(uuidString: components[0]),
+              recordID.uuidString == components[0],
+              Self.storedImageFilenames.contains(components[1]) else {
             throw CatImageStoreError.invalidPath
         }
 
-        let root = rootURL.standardizedFileURL
-        let url = rootURL.appendingPathComponent(relativePath).standardizedFileURL
-        let rootPath = root.path.hasSuffix("/") ? root.path : root.path + "/"
-        guard url.path.hasPrefix(rootPath) else {
+        let standardizedRoot = rootURL.standardizedFileURL
+        let recordDirectory = standardizedRoot.appendingPathComponent(
+            components[0],
+            isDirectory: true
+        )
+        let candidate = recordDirectory.appendingPathComponent(components[1])
+
+        for url in [standardizedRoot, recordDirectory, candidate] {
+            guard try !isSymbolicLink(at: url) else {
+                throw CatImageStoreError.invalidPath
+            }
+        }
+
+        let resolvedRoot = standardizedRoot
+            .resolvingSymlinksInPath()
+            .standardizedFileURL
+        let resolvedCandidate = candidate
+            .resolvingSymlinksInPath()
+            .standardizedFileURL
+        let rootComponents = resolvedRoot.pathComponents
+        let candidateComponents = resolvedCandidate.pathComponents
+        guard candidateComponents.count == rootComponents.count + 2,
+              candidateComponents.prefix(rootComponents.count).elementsEqual(rootComponents) else {
             throw CatImageStoreError.invalidPath
         }
-        return url
+        return resolvedCandidate
+    }
+
+    private func isSymbolicLink(at url: URL) throws -> Bool {
+        var info = stat()
+        let status = url.withUnsafeFileSystemRepresentation { path -> Int32? in
+            path.map { Darwin.lstat($0, &info) }
+        }
+        guard let status else { throw CatImageStoreError.invalidPath }
+        if status == 0 {
+            return (info.st_mode & S_IFMT) == S_IFLNK
+        }
+
+        let errorCode = errno
+        guard errorCode != ENOENT, errorCode != ENOTDIR else { return false }
+        throw NSError(
+            domain: NSPOSIXErrorDomain,
+            code: Int(errorCode),
+            userInfo: [NSFilePathErrorKey: url.path]
+        )
+    }
+
+    private func hardenFinalRecordDirectory(_ directory: URL) throws {
+        let relativePaths = try fileManager.subpathsOfDirectory(atPath: directory.path)
+        let protectedURLs = [directory] + relativePaths.map(directory.appendingPathComponent)
+        for url in protectedURLs {
+            try fileManager.setAttributes(
+                [.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication],
+                ofItemAtPath: url.path
+            )
+        }
+
+        var excludedDirectory = directory
+        var resourceValues = URLResourceValues()
+        resourceValues.isExcludedFromBackup = true
+        try excludedDirectory.setResourceValues(resourceValues)
+
+        guard try Self.backupExclusionIsEnabledOnDisk(at: directory) else {
+            throw CatImageStoreError.backupExclusionFailed
+        }
+    }
+
+    static func backupExclusionIsEnabledOnDisk(at directory: URL) throws -> Bool {
+        let readbackURL = URL(fileURLWithPath: directory.path, isDirectory: true)
+        return try readbackURL.resourceValues(
+            forKeys: [.isExcludedFromBackupKey]
+        ).isExcludedFromBackup == true
+    }
+
+    private func cleanupFailedSave(
+        temporaryDirectory: URL,
+        finalDirectory: URL?
+    ) -> [String] {
+        var cleanupTargets = [temporaryDirectory]
+        if let finalDirectory {
+            cleanupTargets.append(finalDirectory)
+        }
+        var failures: [String] = []
+
+        for url in cleanupTargets where fileManager.fileExists(atPath: url.path) {
+            do {
+                try fileManager.removeItem(at: url)
+            } catch {
+                let detail = "\(url.lastPathComponent): \(error.localizedDescription)"
+                failures.append(detail)
+                Self.logger.error(
+                    "Could not roll back failed image save at \(url.lastPathComponent, privacy: .public): \(error.localizedDescription, privacy: .public)"
+                )
+            }
+        }
+
+        return failures
     }
 
     private static func heicData(from image: UIImage, quality: CGFloat) throws -> Data {
@@ -168,10 +356,10 @@ actor CatImageStore: CatImageStoring {
             throw CatImageStoreError.imageEncodingFailed
         }
 
+        // Encoding a normalized raster with only compression settings prevents
+        // ImageIO from carrying source photo dictionaries into the retained HEIC.
         let properties: [CFString: Any] = [
             kCGImageDestinationLossyCompressionQuality: quality,
-            kCGImagePropertyExifDictionary: [:],
-            kCGImagePropertyGPSDictionary: [:]
         ]
         CGImageDestinationAddImage(destination, cgImage, properties as CFDictionary)
         guard CGImageDestinationFinalize(destination) else {
@@ -353,15 +541,24 @@ actor CatImageStore: CatImageStoring {
 }
 
 enum CatImageStoreError: LocalizedError {
+    case backupExclusionFailed
+    case imageSaveCleanupFailed(saveError: String, cleanupError: String)
     case imageEncodingFailed
     case invalidPath
+    case persistenceSaveCleanupFailed(persistenceError: String, cleanupError: String)
 
     var errorDescription: String? {
         switch self {
+        case .backupExclusionFailed:
+            "CatLocal could not exclude this private image from backups."
+        case let .imageSaveCleanupFailed(saveError, cleanupError):
+            "CatLocal could not finish saving private images (\(saveError)) and could not clean up incomplete files (\(cleanupError))."
         case .imageEncodingFailed:
             "CatLocal could not prepare this image for private storage."
         case .invalidPath:
             "CatLocal blocked an invalid local image path."
+        case let .persistenceSaveCleanupFailed(persistenceError, cleanupError):
+            "CatLocal could not save this cat's card details (\(persistenceError)) and could not remove its newly stored images (\(cleanupError))."
         }
     }
 }

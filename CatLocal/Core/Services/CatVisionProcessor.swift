@@ -6,13 +6,100 @@ protocol CatAnalyzing: Sendable {
     func detectCats(in image: SendableImage) async throws -> [CatDetection]
     func cutout(
         from image: SendableImage,
-        detection: CatDetection?
+        selection: ForegroundSelection
     ) async throws -> SendableImage
 }
 
+enum ForegroundSelection: Sendable {
+    case detected(CatDetection)
+    case normalizedSourcePoint(CGPoint)
+}
+
+struct InstanceMaskPixelCoordinate: Equatable, Sendable {
+    let x: Int
+    let y: Int
+}
+
+enum InstanceMaskPointMapping {
+    static func pixelCoordinate(
+        at normalizedSourcePoint: CGPoint,
+        width: Int,
+        height: Int
+    ) -> InstanceMaskPixelCoordinate? {
+        guard
+            width > 0,
+            height > 0,
+            normalizedSourcePoint.x >= 0,
+            normalizedSourcePoint.x < 1,
+            normalizedSourcePoint.y >= 0,
+            normalizedSourcePoint.y < 1
+        else {
+            return nil
+        }
+
+        return InstanceMaskPixelCoordinate(
+            x: min(width - 1, Int(normalizedSourcePoint.x * CGFloat(width))),
+            y: min(height - 1, Int(normalizedSourcePoint.y * CGFloat(height)))
+        )
+    }
+}
+
+enum InstanceMaskLabelEncoding: Equatable, Sendable {
+    case oneComponent8
+    case oneComponent32Float
+}
+
+enum InstanceMaskLabelDecoder {
+    static func encoding(for pixelFormat: OSType) -> InstanceMaskLabelEncoding? {
+        switch pixelFormat {
+        case kCVPixelFormatType_OneComponent8:
+            .oneComponent8
+        case kCVPixelFormatType_OneComponent32Float:
+            .oneComponent32Float
+        default:
+            nil
+        }
+    }
+
+    static func label(
+        from value: UInt8,
+        availableInstances: IndexSet
+    ) -> Int? {
+        let label = Int(value)
+        return label > 0 && availableInstances.contains(label) ? label : nil
+    }
+
+    static func label(
+        from value: Float,
+        availableInstances: IndexSet
+    ) -> Int? {
+        let rounded = value.rounded()
+        guard
+            value.isFinite,
+            abs(value - rounded) < 0.001,
+            rounded > 0,
+            rounded <= Float(Int.max)
+        else {
+            return nil
+        }
+        let label = Int(rounded)
+        return availableInstances.contains(label) ? label : nil
+    }
+}
+
 actor CatVisionProcessor: CatAnalyzing {
+    static let minimumDetectionConfidence: Float = 0.55
+
     private let context = CIContext(options: [.useSoftwareRenderer: false])
     private let minimumInstanceOverlapScore: Float = 0.08
+
+    nonisolated static func confidentDetections(
+        _ detections: [CatDetection]
+    ) -> [CatDetection] {
+        detections
+            .filter { $0.confidence >= minimumDetectionConfidence }
+            .sorted { $0.confidence > $1.confidence }
+    }
 
     func detectCats(in image: SendableImage) async throws -> [CatDetection] {
         try Task.checkCancellation()
@@ -25,8 +112,8 @@ actor CatVisionProcessor: CatAnalyzing {
         try handler.perform([request])
         try Task.checkCancellation()
 
-        return (request.results ?? [])
-            .compactMap { observation in
+        let detections: [CatDetection] = (request.results ?? [])
+            .compactMap { observation -> CatDetection? in
                 guard let catLabel = observation.labels.first(where: {
                     $0.identifier.caseInsensitiveCompare("Cat") == .orderedSame
                 }) else {
@@ -37,19 +124,18 @@ actor CatVisionProcessor: CatAnalyzing {
                     confidence: catLabel.confidence
                 )
             }
-            .sorted { $0.confidence > $1.confidence }
+        return Self.confidentDetections(detections)
     }
 
     func cutout(
         from image: SendableImage,
-        detection: CatDetection?
+        selection: ForegroundSelection
     ) async throws -> SendableImage {
         try Task.checkCancellation()
         guard let cgImage = normalizedCGImage(from: image.value) else {
             throw CatVisionError.unreadableImage
         }
 
-        // Explicit fallback path for "Use the foreground anyway" when cat detection fails.
         let handler = VNImageRequestHandler(cgImage: cgImage)
         let request = VNGenerateForegroundInstanceMaskRequest()
         try handler.perform([request])
@@ -59,24 +145,29 @@ actor CatVisionProcessor: CatAnalyzing {
             throw CatVisionError.noForeground
         }
 
-        let instances: IndexSet
-        if let detection {
+        let selectedInstance: Int
+        switch selection {
+        case .detected(let detection):
             guard let selected = bestMatchingInstance(
                 in: observation,
                 overlapping: detection.boundingBox
             ) else {
                 throw CatVisionError.noMatchingForeground
             }
-            instances = IndexSet(integer: selected)
-        } else {
-            instances = observation.allInstances
-        }
-        guard !instances.isEmpty else {
-            throw CatVisionError.noForeground
+            selectedInstance = selected
+        case .normalizedSourcePoint(let point):
+            guard let selected = instanceLabel(
+                at: point,
+                in: observation.instanceMask,
+                availableInstances: observation.allInstances
+            ) else {
+                throw CatVisionError.noMatchingForeground
+            }
+            selectedInstance = selected
         }
 
         let maskBuffer = try observation.generateScaledMaskForImage(
-            forInstances: instances,
+            forInstances: IndexSet(integer: selectedInstance),
             from: handler
         )
         try Task.checkCancellation()
@@ -109,7 +200,7 @@ actor CatVisionProcessor: CatAnalyzing {
         return bestScore >= minimumInstanceOverlapScore ? bestInstance : nil
     }
 
-    nonisolated func maskOverlapScore(
+    private func maskOverlapScore(
         _ mask: CVPixelBuffer,
         boundingBox: CGRect
     ) -> Float {
@@ -152,7 +243,7 @@ actor CatVisionProcessor: CatAnalyzing {
         return samples == 0 ? 0 : sum / Float(samples)
     }
 
-    nonisolated private func maskValue(
+    private func maskValue(
         baseAddress: UnsafeMutableRawPointer,
         rowBytes: Int,
         pixelFormat: OSType,
@@ -171,6 +262,48 @@ actor CatVisionProcessor: CatAnalyzing {
         }
     }
 
+    func instanceLabel(
+        at normalizedSourcePoint: CGPoint,
+        in mask: CVPixelBuffer,
+        availableInstances: IndexSet
+    ) -> Int? {
+        CVPixelBufferLockBaseAddress(mask, .readOnly)
+        defer { CVPixelBufferUnlockBaseAddress(mask, .readOnly) }
+
+        guard let baseAddress = CVPixelBufferGetBaseAddress(mask) else { return nil }
+        let width = CVPixelBufferGetWidth(mask)
+        let height = CVPixelBufferGetHeight(mask)
+        guard let coordinate = InstanceMaskPointMapping.pixelCoordinate(
+            at: normalizedSourcePoint,
+            width: width,
+            height: height
+        ) else {
+            return nil
+        }
+        let rowBytes = CVPixelBufferGetBytesPerRow(mask)
+        let row = baseAddress.advanced(by: coordinate.y * rowBytes)
+
+        guard let encoding = InstanceMaskLabelDecoder.encoding(
+            for: CVPixelBufferGetPixelFormatType(mask)
+        ) else {
+            return nil
+        }
+
+        switch encoding {
+        case .oneComponent8:
+            return InstanceMaskLabelDecoder.label(
+                from: row.assumingMemoryBound(to: UInt8.self)[coordinate.x],
+                availableInstances: availableInstances
+            )
+        case .oneComponent32Float:
+            guard coordinate.x < rowBytes / MemoryLayout<Float>.stride else { return nil }
+            return InstanceMaskLabelDecoder.label(
+                from: row.assumingMemoryBound(to: Float.self)[coordinate.x],
+                availableInstances: availableInstances
+            )
+        }
+    }
+
     private func normalizedCGImage(from image: UIImage) -> CGImage? {
         if image.imageOrientation == .up, let cgImage = image.cgImage {
             return cgImage
@@ -181,6 +314,9 @@ actor CatVisionProcessor: CatAnalyzing {
     }
 
     func makeTransparentCutout(from image: CGImage, mask: CIImage) throws -> CGImage {
+        guard let outputColorSpace = Self.namedOutputColorSpace(for: image) else {
+            throw CatVisionError.cutoutFailed
+        }
         let original = CIImage(cgImage: image)
         let clearBackground = CIImage(color: .clear).cropped(to: original.extent)
         let cutout = original.applyingFilter(
@@ -196,7 +332,7 @@ actor CatVisionProcessor: CatAnalyzing {
                 cutout,
                 from: original.extent,
                 format: .RGBA8,
-                colorSpace: CGColorSpaceCreateDeviceRGB()
+                colorSpace: outputColorSpace
             )
         else {
             throw CatVisionError.cutoutFailed
@@ -205,6 +341,17 @@ actor CatVisionProcessor: CatAnalyzing {
             throw CatVisionError.noForeground
         }
         return output
+    }
+
+    private nonisolated static func namedOutputColorSpace(for image: CGImage) -> CGColorSpace? {
+        if let sourceColorSpace = image.colorSpace,
+           sourceColorSpace.model == .rgb,
+           let sourceName = sourceColorSpace.name,
+           sourceName != CGColorSpaceCreateDeviceRGB().name {
+            return sourceColorSpace
+        }
+        return CGColorSpace(name: CGColorSpace.extendedSRGB)
+            ?? CGColorSpace(name: CGColorSpace.sRGB)
     }
 
     nonisolated func hasVisibleSubjectAndTransparentBackground(_ image: CGImage) -> Bool {
