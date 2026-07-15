@@ -88,6 +88,10 @@ struct DraftCatCardView: View {
     var showsSurfaceShadow: Bool = true
     var appliesStickerEffect = false
     var stickerMotionIntensity: CGFloat?
+    var catOpacity: Double = 1
+    var outlineMask: CGImage?
+    var imageStageCoordinateSpaceName: String?
+    var onImageStageFrameChange: ((CGRect) -> Void)?
 
     var body: some View {
         CatCardSurface(
@@ -108,7 +112,10 @@ struct DraftCatCardView: View {
             showsThumbnailPlaceFooter: showsThumbnailPlaceFooter,
             showsSurfaceShadow: showsSurfaceShadow,
             catBoundingBox: catBoundingBox,
-            patternSeed: patternSeed
+            patternSeed: patternSeed,
+            catOpacity: catOpacity,
+            imageStageCoordinateSpaceName: imageStageCoordinateSpaceName,
+            onImageStageFrameChange: onImageStageFrameChange
         ) {
             draftCatImage
         }
@@ -116,16 +123,19 @@ struct DraftCatCardView: View {
 
     @ViewBuilder
     private var draftCatImage: some View {
-        if appliesStickerEffect, stickerMotionIntensity != nil {
-            StickerCutoutView(
-                image: image,
-                appliesMotion: true
-            )
-        } else if appliesStickerEffect {
-            StickerCutoutView(
-                image: image,
-                appliesMotion: false
-            )
+        if appliesStickerEffect, let outlineMask {
+            ZStack {
+                Image(decorative: outlineMask, scale: 1, orientation: .up)
+                    .renderingMode(.template)
+                    .resizable()
+                    .scaledToFit()
+                    .foregroundStyle(CatLocalTheme.cardSurface)
+
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFit()
+            }
+            .compositingGroup()
         } else {
             Image(uiImage: image)
                 .resizable()
@@ -214,6 +224,9 @@ private struct CatCardSurface<CatImage: View>: View {
     let showsSurfaceShadow: Bool
     let catBoundingBox: CGRect?
     let patternSeed: Int
+    var catOpacity: Double = 1
+    var imageStageCoordinateSpaceName: String?
+    var onImageStageFrameChange: ((CGRect) -> Void)?
     @ViewBuilder let catImage: () -> CatImage
 
     private var focused: Bool { presentation == .focused }
@@ -283,6 +296,7 @@ private struct CatCardSurface<CatImage: View>: View {
 
                         catImage()
                             .scaledToFit()
+                            .opacity(catOpacity)
                             .frame(
                                 maxWidth: imageMaxWidth,
                                 maxHeight: previewImageHeight,
@@ -299,6 +313,7 @@ private struct CatCardSurface<CatImage: View>: View {
 
                             catImage()
                                 .scaledToFit()
+                                .opacity(catOpacity)
                                 .frame(
                                     maxWidth: imageMaxWidth,
                                     maxHeight: imageStageHeight * 0.96,
@@ -308,6 +323,16 @@ private struct CatCardSurface<CatImage: View>: View {
                         }
                         .frame(maxWidth: .infinity)
                         .frame(height: imageStageHeight)
+                        .overlay {
+                            CatCardImageStageReporter(
+                                coordinateSpaceName: imageStageCoordinateSpaceName,
+                                onFrameChange: onImageStageFrameChange
+                            )
+                                .frame(
+                                    maxWidth: imageMaxWidth,
+                                    maxHeight: imageStageHeight * 0.96
+                                )
+                        }
 
                         if showsFooter {
                             footer
@@ -1442,6 +1467,22 @@ private struct CatCardSurface<CatImage: View>: View {
 
     private func clampedUnit(_ value: CGFloat) -> CGFloat {
         min(max(value, 0), 1)
+    }
+}
+
+private struct CatCardImageStageReporter: View {
+    let coordinateSpaceName: String?
+    let onFrameChange: ((CGRect) -> Void)?
+
+    var body: some View {
+        Color.clear
+            .onGeometryChange(for: CGRect.self) { geometry in
+                guard let coordinateSpaceName else { return .zero }
+                return geometry.frame(in: .named(coordinateSpaceName))
+            } action: { frame in
+                guard frame.width > 0, frame.height > 0 else { return }
+                onFrameChange?(frame)
+            }
     }
 }
 

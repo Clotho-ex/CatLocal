@@ -1,3 +1,4 @@
+import OSLog
 import SwiftData
 import SwiftUI
 
@@ -114,6 +115,11 @@ extension View {
 
 @main
 struct CatLocalApp: App {
+    nonisolated private static let logger = Logger(
+        subsystem: "app.catlocal.ios",
+        category: "StorageLifecycle"
+    )
+
     private let modelContainer: ModelContainer
 
     init() {
@@ -140,8 +146,36 @@ struct CatLocalApp: App {
                 try context.save()
             }
             modelContainer = container
+            Self.scheduleOrphanCleanup(using: container)
         } catch {
             fatalError("CatLocal could not open its private collection: \(error)")
+        }
+    }
+
+    private static func scheduleOrphanCleanup(using container: ModelContainer) {
+        Task.detached(priority: .utility) {
+            let context = ModelContext(container)
+            let validRecordIDs: Set<UUID>
+            do {
+                validRecordIDs = Set(
+                    try context.fetch(FetchDescriptor<CatRecord>()).map(\.id)
+                )
+            } catch {
+                logger.error(
+                    "Skipped orphan cleanup because saved record IDs could not be read: \(error.localizedDescription, privacy: .public)"
+                )
+                return
+            }
+
+            do {
+                try await CatImageStore.shared.cleanupOrphanedDirectories(
+                    validRecordIDs: validRecordIDs
+                )
+            } catch {
+                logger.error(
+                    "Launch orphan cleanup failed without blocking the app: \(error.localizedDescription, privacy: .public)"
+                )
+            }
         }
     }
 

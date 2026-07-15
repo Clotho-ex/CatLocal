@@ -1,8 +1,399 @@
 import AVFoundation
+import CoreImage
+import CoreImage.CIFilterBuiltins
+import ImageIO
 import PhotosUI
 import SwiftData
 import SwiftUI
 import UIKit
+
+struct PreparedCaptureTransition: Sendable {
+    let alignedCutout: CGImage
+    let sticker: CGImage
+    let backgroundOnly: CGImage
+    let subjectProtectionMask: CGImage
+    let outlineMask: CGImage
+    let normalizedSubjectBounds: CGRect
+    let normalizedPaddedCropBounds: CGRect
+    let sourceSize: CGSize
+    let workingColorSpace: CaptureTransitionColorSpace
+}
+
+struct CaptureTransitionColorSpace: Equatable, Sendable {
+    enum Source: Equatable, Sendable {
+        case sourceRGB
+        case extendedSRGB
+        case sRGB
+    }
+
+    let source: Source
+    let name: String?
+
+    static func resolve(for image: CGImage) -> Self {
+        if let sourceColorSpace = image.colorSpace,
+           sourceColorSpace.model == .rgb,
+           let sourceName = sourceColorSpace.name,
+           sourceName as String != "kCGColorSpaceDeviceRGB" {
+            return Self(source: .sourceRGB, name: sourceName as String)
+        }
+        if let extended = CGColorSpace(name: CGColorSpace.extendedSRGB) {
+            return Self(source: .extendedSRGB, name: extended.name as String?)
+        }
+        let standard = CGColorSpace(name: CGColorSpace.sRGB)
+        return Self(source: .sRGB, name: standard?.name as String?)
+    }
+
+    func makeColorSpace() -> CGColorSpace? {
+        if let name,
+           let resolved = CGColorSpace(name: name as CFString),
+           resolved.model == .rgb {
+            return resolved
+        }
+        if source == .extendedSRGB,
+           let extended = CGColorSpace(name: CGColorSpace.extendedSRGB) {
+            return extended
+        }
+        // Standard sRGB is the explicit production fallback; never use DeviceRGB.
+        return CGColorSpace(name: CGColorSpace.sRGB)
+    }
+}
+
+enum GalleryImagePreparationCheckpoint: Equatable, Sendable {
+    case beforeSourceDecode
+    case beforeOrientationNormalization
+    case afterThumbnailCreation
+    case afterDownsampling
+    case beforeReturn
+}
+
+enum CaptureImagePreparation {
+    static func cameraImage(
+        from data: Data,
+        maximumDimension: CGFloat
+    ) throws -> UIImage {
+        try Task.checkCancellation()
+        guard
+            maximumDimension > 0,
+            let source = CGImageSourceCreateWithData(
+                data as CFData,
+                [kCGImageSourceShouldCache: false] as CFDictionary
+            )
+        else {
+            throw CatVisionError.unreadableImage
+        }
+
+        let options: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceShouldCacheImmediately: true,
+            kCGImageSourceThumbnailMaxPixelSize: ceil(maximumDimension),
+        ]
+        try Task.checkCancellation()
+        guard let thumbnail = CGImageSourceCreateThumbnailAtIndex(
+            source,
+            0,
+            options as CFDictionary
+        ) else {
+            throw CatVisionError.unreadableImage
+        }
+
+        try Task.checkCancellation()
+        return UIImage(cgImage: thumbnail, scale: 1, orientation: .up)
+    }
+
+    static func galleryImage(
+        from data: Data,
+        maximumDimension: CGFloat,
+        checkpoint: (GalleryImagePreparationCheckpoint) throws -> Void = { _ in
+            try Task.checkCancellation()
+        }
+    ) throws -> CGImage {
+        try checkpoint(.beforeSourceDecode)
+        guard
+            maximumDimension > 0,
+            let source = CGImageSourceCreateWithData(
+                data as CFData,
+                [kCGImageSourceShouldCache: false] as CFDictionary
+            )
+        else {
+            throw CatVisionError.unreadableImage
+        }
+
+        let options: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceShouldCacheImmediately: true,
+            kCGImageSourceThumbnailMaxPixelSize: ceil(maximumDimension),
+        ]
+        try checkpoint(.beforeOrientationNormalization)
+        guard let thumbnail = CGImageSourceCreateThumbnailAtIndex(
+            source,
+            0,
+            options as CFDictionary
+        ) else {
+            throw CatVisionError.unreadableImage
+        }
+        try checkpoint(.afterThumbnailCreation)
+
+        // ImageIO applies orientation normalization and downsampling in the same
+        // thumbnail operation, so cancellation can resume immediately afterward.
+        try checkpoint(.afterDownsampling)
+        try checkpoint(.beforeReturn)
+        return thumbnail
+    }
+
+    static func preparedGalleryImage(
+        from data: Data,
+        maximumDimension: CGFloat
+    ) async throws -> CGImage {
+        try await runGalleryWorker {
+            try galleryImage(from: data, maximumDimension: maximumDimension)
+        }
+    }
+
+    static func preparedGalleryImage(
+        at url: URL,
+        maximumDimension: CGFloat
+    ) async throws -> CGImage {
+        try await runGalleryWorker {
+            try Task.checkCancellation()
+            let data = try Data(contentsOf: url)
+            try Task.checkCancellation()
+            return try galleryImage(from: data, maximumDimension: maximumDimension)
+        }
+    }
+
+    static func runGalleryWorker(
+        didInstallCancellationHandler: (@Sendable () -> Void)? = nil,
+        operation: @escaping @Sendable () throws -> CGImage
+    ) async throws -> CGImage {
+        let worker = Task.detached(priority: .userInitiated) {
+            try operation()
+        }
+        return try await withTaskCancellationHandler {
+            didInstallCancellationHandler?()
+            let result = try await worker.value
+            try Task.checkCancellation()
+            return result
+        } onCancel: {
+            worker.cancel()
+        }
+    }
+
+    static func transitionAssets(
+        original: CGImage,
+        alignedCutout: CGImage,
+        maximumDimension: Int = 1600
+    ) throws -> PreparedCaptureTransition {
+        try Task.checkCancellation()
+        guard
+            maximumDimension > 0,
+            original.width == alignedCutout.width,
+            original.height == alignedCutout.height,
+            original.width > 0,
+            original.height > 0
+        else {
+            throw CatVisionError.unreadableImage
+        }
+
+        let colorMetadata = CaptureTransitionColorSpace.resolve(for: original)
+        guard let colorSpace = colorMetadata.makeColorSpace() else {
+            throw CatVisionError.unreadableImage
+        }
+        let context = CIContext(options: [
+            .workingColorSpace: colorSpace,
+            .outputColorSpace: colorSpace,
+            .cacheIntermediates: false,
+        ])
+        let sourceExtent = CGRect(x: 0, y: 0, width: original.width, height: original.height)
+        let scale = min(CGFloat(maximumDimension) / max(sourceExtent.width, sourceExtent.height), 1)
+        let targetSize = CGSize(
+            width: max(1, (sourceExtent.width * scale).rounded()),
+            height: max(1, (sourceExtent.height * scale).rounded())
+        )
+        let targetExtent = CGRect(origin: .zero, size: targetSize)
+        let transform = CGAffineTransform(scaleX: scale, y: scale)
+        // Preserve each image's embedded input profile. The CI context converts both
+        // into the selected working space when rendering; overriding this option would
+        // only relabel the cutout's samples when its profile differs from the photo.
+        let sourceImage = CIImage(cgImage: original)
+            .transformed(by: transform)
+            .cropped(to: targetExtent)
+        let cutoutImage = CIImage(cgImage: alignedCutout)
+            .transformed(by: transform)
+            .cropped(to: targetExtent)
+        try Task.checkCancellation()
+
+        guard
+            let renderedCutout = context.createCGImage(
+                cutoutImage,
+                from: targetExtent,
+                format: .RGBA8,
+                colorSpace: colorSpace
+            ),
+            let subjectBounds = try alphaBounds(in: renderedCutout, colorSpace: colorSpace)
+        else {
+            throw CatVisionError.unreadableImage
+        }
+
+        let alphaMask = cutoutImage.applyingFilter("CIColorMatrix", parameters: [
+            "inputRVector": CIVector(x: 0, y: 0, z: 0, w: 1),
+            "inputGVector": CIVector(x: 0, y: 0, z: 0, w: 1),
+            "inputBVector": CIVector(x: 0, y: 0, z: 0, w: 1),
+            "inputAVector": CIVector(x: 0, y: 0, z: 0, w: 1),
+        ]).cropped(to: targetExtent)
+        let backgroundFilter = CIFilter.blendWithAlphaMask()
+        backgroundFilter.inputImage = CIImage(color: .clear).cropped(to: targetExtent)
+        backgroundFilter.backgroundImage = sourceImage
+        backgroundFilter.maskImage = alphaMask
+
+        let longEdge = max(targetExtent.width, targetExtent.height)
+        let morphologyRadius = min(max(longEdge * 0.0075, 8), 16)
+        let outline = alphaMask
+            .applyingFilter("CIMorphologyMaximum", parameters: ["inputRadius": morphologyRadius])
+            .cropped(to: targetExtent)
+        let protection = outline
+            .applyingFilter("CIGaussianBlur", parameters: ["inputRadius": morphologyRadius * 0.35])
+            .cropped(to: targetExtent)
+        let cropPadding = ceil(morphologyRadius + 2)
+        let cropBounds = subjectBounds
+            .insetBy(dx: -cropPadding, dy: -cropPadding)
+            .intersection(targetExtent)
+            .integral
+
+        guard let backgroundImage = backgroundFilter.outputImage?.cropped(to: targetExtent),
+              let fullOutlineMask = context.createCGImage(
+                outline,
+                from: targetExtent,
+                format: .RGBA8,
+                colorSpace: colorSpace
+              ),
+            let backgroundOnly = context.createCGImage(
+                backgroundImage,
+                from: targetExtent,
+                format: .RGBA8,
+                colorSpace: colorSpace
+            ),
+            let protectionMask = context.createCGImage(
+                protection,
+                from: targetExtent,
+                format: .RGBA8,
+                colorSpace: colorSpace
+            ),
+            let sticker = renderedCutout.cropping(to: cropBounds),
+            let outlineMask = fullOutlineMask.cropping(to: cropBounds)
+        else {
+            throw CatVisionError.unreadableImage
+        }
+
+        let prepared = PreparedCaptureTransition(
+            alignedCutout: renderedCutout,
+            sticker: sticker,
+            backgroundOnly: backgroundOnly,
+            subjectProtectionMask: protectionMask,
+            outlineMask: outlineMask,
+            normalizedSubjectBounds: normalized(subjectBounds, in: targetExtent),
+            normalizedPaddedCropBounds: normalized(cropBounds, in: targetExtent),
+            sourceSize: targetSize,
+            workingColorSpace: colorMetadata
+        )
+        try Task.checkCancellation()
+        return prepared
+    }
+
+    private static func normalized(_ rect: CGRect, in extent: CGRect) -> CGRect {
+        CGRect(
+            x: (rect.minX - extent.minX) / extent.width,
+            y: (rect.minY - extent.minY) / extent.height,
+            width: rect.width / extent.width,
+            height: rect.height / extent.height
+        )
+    }
+
+    private static func alphaBounds(in image: CGImage, colorSpace: CGColorSpace) throws -> CGRect? {
+        let width = image.width
+        let height = image.height
+        let bytesPerRow = width * 4
+        var pixels = [UInt8](repeating: 0, count: height * bytesPerRow)
+        guard let context = CGContext(
+            data: &pixels,
+            width: width,
+            height: height,
+            bitsPerComponent: 8,
+            bytesPerRow: bytesPerRow,
+            space: colorSpace,
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ) else {
+            return nil
+        }
+        context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+
+        var minX = width
+        var minY = height
+        var maxX = -1
+        var maxY = -1
+        for y in 0..<height {
+            if y.isMultiple(of: 64) {
+                try Task.checkCancellation()
+            }
+            for x in 0..<width where pixels[y * bytesPerRow + x * 4 + 3] > 0 {
+                minX = min(minX, x)
+                minY = min(minY, y)
+                maxX = max(maxX, x)
+                maxY = max(maxY, y)
+            }
+        }
+        guard maxX >= minX, maxY >= minY else { return nil }
+        return CGRect(x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1)
+    }
+}
+
+enum AspectFitPointMapping {
+    static func normalizedSourcePoint(
+        at location: CGPoint,
+        imageSize: CGSize,
+        containerSize: CGSize
+    ) -> CGPoint? {
+        guard
+            imageSize.width > 0,
+            imageSize.height > 0,
+            containerSize.width > 0,
+            containerSize.height > 0
+        else {
+            return nil
+        }
+
+        let scale = min(
+            containerSize.width / imageSize.width,
+            containerSize.height / imageSize.height
+        )
+        let fittedSize = CGSize(
+            width: imageSize.width * scale,
+            height: imageSize.height * scale
+        )
+        let fittedOrigin = CGPoint(
+            x: (containerSize.width - fittedSize.width) / 2,
+            y: (containerSize.height - fittedSize.height) / 2
+        )
+        guard
+            location.x >= fittedOrigin.x,
+            location.x < fittedOrigin.x + fittedSize.width,
+            location.y >= fittedOrigin.y,
+            location.y < fittedOrigin.y + fittedSize.height
+        else {
+            return nil
+        }
+
+        return CGPoint(
+            x: (location.x - fittedOrigin.x) / fittedSize.width,
+            y: (location.y - fittedOrigin.y) / fittedSize.height
+        )
+    }
+}
+
+enum ForegroundSelectionAccessibility {
+    static let defaultNormalizedPoint = CGPoint(x: 0.5, y: 0.5)
+}
 
 struct CaptureView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -17,7 +408,10 @@ struct CaptureView: View {
     @State private var stage: CaptureStage = .camera
     @State private var photoItem: PhotosPickerItem?
     @State private var originalImage: UIImage?
+    @State private var preparedTransition: PreparedCaptureTransition?
     @State private var cutoutImage: UIImage?
+    @State private var cutoutOutlineMask: CGImage?
+    @State private var pinchZoomStart: CGFloat?
     @State private var detections: [CatDetection] = []
     @State private var selectedBoundingBox: CGRect?
     @State private var source: CaptureSource = .camera
@@ -30,7 +424,7 @@ struct CaptureView: View {
     @State private var draftSequence: Int?
     @State private var persistedRecord: CatRecord?
     @State private var errorMessage: String?
-    @State private var canUseForegroundFallback = false
+    @State private var foregroundSelectionMessage: String?
     @State private var failureContext: LociContext = .failureRecovery
     @State private var processingGate = CaptureProcessingSessionGate()
     @State private var processingTask: Task<Void, Never>?
@@ -39,12 +433,13 @@ struct CaptureView: View {
     @State private var isSavedCardDraftLoaded = false
     @State private var pendingDiscardAction: CaptureDiscardAction?
     @State private var isDiscardConfirmationPresented = false
-    @State private var stickerBaseOffset: CGSize = .zero
-    @GestureState private var stickerDragTranslation: CGSize = .zero
     @State private var isCardMintingDone = false
     @State private var captureSelectionFeedbackTrigger = 0
     @State private var captureWarningFeedbackTrigger = 0
     @State private var captureSaveTapFeedbackTrigger = 0
+    @State private var captureCompletionFeedbackTrigger = 0
+    @State private var subjectToCardCompletionGate = SubjectToCardCompletionGate()
+    @State private var transitionSessionGate = CaptureTransitionSessionGate()
     @FocusState private var focusedEditorField: EditorField?
 
     private let processor = CatVisionProcessor()
@@ -54,26 +449,28 @@ struct CaptureView: View {
     }
 
     var body: some View {
-        ZStack {
-            switch stage {
-            case .camera:
-                cameraScreen
-            case .analyzing, .creatingCutout:
-                processingScreen
-            case .processingStopped:
-                processingStoppedScreen
-            case .choosingCat:
-                catSelectionScreen
-            case .stickerReveal:
-                stickerRevealScreen
-            case .stickerInspecting:
-                stickerInspectionScreen
-            case .cardCelebrating:
-                cardCelebrationScreen
-            case .failure:
-                failureScreen
+        GeometryReader { proxy in
+            ZStack {
+                switch stage {
+                case .camera:
+                    cameraScreen
+                case .analyzing, .creatingCutout, .stickerReveal:
+                    subjectLiftScreen
+                case .choosingCat:
+                    catSelectionScreen
+                case .choosingForeground:
+                    foregroundSelectionScreen
+                case .stickerInspecting:
+                    stickerInspectionScreen
+                case .cardCelebrating:
+                    cardCelebrationScreen
+                case .failure:
+                    failureScreen
+                }
             }
+            .frame(width: proxy.size.width, height: proxy.size.height)
         }
+        .simultaneousGesture(cameraMagnifyGesture)
         .task {
             await camera.requestAccessAndConfigure()
             if camera.authorizationStatus == .authorized {
@@ -122,6 +519,7 @@ struct CaptureView: View {
         .catSensoryFeedback(.selection, trigger: captureSelectionFeedbackTrigger)
         .catSensoryFeedback(.warning, trigger: captureWarningFeedbackTrigger)
         .catSensoryFeedback(.impact(flexibility: .soft, intensity: 0.36), trigger: captureSaveTapFeedbackTrigger)
+        .catSensoryFeedback(.success, trigger: captureCompletionFeedbackTrigger)
     }
 
     private var cameraScreen: some View {
@@ -148,6 +546,16 @@ struct CaptureView: View {
                 cameraTopBar
                 Spacer()
                 cameraGuidance
+                if camera.isConfigured, let cameraError = camera.errorMessage {
+                    Text(cameraError)
+                        .font(CatTypography.finePrint)
+                        .foregroundStyle(.white)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 9)
+                        .background(.black.opacity(0.46), in: Capsule())
+                        .accessibilityIdentifier("camera-status-message")
+                }
                 cameraControls
             }
             .padding(.horizontal, CatLocalTheme.screenHorizontalPadding)
@@ -232,8 +640,8 @@ struct CaptureView: View {
                             .catSingleActionIconSurface()
                     }
                     .buttonStyle(.catTactile)
-                    .disabled(isProcessingCapture)
-                    .opacity(isProcessingCapture ? 0.45 : 1)
+                    .disabled(!canImportPhoto)
+                    .opacity(canImportPhoto ? 1 : 0.45)
                     .accessibilityLabel("Choose Private Photo")
                     .accessibilityHint("The selected photo stays on this iPhone")
 
@@ -276,12 +684,33 @@ struct CaptureView: View {
                             .catGlass(cornerRadius: 20, interactive: true)
                     }
                     .buttonStyle(.catTactile)
-                    .disabled(isProcessingCapture)
-                    .opacity(isProcessingCapture ? 0.45 : 1)
+                    .disabled(!canImportPhoto)
+                    .opacity(canImportPhoto ? 1 : 0.45)
                 }
                 #endif
             }
         }
+    }
+
+    private var cameraMagnifyGesture: some Gesture {
+        MagnifyGesture()
+            .onChanged { value in
+                guard stage == .camera, camera.isConfigured else { return }
+                let base = pinchZoomStart ?? camera.displayZoomFactor
+                if pinchZoomStart == nil {
+                    pinchZoomStart = base
+                }
+                let target = CameraZoomMath.displayFactor(
+                    baseDisplayFactor: base,
+                    magnification: value.magnification,
+                    minimumDisplayFactor: camera.minimumDisplayZoomFactor,
+                    maximumDisplayFactor: camera.maximumDisplayZoomFactor
+                )
+                camera.setDisplayZoomFactor(target, animated: false)
+            }
+            .onEnded { _ in
+                pinchZoomStart = nil
+            }
     }
 
     private var cameraUnavailableBackground: some View {
@@ -328,8 +757,8 @@ struct CaptureView: View {
                 .catPrimaryActionSurface(role: .action, cornerRadius: 24)
         }
         .buttonStyle(.catTactile)
-        .disabled(isProcessingCapture)
-        .opacity(isProcessingCapture ? 0.45 : 1)
+        .disabled(!canImportPhoto)
+        .opacity(canImportPhoto ? 1 : 0.45)
         .accessibilityHint("The selected photo stays on this iPhone")
     }
 
@@ -360,134 +789,66 @@ struct CaptureView: View {
                     .allowsHitTesting(false)
             }
 
-            VStack(spacing: 24) {
-                VStack(spacing: 18) {
-                    Image(systemName: stage == .analyzing ? "viewfinder" : "scissors")
-                        .font(.system(size: 34, weight: .light))
-                        .foregroundStyle(.white.opacity(0.8))
-                        .accessibilityHidden(true)
+            VStack(spacing: 18) {
+                Image(systemName: stage == .analyzing ? "viewfinder" : "scissors")
+                    .font(.system(size: 34, weight: .light))
+                    .foregroundStyle(.white.opacity(0.8))
+                    .accessibilityHidden(true)
 
-                    ProgressView()
-                        .controlSize(.large)
-                        .tint(.white)
-                    Text(stage == .analyzing ? "Looking for cats" : "Lifting the subject")
-                        .font(CatTypography.pageTitle)
-                        .foregroundStyle(.white)
-                        .multilineTextAlignment(.center)
-                    Text("This happens entirely on your iPhone.")
-                        .font(CatTypography.supporting)
-                        .foregroundStyle(.white.opacity(0.66))
-                        .multilineTextAlignment(.center)
-                }
-                .accessibilityElement(children: .combine)
-                .accessibilityLabel(stage == .analyzing ? "Looking for cats" : "Creating cat cutout")
-
-                Button {
-                    stopProcessingAndKeepPhoto()
-                } label: {
-                    Label("Stop and return", systemImage: "xmark")
-                        .font(CatTypography.compactControl)
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 18)
-                        .frame(minHeight: 48)
-                        .catGlass(cornerRadius: 24, interactive: true)
-                }
-                .buttonStyle(.catTactile)
-                .accessibilityIdentifier("capture-processing-stop")
-                .accessibilityHint("Stops processing and keeps this photo ready to try again")
+                ProgressView()
+                    .controlSize(.large)
+                    .tint(.white)
+                Text(stage == .analyzing ? "Looking for cats" : "Lifting the subject")
+                    .font(CatTypography.pageTitle)
+                    .foregroundStyle(.white)
+                    .multilineTextAlignment(.center)
+                Text("This happens entirely on your iPhone.")
+                    .font(CatTypography.supporting)
+                    .foregroundStyle(.white.opacity(0.66))
+                    .multilineTextAlignment(.center)
             }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(stage == .analyzing ? "Looking for cats" : "Creating cat cutout")
             .padding(24)
         }
     }
 
-    private var processingStoppedScreen: some View {
-        ZStack {
-            CatLocalBackground()
-
-            ScrollView {
-                VStack(spacing: 18) {
-                    HStack {
-                        Spacer()
-                        Button {
-                            cancelCapture()
-                        } label: {
-                            Image(systemName: "xmark")
-                                .font(.system(size: 18, weight: .semibold))
-                                .foregroundStyle(CatLocalTheme.primaryText)
-                                .frame(width: 44, height: 44)
-                                .catGlass(cornerRadius: 22, interactive: true)
-                        }
-                        .buttonStyle(.catTactile)
-                        .accessibilityLabel("Close")
-                    }
-
-                    if let originalImage {
-                        Image(uiImage: originalImage)
-                            .resizable()
-                            .scaledToFit()
-                            .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
-                            .overlay {
-                                RoundedRectangle(cornerRadius: 26, style: .continuous)
-                                    .stroke(CatLocalTheme.imageOutline, lineWidth: 1)
-                            }
-                            .accessibilityLabel("Kept photo")
-                    }
-
-                    VStack(spacing: 8) {
-                        Text("Photo kept")
-                            .font(CatTypography.pageTitle)
-                            .foregroundStyle(CatLocalTheme.primaryText)
-
-                        Text("The scan stopped. Try again when you're ready, or retake the photo.")
-                            .font(CatTypography.supporting)
-                            .foregroundStyle(CatLocalTheme.secondaryText)
-                            .multilineTextAlignment(.center)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-
-                    VStack(spacing: 10) {
-                        Button {
-                            retryProcessingCurrentPhoto()
-                        } label: {
-                            Label("Look for Cats Again", systemImage: "viewfinder")
-                                .font(CatTypography.control)
-                                .frame(maxWidth: .infinity)
-                                .catPrimaryActionSurface(role: .action, cornerRadius: 24)
-                        }
-                        .buttonStyle(.catTactile)
-                        .accessibilityIdentifier("capture-processing-retry")
-
-                        Button {
-                            reset()
-                        } label: {
-                            Label("Retake", systemImage: "camera.rotate")
-                                .font(CatTypography.control)
-                                .frame(maxWidth: .infinity)
-                                .catSecondaryActionSurface(cornerRadius: 24, minHeight: 52)
-                        }
-                        .buttonStyle(.catTactile)
-                    }
-                }
-                .padding(CatLocalTheme.screenHorizontalPadding)
-                .padding(.vertical, 18)
-            }
-            .scrollIndicators(.hidden)
-        }
-        .accessibilityIdentifier("processing-stopped")
-    }
-
-    private var stickerRevealScreen: some View {
+    private var subjectLiftScreen: some View {
         Group {
-            if let cutoutImage {
-                FullScreenDustRevealView(
+            if
+                stage == .stickerReveal,
+                let originalImage,
+                let preparedTransition,
+                let transitionID = transitionSessionGate.activeID
+            {
+                SubjectToCardTransitionView(
                     sourceImage: originalImage,
-                    cutoutImage: cutoutImage
-                ) {
-                    guard stage == .stickerReveal else { return }
-                    stage = .stickerInspecting
+                    transition: preparedTransition,
+                    reducesMotion: cardMotionIsReduced || forcesReducedMotionRevealForValidation,
+                    onCompleted: {
+                        completeSubjectToCardTransition(transitionID: transitionID)
+                    }
+                ) { catOpacity, cardOpacity, backdropOpacity, cardScale, coordinateSpaceName, onImageStageFrameChange in
+                    draftCardInspectionLayout(
+                        catOpacity: catOpacity,
+                        cardOpacity: cardOpacity,
+                        backdropOpacity: backdropOpacity,
+                        cardScale: cardScale,
+                        showsControls: false,
+                        imageStageCoordinateSpaceName: coordinateSpaceName,
+                        onImageStageFrameChange: { frame in
+                            if onImageStageFrameChange.wrappedValue != frame {
+                                onImageStageFrameChange.wrappedValue = frame
+                            }
+                        }
+                    )
                 }
             } else {
-                processingScreen
+                FullScreenDustRevealView(
+                    sourceImage: originalImage,
+                    transition: nil,
+                    forcesFallback: true
+                ) {}
             }
         }
     }
@@ -567,9 +928,83 @@ struct CaptureView: View {
         }
     }
 
-    private var stickerInspectionScreen: some View {
+    private var foregroundSelectionScreen: some View {
         ZStack {
             CatLocalBackground()
+
+            VStack(spacing: 18) {
+                HStack {
+                    Button("Retake") { reset() }
+                        .frame(minHeight: 44)
+                        .contentShape(Rectangle())
+                    Spacer()
+                }
+
+                VStack(spacing: 7) {
+                    Text("Tap the cat")
+                        .font(CatTypography.pageTitle)
+                        .foregroundStyle(CatLocalTheme.primaryText)
+
+                    Text("Tap directly on the cat you want to lift from this photo.")
+                        .font(CatTypography.supporting)
+                        .foregroundStyle(CatLocalTheme.secondaryText)
+                        .multilineTextAlignment(.center)
+                }
+
+                if let originalImage {
+                    ForegroundSelectionPhoto(image: originalImage) { normalizedPoint in
+                        chooseForeground(at: normalizedPoint)
+                    }
+                    .frame(maxHeight: .infinity)
+                }
+
+                if let foregroundSelectionMessage {
+                    Label(foregroundSelectionMessage, systemImage: "hand.tap.fill")
+                        .font(CatTypography.metadata)
+                        .foregroundStyle(CatAttentionRole.warning.text)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 11)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(
+                            CatAttentionRole.warning.wash,
+                            in: RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        )
+                        .accessibilityIdentifier("foreground-selection-guidance")
+                }
+
+                privatePhotoImportAction
+            }
+            .padding(.horizontal, CatLocalTheme.screenHorizontalPadding)
+            .padding(.top, 14)
+            .padding(.bottom, 24)
+        }
+    }
+
+    private var stickerInspectionScreen: some View {
+        draftCardInspectionLayout(
+            catOpacity: 1,
+            cardOpacity: 1,
+            backdropOpacity: 1,
+            cardScale: 1,
+            showsControls: true,
+            imageStageCoordinateSpaceName: nil,
+            onImageStageFrameChange: nil
+        )
+        .accessibilityIdentifier("draft-card-inspection")
+    }
+
+    private func draftCardInspectionLayout(
+        catOpacity: Double,
+        cardOpacity: Double,
+        backdropOpacity: Double,
+        cardScale: CGFloat,
+        showsControls: Bool,
+        imageStageCoordinateSpaceName: String?,
+        onImageStageFrameChange: ((CGRect) -> Void)?
+    ) -> some View {
+        ZStack {
+            CatLocalBackground()
+                .opacity(backdropOpacity)
 
             GeometryReader { proxy in
                 ScrollView {
@@ -577,20 +1012,41 @@ struct CaptureView: View {
                         editorTopBar
                             .padding(.horizontal, CatLocalTheme.screenHorizontalPadding)
                             .padding(.top, 12)
-
-                        Spacer(minLength: 0)
+                            .opacity(showsControls ? 1 : 0)
+                            .allowsHitTesting(showsControls)
+                            .accessibilityHidden(!showsControls)
 
                         if let cutoutImage {
-                            draggableSticker(
-                                cutoutImage,
-                                height: stickerInspectionStickerHeight(for: proxy.size.height)
+                            DraftCatCardView(
+                                image: cutoutImage,
+                                sequence: activeSequence,
+                                name: editorPreviewName,
+                                note: note,
+                                placeName: placeName,
+                                placeDetail: placeDetail,
+                                cardStyle: selectedStyle,
+                                presentation: .focused,
+                                showsFooter: true,
+                                catBoundingBox: selectedBoundingBox,
+                                patternSeed: activeSequence,
+                                appliesStickerEffect: true,
+                                stickerMotionIntensity: nil,
+                                catOpacity: catOpacity,
+                                outlineMask: cutoutOutlineMask,
+                                imageStageCoordinateSpaceName: imageStageCoordinateSpaceName,
+                                onImageStageFrameChange: onImageStageFrameChange
                             )
+                            .frame(width: min(330, max(260, proxy.size.width - 44)))
+                            .scaleEffect(cardScale)
+                            .opacity(cardOpacity)
+                            .accessibilityLabel("Draft cat card")
                         }
-
-                        Spacer(minLength: 0)
 
                         stickerInspectionActions
                             .padding(.bottom, 18)
+                            .opacity(showsControls ? 1 : 0)
+                            .allowsHitTesting(showsControls)
+                            .accessibilityHidden(!showsControls)
                     }
                     .frame(maxWidth: .infinity)
                     .frame(minHeight: proxy.size.height)
@@ -702,54 +1158,6 @@ struct CaptureView: View {
         .accessibilityIdentifier("tap-to-customize")
         .accessibilityLabel("Edit before saving")
         .accessibilityHint("Opens design, name, note, and Catlas fields before saving.")
-    }
-
-    private func stickerInspectionStickerHeight(for availableHeight: CGFloat) -> CGFloat {
-        let baseHeight: CGFloat = dynamicTypeSize.isAccessibilitySize ? 320 : 390
-        let fixedContentAllowance: CGFloat = dynamicTypeSize.isAccessibilitySize ? 360 : 286
-        let availableStickerHeight = max(220, availableHeight - fixedContentAllowance)
-
-        return min(baseHeight, availableStickerHeight)
-    }
-
-    private func draggableSticker(_ image: UIImage, height: CGFloat = 390) -> some View {
-        GeometryReader { proxy in
-            let activeOffset = CGSize(
-                width: stickerBaseOffset.width + stickerDragTranslation.width,
-                height: stickerBaseOffset.height + stickerDragTranslation.height
-            )
-
-            StickerCutoutView(
-                image: image,
-                appliesMotion: !cardMotionIsReduced
-            )
-            .frame(maxWidth: 270, maxHeight: 330)
-            .position(x: proxy.size.width / 2, y: proxy.size.height / 2)
-            .offset(activeOffset)
-            .gesture(
-                DragGesture(minimumDistance: 1)
-                    .updating($stickerDragTranslation) { value, state, _ in
-                        state = value.translation
-                    }
-                    .onEnded { value in
-                        stickerBaseOffset = clampedStickerOffset(
-                            CGSize(
-                                width: stickerBaseOffset.width + value.translation.width,
-                                height: stickerBaseOffset.height + value.translation.height
-                            )
-                        )
-                    }
-            )
-            .accessibilityLabel("Cat sticker preview")
-        }
-        .frame(height: height)
-    }
-
-    private func clampedStickerOffset(_ offset: CGSize) -> CGSize {
-        CGSize(
-            width: min(max(offset.width, -120), 120),
-            height: min(max(offset.height, -170), 150)
-        )
     }
 
     private var editorSheet: some View {
@@ -937,7 +1345,8 @@ struct CaptureView: View {
                 catBoundingBox: selectedBoundingBox,
                 patternSeed: activeSequence,
                 appliesStickerEffect: true,
-                stickerMotionIntensity: nil
+                stickerMotionIntensity: nil,
+                outlineMask: cutoutOutlineMask
             )
             .frame(maxWidth: 280)
             .frame(maxWidth: .infinity)
@@ -1020,7 +1429,8 @@ struct CaptureView: View {
                             patternSeed: celebrationPreviewPatternSeed,
                             showsSurfaceShadow: false,
                             appliesStickerEffect: true,
-                            stickerMotionIntensity: nil
+                            stickerMotionIntensity: nil,
+                            outlineMask: cutoutOutlineMask
                         )
                         .overlay {
                             if mintingSheen.isVisible {
@@ -1177,10 +1587,6 @@ struct CaptureView: View {
                             .frame(maxWidth: 320)
                             .lineLimit(nil)
                     }
-
-                    if originalImage != nil, canUseForegroundFallback {
-                        foregroundFallbackControls
-                    }
                 }
 
                 Spacer(minLength: 48)
@@ -1220,58 +1626,16 @@ struct CaptureView: View {
         }
     }
 
-    private var foregroundFallbackControls: some View {
-        VStack(spacing: 12) {
-            Button {
-                startCutout(for: nil)
-            } label: {
-                Label("Use Foreground Cutout", systemImage: "sparkles")
-                    .font(CatTypography.control)
-                    .frame(maxWidth: .infinity)
-                    .contentShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
-            }
-            .buttonStyle(.catTactile)
-            .catPrimaryActionSurface(role: .warning, cornerRadius: 26)
-            .frame(maxWidth: 320)
-            .accessibilityHint("Uses the foreground subject even though CatLocal could not confirm a cat.")
-
-            HStack(alignment: .top, spacing: 10) {
-                Image(systemName: "info.circle.fill")
-                    .font(CatTypography.fieldLabel)
-                    .foregroundStyle(CatAttentionRole.warning.accent)
-
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("No confirmed cat in this photo.")
-                        .font(CatTypography.fieldLabel)
-                        .foregroundStyle(CatAttentionRole.warning.text)
-
-                    Text("You can review the foreground cutout and save only if it looks right.")
-                        .font(CatTypography.metadata)
-                        .foregroundStyle(CatAttentionRole.warning.text.opacity(0.82))
-                }
-                .fixedSize(horizontal: false, vertical: true)
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 11)
-            .frame(maxWidth: 320, alignment: .leading)
-            .background(
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .fill(CatAttentionRole.warning.wash)
-            )
-            .accessibilityElement(children: .combine)
-        }
-    }
-
     private var nextSequence: Int {
         (existingRecords.map(\.sequence).max() ?? 0) + 1
     }
 
-    private var isProcessingCapture: Bool {
-        processingGate.isActive
+    private var canTakePhoto: Bool {
+        camera.isConfigured && stage == .camera && processingGate.canStart(.camera)
     }
 
-    private var canTakePhoto: Bool {
-        camera.isConfigured && !isProcessingCapture && stage == .camera
+    private var canImportPhoto: Bool {
+        (stage == .camera || stage == .choosingForeground) && processingGate.canStart(.gallery)
     }
 
     private var failureTitle: String {
@@ -1299,7 +1663,7 @@ struct CaptureView: View {
         ProcessInfo.processInfo.arguments.contains("-catlocal-ui-synthetic-cutout")
     }
 
-    private var forcesForegroundFallbackForValidation: Bool {
+    private var forcesForegroundSelectionForValidation: Bool {
         ProcessInfo.processInfo.arguments.contains("-catlocal-ui-force-foreground-fallback")
     }
 
@@ -1319,6 +1683,10 @@ struct CaptureView: View {
         ProcessInfo.processInfo.arguments.contains("-catlocal-ui-prefill-editor-fields")
     }
 
+    private var forcesReducedMotionRevealForValidation: Bool {
+        ProcessInfo.processInfo.arguments.contains("-catlocal-ui-reduce-motion-reveal")
+    }
+
     private func prefillValidationEditorFields() {
         nickname = "Pixel"
         placeName = "Rooftop"
@@ -1327,11 +1695,11 @@ struct CaptureView: View {
     }
 
     private func startValidationPhotoLoad() {
-        processingTask = Task { await loadValidationPhoto() }
+        guard let sessionID = beginCaptureInput(kind: .gallery) else { return }
+        processingTask = Task { await loadValidationPhoto(sessionID: sessionID) }
     }
 
-    private func loadValidationPhoto() async {
-        guard let sessionID = beginCaptureInput() else { return }
+    private func loadValidationPhoto(sessionID: UUID) async {
         do {
             if usesSyntheticValidationPhoto {
                 let image = showsMultipleCatSelectionForValidation
@@ -1345,9 +1713,19 @@ struct CaptureView: View {
                 return
             }
 
-            let url = try validationPhotoURL()
-            let data = try Data(contentsOf: url)
-            let image = try await optimizedWorkingImage(from: data)
+            let preparedImage = try await CaptureImagePreparation.preparedGalleryImage(
+                at: validationPhotoURL(),
+                maximumDimension: CatImageStore.originalMaximumDimension
+            )
+            try Task.checkCancellation()
+            guard CaptureGalleryCompletionDecision.resolve(
+                outcome: .success,
+                isCurrentSession: processingGate.isCurrent(sessionID)
+            ) == .apply else {
+                finishCaptureInput(sessionID)
+                return
+            }
+            let image = UIImage(cgImage: preparedImage, scale: 1, orientation: .up)
             try Task.checkCancellation()
             await accept(
                 image: image,
@@ -1355,8 +1733,19 @@ struct CaptureView: View {
                 sessionID: sessionID
             )
         } catch is CancellationError {
+            guard CaptureGalleryCompletionDecision.resolve(
+                outcome: .cancelled,
+                isCurrentSession: processingGate.isCurrent(sessionID)
+            ) == .ignore else { return }
             finishCaptureInput(sessionID)
         } catch {
+            guard CaptureGalleryCompletionDecision.resolve(
+                outcome: .failure,
+                isCurrentSession: processingGate.isCurrent(sessionID)
+            ) == .showRecovery else {
+                finishCaptureInput(sessionID)
+                return
+            }
             guard finishCaptureInput(sessionID) else { return }
             fail(with: "The validation photo could not be opened. Add cat.png to Documents/CatLocalValidation and try again.")
         }
@@ -1417,25 +1806,50 @@ struct CaptureView: View {
             context.cgContext.fillEllipse(in: CGRect(x: 310, y: 145, width: 280, height: 250))
         }
     }
+
+    private static let validationSyntheticSubjectBounds = CGRect(
+        x: 0.24,
+        y: 0.16,
+        width: 0.52,
+        height: 0.59
+    )
+    #endif
+
+    #if !DEBUG
+    private var forcesReducedMotionRevealForValidation: Bool { false }
     #endif
 
     private func startPhotoLoad(_ item: PhotosPickerItem) {
-        processingTask = Task { await loadPhoto(item) }
-    }
-
-    private func loadPhoto(_ item: PhotosPickerItem) async {
-        guard let sessionID = beginCaptureInput() else {
+        guard let sessionID = beginCaptureInput(
+            kind: .gallery,
+            allowedStages: [.camera, .choosingForeground]
+        ) else {
             photoItem = nil
             return
         }
+        processingTask = Task { await loadPhoto(item, sessionID: sessionID) }
+    }
 
+    private func loadPhoto(_ item: PhotosPickerItem, sessionID: UUID) async {
         do {
             guard
                 let data = try await item.loadTransferable(type: Data.self)
             else {
                 throw CatVisionError.unreadableImage
             }
-            let image = try await optimizedWorkingImage(from: data)
+            let preparedImage = try await CaptureImagePreparation.preparedGalleryImage(
+                from: data,
+                maximumDimension: CatImageStore.originalMaximumDimension
+            )
+            try Task.checkCancellation()
+            guard CaptureGalleryCompletionDecision.resolve(
+                outcome: .success,
+                isCurrentSession: processingGate.isCurrent(sessionID)
+            ) == .apply else {
+                finishCaptureInput(sessionID)
+                return
+            }
+            let image = UIImage(cgImage: preparedImage, scale: 1, orientation: .up)
             try Task.checkCancellation()
             await accept(
                 image: image,
@@ -1443,8 +1857,19 @@ struct CaptureView: View {
                 sessionID: sessionID
             )
         } catch is CancellationError {
+            guard CaptureGalleryCompletionDecision.resolve(
+                outcome: .cancelled,
+                isCurrentSession: processingGate.isCurrent(sessionID)
+            ) == .ignore else { return }
             finishCaptureInput(sessionID)
         } catch {
+            guard CaptureGalleryCompletionDecision.resolve(
+                outcome: .failure,
+                isCurrentSession: processingGate.isCurrent(sessionID)
+            ) == .showRecovery else {
+                finishCaptureInput(sessionID)
+                return
+            }
             guard finishCaptureInput(sessionID) else { return }
             fail(with: "This photo could not be opened. Choose another photo.")
         }
@@ -1458,18 +1883,17 @@ struct CaptureView: View {
         guard processingGate.isCurrent(sessionID), !Task.isCancelled else { return }
         defer { finishCaptureInput(sessionID) }
 
-        camera.stop()
-        originalImage = image
-        self.source = source
+        beginSubjectLift(image: image, source: source)
         draftSequence = nextSequence
         persistedRecord = nil
         isSavedCardDraftLoaded = false
         detections = []
         selectedBoundingBox = nil
         errorMessage = nil
-        canUseForegroundFallback = false
+        foregroundSelectionMessage = nil
         failureContext = .failureRecovery
-        resetStickerTransform()
+        cutoutOutlineMask = nil
+        subjectToCardCompletionGate.reset()
         stage = .analyzing
 
         do {
@@ -1490,14 +1914,12 @@ struct CaptureView: View {
                         confidence: 0.87
                     )
                 ]
-                canUseForegroundFallback = false
                 stage = .choosingCat
                 return
             }
 
-            if forcesForegroundFallbackForValidation {
-                canUseForegroundFallback = true
-                fail(with: CatVisionError.noCat)
+            if forcesForegroundSelectionForValidation {
+                stage = .choosingForeground
                 return
             }
 
@@ -1507,7 +1929,7 @@ struct CaptureView: View {
                     confidence: 0.99
                 )
                 detections = [detection]
-                beginStickerReveal(
+                await beginStickerReveal(
                     cutout: Self.validationCutoutImage(),
                     detection: detection
                 )
@@ -1521,38 +1943,72 @@ struct CaptureView: View {
             switch CatDetectionSelector.resolve(found) {
             case .none:
                 detections = []
-                canUseForegroundFallback = true
-                fail(with: CatVisionError.noCat)
+                stage = .choosingForeground
             case .single(let detection):
                 detections = [detection]
                 stage = .creatingCutout
                 let result = try await processor.cutout(
                     from: SendableImage(value: image),
-                    detection: detection
+                    selection: .detected(detection)
                 )
                 try Task.checkCancellation()
                 guard processingGate.isCurrent(sessionID) else { return }
-                beginStickerReveal(
+                await beginStickerReveal(
                     cutout: result.value,
                     detection: detection
                 )
             case .multiple(let detections):
                 self.detections = detections
-                canUseForegroundFallback = false
                 stage = .choosingCat
             }
         } catch is CancellationError {
             return
         } catch {
             guard processingGate.isCurrent(sessionID) else { return }
-            canUseForegroundFallback = false
             fail(with: CatVisionError.processingUnavailable)
         }
     }
 
-    private func beginStickerReveal(cutout: UIImage, detection: CatDetection?) {
+    private func beginSubjectLift(image: UIImage, source: CaptureSource) {
+        transitionSessionGate.invalidate()
+        camera.stop()
+        originalImage = image
+        self.source = source
+        stage = .analyzing
+    }
+
+    private func beginStickerReveal(cutout: UIImage, detection: CatDetection?) async {
+        guard
+            let originalCGImage = originalImage?.cgImage,
+            let cutoutCGImage = cutout.cgImage
+        else {
+            fail(with: CatVisionError.processingUnavailable)
+            return
+        }
+        let preparationTask = Task.detached(priority: .userInitiated) {
+            try CaptureImagePreparation.transitionAssets(
+                original: originalCGImage,
+                alignedCutout: cutoutCGImage
+            )
+        }
+        let transition: PreparedCaptureTransition
+        do {
+            transition = try await withTaskCancellationHandler {
+                try await preparationTask.value
+            } onCancel: {
+                preparationTask.cancel()
+            }
+        } catch is CancellationError {
+            return
+        } catch {
+            fail(with: CatVisionError.processingUnavailable)
+            return
+        }
+        guard !Task.isCancelled else { return }
         selectedBoundingBox = detection?.boundingBox
-        cutoutImage = cutout
+        preparedTransition = transition
+        cutoutImage = UIImage(cgImage: transition.sticker, scale: 1, orientation: .up)
+        cutoutOutlineMask = transition.outlineMask
         draftSuggestedName = freshDraftName()
         #if DEBUG
         if prefillsValidationEditorFields {
@@ -1561,23 +2017,43 @@ struct CaptureView: View {
         #endif
         errorMessage = nil
         isEditorSheetPresented = false
-        resetStickerTransform()
+        subjectToCardCompletionGate.reset()
         isCardMintingDone = false
         isSavedCardDraftLoaded = false
         persistedRecord = nil
         captureSelectionFeedbackTrigger += 1
+        let transitionID = transitionSessionGate.begin()
         #if DEBUG
         if skipsStickerRevealForValidation {
-            stage = .stickerInspecting
+            completeSubjectToCardTransition(transitionID: transitionID)
             return
         }
         #endif
         stage = .stickerReveal
     }
 
-    private func resetStickerTransform() {
-        stickerBaseOffset = .zero
+    private func completeSubjectToCardTransition(transitionID: UUID) {
+        guard stage == .stickerReveal || skipsTransitionStageForValidation else { return }
+        guard transitionSessionGate.consume(transitionID) else { return }
+        guard subjectToCardCompletionGate.complete() else { return }
+
+        var transaction = Transaction(animation: nil)
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            preparedTransition = nil
+            stage = .stickerInspecting
+        }
+        captureCompletionFeedbackTrigger += 1
+        UIAccessibility.post(notification: .announcement, argument: "Cat card ready.")
     }
+
+    #if DEBUG
+    private var skipsTransitionStageForValidation: Bool {
+        skipsStickerRevealForValidation
+    }
+    #else
+    private var skipsTransitionStageForValidation: Bool { false }
+    #endif
 
     private func expandEditor() {
         captureSelectionFeedbackTrigger += 1
@@ -1595,20 +2071,41 @@ struct CaptureView: View {
         }
     }
 
-    private func startCutout(for detection: CatDetection?) {
+    private func startCutout(for detection: CatDetection) {
+        startCutout(selection: .detected(detection), detection: detection)
+    }
+
+    private func chooseForeground(at normalizedPoint: CGPoint?) {
+        guard let normalizedPoint else {
+            showForegroundSelectionRetry()
+            return
+        }
+        foregroundSelectionMessage = nil
+        startCutout(selection: .normalizedSourcePoint(normalizedPoint), detection: nil)
+    }
+
+    private func startCutout(
+        selection: ForegroundSelection,
+        detection: CatDetection?
+    ) {
         guard let sessionID = beginCurrentPhotoProcessing(
-            allowedStages: [.choosingCat, .failure]
+            allowedStages: [.choosingCat, .choosingForeground]
         ) else {
             return
         }
 
         processingTask = Task {
-            await createCutout(for: detection, sessionID: sessionID)
+            await createCutout(
+                selection: selection,
+                detection: detection,
+                sessionID: sessionID
+            )
         }
     }
 
     private func createCutout(
-        for detection: CatDetection?,
+        selection: ForegroundSelection,
+        detection: CatDetection?,
         sessionID: UUID
     ) async {
         defer { finishCaptureInput(sessionID) }
@@ -1620,13 +2117,29 @@ struct CaptureView: View {
 
         stage = .creatingCutout
         do {
+            #if DEBUG
+            if bypassesVisionForValidation,
+               case .normalizedSourcePoint(let point) = selection {
+                guard Self.validationSyntheticSubjectBounds.contains(point) else {
+                    throw CatVisionError.noMatchingForeground
+                }
+                try Task.checkCancellation()
+                guard processingGate.isCurrent(sessionID) else { return }
+                await beginStickerReveal(
+                    cutout: Self.validationCutoutImage(),
+                    detection: nil
+                )
+                return
+            }
+            #endif
+
             let result = try await processor.cutout(
                 from: SendableImage(value: originalImage),
-                detection: detection
+                selection: selection
             )
             try Task.checkCancellation()
             guard processingGate.isCurrent(sessionID) else { return }
-            beginStickerReveal(
+            await beginStickerReveal(
                 cutout: result.value,
                 detection: detection
             )
@@ -1634,9 +2147,22 @@ struct CaptureView: View {
             return
         } catch {
             guard processingGate.isCurrent(sessionID) else { return }
-            canUseForegroundFallback = false
+            if
+                case .normalizedSourcePoint = selection,
+                let visionError = error as? CatVisionError,
+                case .noMatchingForeground = visionError
+            {
+                showForegroundSelectionRetry()
+                return
+            }
             fail(with: error)
         }
+    }
+
+    private func showForegroundSelectionRetry() {
+        foregroundSelectionMessage = "That spot wasn't a clear foreground subject. Tap directly on the cat and try again."
+        captureWarningFeedbackTrigger += 1
+        stage = .choosingForeground
     }
 
     private func finishCustomization() async {
@@ -1731,9 +2257,17 @@ struct CaptureView: View {
             modelContext.insert(record)
             try modelContext.save()
         } catch {
+            let persistenceError = error
             modelContext.delete(record)
-            try? await CatImageStore.shared.deleteRecord(id: id)
-            throw error
+            do {
+                try await CatImageStore.shared.deleteRecord(id: id)
+            } catch {
+                throw CatImageStoreError.persistenceSaveCleanupFailed(
+                    persistenceError: persistenceError.localizedDescription,
+                    cleanupError: error.localizedDescription
+                )
+            }
+            throw persistenceError
         }
         return record
     }
@@ -1820,22 +2354,27 @@ struct CaptureView: View {
     }
 
     private func captureCameraPhoto() {
-        guard let sessionID = beginCaptureInput() else { return }
+        guard let sessionID = beginCaptureInput(kind: .camera) else { return }
 
         camera.capture { result in
             switch result {
-            case .success(let image):
+            case .success(let data):
                 guard processingGate.isCurrent(sessionID) else { return }
                 processingTask = Task {
-                    let optimizedImage = await optimizedWorkingImage(
-                        from: SendableImage(value: image)
-                    )
-                    guard processingGate.isCurrent(sessionID), !Task.isCancelled else { return }
-                    await accept(
-                        image: optimizedImage,
-                        source: .camera,
-                        sessionID: sessionID
-                    )
+                    do {
+                        let image = try await optimizedCameraWorkingImage(from: data)
+                        guard processingGate.isCurrent(sessionID), !Task.isCancelled else { return }
+                        await accept(
+                            image: image,
+                            source: .camera,
+                            sessionID: sessionID
+                        )
+                    } catch is CancellationError {
+                        finishCaptureInput(sessionID)
+                    } catch {
+                        guard finishCaptureInput(sessionID) else { return }
+                        fail(with: error)
+                    }
                 }
             case .failure(let error):
                 guard finishCaptureInput(sessionID) else { return }
@@ -1844,9 +2383,17 @@ struct CaptureView: View {
         }
     }
 
-    private func beginCaptureInput() -> UUID? {
-        guard stage == .camera else { return nil }
-        return processingGate.begin()
+    private func beginCaptureInput(
+        kind: CaptureInputOperationKind,
+        allowedStages: [CaptureStage] = [.camera]
+    ) -> UUID? {
+        guard allowedStages.contains(stage) else { return nil }
+        guard let start = processingGate.start(kind) else { return nil }
+        if start.replacedSessionID != nil {
+            processingTask?.cancel()
+            processingTask = nil
+        }
+        return start.sessionID
     }
 
     private func beginCurrentPhotoProcessing(
@@ -1869,72 +2416,33 @@ struct CaptureView: View {
         processingTask?.cancel()
         processingTask = nil
         processingGate.cancel()
+        transitionSessionGate.invalidate()
     }
 
-    private func stopProcessingAndKeepPhoto() {
-        cancelActiveProcessing()
-        detections = []
-        cutoutImage = nil
-        selectedBoundingBox = nil
-        errorMessage = nil
-        canUseForegroundFallback = false
-        captureSelectionFeedbackTrigger += 1
-
-        if originalImage == nil {
-            reset()
-        } else {
-            stage = .processingStopped
+    private func optimizedCameraWorkingImage(
+        from data: Data
+    ) async throws -> UIImage {
+        let preparationTask = Task.detached(priority: .userInitiated) {
+            SendableImage(value: try CaptureImagePreparation.cameraImage(
+                from: data,
+                maximumDimension: CatImageStore.originalMaximumDimension
+            ))
         }
-    }
-
-    private func retryProcessingCurrentPhoto() {
-        guard
-            let originalImage,
-            let sessionID = beginCurrentPhotoProcessing(allowedStages: [.processingStopped])
-        else {
-            return
+        let result = try await withTaskCancellationHandler {
+            try await preparationTask.value
+        } onCancel: {
+            preparationTask.cancel()
         }
-
-        processingTask = Task {
-            await accept(
-                image: originalImage,
-                source: source,
-                sessionID: sessionID
-            )
-        }
-    }
-
-    private func optimizedWorkingImage(from data: Data) async throws -> UIImage {
-        let result = try await Task.detached(priority: .userInitiated) { () throws -> SendableImage in
-            guard let image = UIImage(data: data) else {
-                throw CatVisionError.unreadableImage
-            }
-            return SendableImage(
-                value: CatImageStore.downsampledOpaqueImage(
-                    from: image,
-                    maximumDimension: CatImageStore.originalMaximumDimension
-                )
-            )
-        }.value
-        return result.value
-    }
-
-    private func optimizedWorkingImage(from image: SendableImage) async -> UIImage {
-        let result = await Task.detached(priority: .userInitiated) {
-            SendableImage(
-                value: CatImageStore.downsampledOpaqueImage(
-                    from: image.value,
-                    maximumDimension: CatImageStore.originalMaximumDimension
-                )
-            )
-        }.value
         return result.value
     }
 
     private func reset() {
         cancelActiveProcessing()
         originalImage = nil
+        preparedTransition = nil
         cutoutImage = nil
+        cutoutOutlineMask = nil
+        pinchZoomStart = nil
         detections = []
         selectedBoundingBox = nil
         nickname = ""
@@ -1947,14 +2455,14 @@ struct CaptureView: View {
         persistedRecord = nil
         photoItem = nil
         errorMessage = nil
-        canUseForegroundFallback = false
+        foregroundSelectionMessage = nil
         failureContext = .failureRecovery
         isSaving = false
         isEditorSheetPresented = false
         isSavedCardDraftLoaded = false
         pendingDiscardAction = nil
         isDiscardConfirmationPresented = false
-        resetStickerTransform()
+        subjectToCardCompletionGate.reset()
         isCardMintingDone = false
         stage = .camera
         if camera.authorizationStatus == .authorized {
@@ -2011,6 +2519,263 @@ struct CaptureView: View {
     }
 }
 
+private struct SubjectToCardTransitionView<Destination: View>: View {
+    private static var coordinateSpaceName: String { "subject-to-card-transition" }
+
+    let sourceImage: UIImage
+    let transition: PreparedCaptureTransition
+    let reducesMotion: Bool
+    let onCompleted: () -> Void
+    @ViewBuilder let destination: (
+        Double,
+        Double,
+        Double,
+        CGFloat,
+        String,
+        Binding<CGRect>
+    ) -> Destination
+
+    @State private var elapsed: TimeInterval = 0
+    @State private var phase: SubjectToCardTransitionPhase = .preparing
+    @State private var destinationRect: CGRect = .zero
+    @State private var showsTemporarySticker = true
+    @State private var showsFinalCat = false
+    @State private var rendererFailed = false
+    @State private var timelineStart: Date?
+    @State private var timelineStartGate = SubjectToCardTimelineStartGate(
+        requiresMetalFirstFrame: true
+    )
+    @State private var overrideCardOpacity: Double?
+    @State private var overrideBackdropOpacity: Double?
+    @State private var completionGate = SubjectToCardCompletionGate()
+
+    var body: some View {
+        GeometryReader { proxy in
+            ZStack {
+                FullScreenDustRevealView(
+                    sourceImage: sourceImage,
+                    transition: transition,
+                    forcesFallback: reducesMotion,
+                    showsCutoutOverlay: false,
+                    fallbackDuration: SubjectToCardTransitionTimeline.reducedMotionDuration,
+                    onMetalFirstFramePresented: handleFirstPresentedMetalFrame,
+                    onRendererFailed: handleRendererFailure
+                ) {}
+
+                destination(
+                    showsFinalCat ? 1 : 0,
+                    cardOpacity,
+                    backdropOpacity,
+                    cardScale,
+                    Self.coordinateSpaceName,
+                    $destinationRect
+                )
+
+                if showsTemporarySticker, !reducesMotion {
+                    temporarySticker(in: proxy.size)
+                }
+            }
+            .frame(width: proxy.size.width, height: proxy.size.height)
+        }
+        .coordinateSpace(.named(Self.coordinateSpaceName))
+        .task {
+            if reducesMotion {
+                await runReducedMotionTransition()
+            } else {
+                await runAnimatedTransition()
+            }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Preparing cat card")
+        .accessibilityValue(phaseIdentifier)
+        .accessibilityIdentifier("subject-card-transition-active")
+    }
+
+    private var cardOpacity: Double {
+        if let overrideCardOpacity { return overrideCardOpacity }
+        return reducesMotion
+            ? 0
+            : SubjectToCardTransitionTimeline.cardOpacity(elapsed: elapsed)
+    }
+
+    private var cardScale: CGFloat {
+        reducesMotion ? 1 : SubjectToCardTransitionTimeline.cardScale(elapsed: elapsed)
+    }
+
+    private var backdropOpacity: Double {
+        if let overrideBackdropOpacity { return overrideBackdropOpacity }
+        return reducesMotion
+            ? 0
+            : SubjectToCardTransitionTimeline.backdropOpacity(elapsed: elapsed)
+    }
+
+    private var phaseIdentifier: String {
+        switch phase {
+        case .preparing: "preparing"
+        case .dusting: "dusting"
+        case .lifting: "lifting"
+        case .settling: "settling"
+        case .completed: "completed"
+        case .failed: "failed"
+        }
+    }
+
+    private func temporarySticker(in size: CGSize) -> some View {
+        let sourceRect = SubjectToCardTransitionGeometry.sourceRect(
+            normalizedCropBounds: transition.normalizedPaddedCropBounds,
+            imageSize: transition.sourceSize,
+            containerRect: CGRect(origin: .zero, size: size)
+        )
+        let resolvedDestination = destinationRect.isEmpty ? sourceRect : destinationRect
+        let rect = SubjectToCardTransitionGeometry.interpolatedRect(
+            from: sourceRect,
+            to: resolvedDestination,
+            progress: SubjectToCardTransitionTimeline.liftProgress(elapsed: elapsed)
+        )
+
+        return ZStack {
+            Image(decorative: transition.outlineMask, scale: 1, orientation: .up)
+                .renderingMode(.template)
+                .resizable()
+                .scaledToFit()
+                .foregroundStyle(CatLocalTheme.cardSurface)
+                .opacity(SubjectToCardTransitionTimeline.outlineOpacity(elapsed: elapsed))
+
+            Image(decorative: transition.sticker, scale: 1, orientation: .up)
+                .resizable()
+                .scaledToFit()
+        }
+        .compositingGroup()
+        .frame(width: max(rect.width, 1), height: max(rect.height, 1))
+        .position(x: rect.midX, y: rect.midY)
+        .accessibilityHidden(true)
+    }
+
+    @MainActor
+    private func runAnimatedTransition() async {
+        while timelineStart == nil {
+            if rendererFailed {
+                await runFailureContinuity()
+                return
+            }
+            do {
+                try await Task.sleep(for: .milliseconds(16))
+            } catch {
+                return
+            }
+            guard !Task.isCancelled else { return }
+        }
+
+        guard let timelineStart else { return }
+        phase = .dusting
+        let handoffTime = SubjectToCardTransitionTimeline.liftStart
+            + SubjectToCardTransitionTimeline.liftDuration
+
+        while elapsed < SubjectToCardTransitionTimeline.totalDuration {
+            do {
+                try await Task.sleep(for: .milliseconds(16))
+            } catch {
+                return
+            }
+            guard !Task.isCancelled else { return }
+
+            if rendererFailed {
+                await runFailureContinuity()
+                return
+            }
+
+            elapsed = min(
+                Date().timeIntervalSince(timelineStart),
+                SubjectToCardTransitionTimeline.totalDuration
+            )
+            phase = SubjectToCardTransitionTimeline.phase(elapsed: elapsed)
+
+            if elapsed >= handoffTime, showsTemporarySticker {
+                atomicStickerHandoff()
+            }
+        }
+
+        atomicStickerHandoff()
+        complete()
+    }
+
+    @MainActor
+    private func runReducedMotionTransition() async {
+        phase = .dusting
+        var transaction = Transaction(animation: nil)
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            showsFinalCat = true
+            showsTemporarySticker = false
+            overrideCardOpacity = 0
+            overrideBackdropOpacity = 0
+        }
+        withAnimation(.easeOut(duration: SubjectToCardTransitionTimeline.reducedMotionDuration)) {
+            overrideCardOpacity = 1
+            overrideBackdropOpacity = 1
+        }
+
+        do {
+            try await Task.sleep(for: .seconds(SubjectToCardTransitionTimeline.reducedMotionDuration))
+        } catch {
+            return
+        }
+        complete()
+    }
+
+    @MainActor
+    private func runFailureContinuity() async {
+        phase = .failed
+        let currentOpacity = SubjectToCardTransitionTimeline.opacitySnapshot(elapsed: elapsed)
+        var transaction = Transaction(animation: nil)
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            showsFinalCat = true
+            showsTemporarySticker = false
+            overrideCardOpacity = currentOpacity.card
+            overrideBackdropOpacity = currentOpacity.backdrop
+        }
+        withAnimation(.easeOut(duration: SubjectToCardTransitionTimeline.reducedMotionDuration)) {
+            overrideCardOpacity = 1
+            overrideBackdropOpacity = 1
+        }
+
+        do {
+            try await Task.sleep(for: .seconds(SubjectToCardTransitionTimeline.reducedMotionDuration))
+        } catch {
+            return
+        }
+        complete()
+    }
+
+    @MainActor
+    private func atomicStickerHandoff() {
+        guard showsTemporarySticker || !showsFinalCat else { return }
+        var transaction = Transaction(animation: nil)
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            showsFinalCat = true
+            showsTemporarySticker = false
+        }
+    }
+
+    private func handleFirstPresentedMetalFrame() {
+        guard timelineStartGate.startIfReady(for: .metalFirstFrame) else { return }
+        timelineStart = Date()
+    }
+
+    private func handleRendererFailure() {
+        rendererFailed = true
+    }
+
+    @MainActor
+    private func complete() {
+        guard completionGate.complete() else { return }
+        phase = .completed
+        onCompleted()
+    }
+}
+
 enum CatSelectionOverlayLayout {
     static func rect(
         for boundingBox: CGRect,
@@ -2051,33 +2816,158 @@ enum CatSelectionOverlayLayout {
     }
 }
 
+enum CaptureInputOperationKind: Equatable, Sendable {
+    case camera
+    case gallery
+    case currentPhoto
+}
+
+struct CaptureInputSessionStart: Equatable, Sendable {
+    let sessionID: UUID
+    let replacedSessionID: UUID?
+}
+
+enum CaptureGalleryOperationOutcome: Equatable, Sendable {
+    case success
+    case cancelled
+    case failure
+}
+
+enum CaptureGalleryCompletionDecision: Equatable, Sendable {
+    case apply
+    case ignore
+    case showRecovery
+
+    static func resolve(
+        outcome: CaptureGalleryOperationOutcome,
+        isCurrentSession: Bool
+    ) -> Self {
+        guard isCurrentSession else { return .ignore }
+        switch outcome {
+        case .success:
+            return .apply
+        case .cancelled:
+            return .ignore
+        case .failure:
+            return .showRecovery
+        }
+    }
+}
+
 struct CaptureProcessingSessionGate {
-    private(set) var activeSessionID: UUID?
+    private struct ActiveSession: Equatable {
+        let id: UUID
+        let kind: CaptureInputOperationKind
+    }
+
+    private var activeSession: ActiveSession?
 
     var isActive: Bool {
-        activeSessionID != nil
+        activeSession != nil
+    }
+
+    func canStart(_ kind: CaptureInputOperationKind) -> Bool {
+        guard let activeSession else { return true }
+        return activeSession.kind == .gallery && (kind == .gallery || kind == .camera)
+    }
+
+    mutating func start(_ kind: CaptureInputOperationKind) -> CaptureInputSessionStart? {
+        guard canStart(kind) else { return nil }
+        let replacedSessionID = activeSession?.id
+        let sessionID = UUID()
+        activeSession = ActiveSession(id: sessionID, kind: kind)
+        return CaptureInputSessionStart(
+            sessionID: sessionID,
+            replacedSessionID: replacedSessionID
+        )
     }
 
     mutating func begin() -> UUID? {
-        guard activeSessionID == nil else { return nil }
-        let sessionID = UUID()
-        activeSessionID = sessionID
-        return sessionID
+        start(.currentPhoto)?.sessionID
     }
 
     func isCurrent(_ sessionID: UUID) -> Bool {
-        activeSessionID == sessionID
+        activeSession?.id == sessionID
     }
 
     @discardableResult
     mutating func finish(_ sessionID: UUID) -> Bool {
         guard isCurrent(sessionID) else { return false }
-        activeSessionID = nil
+        activeSession = nil
         return true
     }
 
     mutating func cancel() {
-        activeSessionID = nil
+        activeSession = nil
+    }
+}
+
+struct CaptureTransitionSessionGate {
+    private(set) var activeID: UUID?
+
+    mutating func begin() -> UUID {
+        let transitionID = UUID()
+        activeID = transitionID
+        return transitionID
+    }
+
+    func isCurrent(_ transitionID: UUID) -> Bool {
+        activeID == transitionID
+    }
+
+    @discardableResult
+    mutating func consume(_ transitionID: UUID) -> Bool {
+        guard isCurrent(transitionID) else { return false }
+        activeID = nil
+        return true
+    }
+
+    mutating func invalidate() {
+        activeID = nil
+    }
+}
+
+private struct ForegroundSelectionPhoto: View {
+    let image: UIImage
+    let onSelection: (CGPoint?) -> Void
+
+    var body: some View {
+        GeometryReader { proxy in
+            ZStack {
+                CatLocalTheme.cardSurface
+
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: proxy.size.width, height: proxy.size.height)
+            }
+            .contentShape(Rectangle())
+            .gesture(
+                SpatialTapGesture()
+                    .onEnded { value in
+                        onSelection(AspectFitPointMapping.normalizedSourcePoint(
+                            at: value.location,
+                            imageSize: image.size,
+                            containerSize: proxy.size
+                        ))
+                    }
+            )
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .stroke(CatLocalTheme.imageOutline, lineWidth: 1)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Photo for foreground selection")
+        .accessibilityHint("Double-tap to try the exact center of the photo. Use Retake or Choose Private Photo if the cat is elsewhere.")
+        .accessibilityAction {
+            onSelection(ForegroundSelectionAccessibility.defaultNormalizedPoint)
+        }
+        .accessibilityAction(named: "Try exact center") {
+            onSelection(ForegroundSelectionAccessibility.defaultNormalizedPoint)
+        }
+        .accessibilityIdentifier("foreground-selection-photo")
     }
 }
 
@@ -2184,8 +3074,8 @@ private enum CaptureDiscardAction {
 private enum CaptureStage: Equatable {
     case camera
     case analyzing
-    case processingStopped
     case choosingCat
+    case choosingForeground
     case creatingCutout
     case stickerReveal
     case stickerInspecting

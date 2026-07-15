@@ -83,7 +83,11 @@ Image bytes are not stored in SwiftData. They live in Application Support so del
 
 Future captures/imports should continue to use optimized local variants:
 
-- Original: EXIF-free, downsampled long edge around 1800px, HEIC quality around 0.72.
+- Original: redrawn into a normalized raster and re-encoded without source EXIF,
+  GPS, TIFF camera/device, orientation, or other source metadata; downsampled
+  long edge around 1800px; HEIC quality around 0.72. ImageIO may regenerate
+  structural color, pixel, tile, and normalized-orientation properties required
+  by the HEIC container, but source photo metadata is not copied.
 - Cutout: transparent PNG, trimmed around non-empty alpha bounds, long edge around 1400px.
 - Thumbnail: generated from cutout, long edge around 512px.
 
@@ -103,9 +107,20 @@ Future storage changes should preserve these invariants:
   If image variants are written but `modelContext.save()` fails, delete the new
   image directory before surfacing the error so Application Support does not
   accumulate orphaned cat files.
-- Keep deletion cleanup explicit: removing a `CatRecord` should also remove its
-  image directory, and deleting all cats should remove the storage root before
+- After the atomic temporary-to-final move, apply
+  `FileProtectionType.completeUntilFirstUserAuthentication` to the final UUID
+  directory and every stored file. Set and verify `isExcludedFromBackup` on the
+  final record directory with URL resource values.
+- Keep deletion cleanup explicit: removing a `CatRecord` removes its entire UUID
+  image directory, including the sanitized original, cutout, thumbnail, and any
+  future associated file. Deleting all cats removes the storage root before
   saving the empty metadata state.
+- Once per launch, after SwiftData opens successfully, compare its record IDs
+  with immediate, exact canonical UUID directories under the image root. Remove
+  unmatched UUID directories as orphans, while ignoring active `.tmp-`
+  directories, non-UUID entries, nested entries, and valid record directories.
+  Cleanup is actor-serialized; enumeration or removal failures are logged and
+  thrown from the store, then logged without blocking app launch.
 - Add unit coverage for path-containment and rollback behavior whenever
   storage path rules or save ordering changes.
 
@@ -119,19 +134,28 @@ saves or a stuck first-use flow.
   with one session-based in-flight coordinator. Each async operation keeps its
   session ID; completion from a cancelled or superseded session must be a no-op
   so it cannot clear or overwrite a newer retry.
-- Keep the active image-processing `Task` cancellable. Analyzing and cutout
-  screens expose `Stop and return`, invalidate the active session immediately,
-  and preserve the source photo in `processingStopped` with explicit retry and
-  retake actions. Vision's synchronous request may finish in the background, so
-  cancellation checks run before and after each request before UI state changes.
+- Keep the active image-processing `Task` cancellable from lifecycle exits even
+  though the immersive lifting screen does not expose an interrupting action.
+  Vision's synchronous request may finish in the background, so cancellation
+  checks run before and after each request before UI state changes.
 - Reset the in-flight session on every exit path: successful Vision handoff,
   import/capture failure, user cancellation, close, and reset.
 - Keep expensive image preparation off the main actor. Decode and downsample
   imported/captured images before sending them into Vision or card rendering.
+- Keep post-shutter framing consistent across processing, reveal, inspection,
+  and save. The photo delegate hands encoded bytes to `CaptureView`, which
+  orientation-normalizes and downsamples the complete sensor photograph off-main
+  without cropping it to the aspect-fill camera preview. SwiftUI aspect-fits that
+  same complete photo throughout the accepted-image flow; do not substitute a
+  differently cropped source midway through processing or persistence.
+- The rear camera uses the best available AVFoundation virtual device (triple,
+  dual-wide, dual, then wide). User-facing zoom factors are translated through
+  `displayVideoZoomFactorMultiplier`; discovery, camera locking, and zoom changes
+  remain serialized on the session queue. The preview stays visually quiet with
+  no preset lens row; pinch zoom remains clamped inside the device range.
 - Preserve explicit stage transitions: `camera -> analyzing -> choosingCat` or
-  `creatingCutout -> stickerReveal -> stickerInspecting -> cardCelebrating`,
-  with `analyzing/creatingCutout -> processingStopped -> analyzing` as the
-  cancellation and retry path.
+  `creatingCutout -> stickerReveal (dusting -> lifting -> settling) ->
+  stickerInspecting -> cardCelebrating`.
   Avoid implicit fallthrough that lets UI controls from an earlier stage remain
   active while async work is running.
 
@@ -146,25 +170,68 @@ delay the UI while doing image analysis.
 - Timed reveal tasks should always complete even if optional sampling work is
   slow or cancelled. The user must not get stuck waiting for a decorative
   effect.
-- `FullScreenDustRevealView` owns the first-cutout presentation after Vision has
-  produced an aligned transparent image. SwiftUI keeps the raw cutout stable and
-  uses the shared `DustRevealGeometry` aspect-fit rect for both that image and a
-  transparent `MTKView`; the Metal renderer only dissolves inverse-alpha source
-  pixels and never reruns Vision or changes `CatAnalyzing`.
+- `FullScreenDustRevealView` owns the aligned photo and background-only Metal
+  pass. `SubjectToCardTransitionView` owns the single temporary sticker and its
+  measured handoff into the real draft card. Dust erosion and emission share one
+  roughly 1.10-second timeline with no separate photo hold or terminal fade.
+  The outline appears at about 0.68 seconds, and the card lift begins at about
+  0.92 seconds. It overlaps the final dust, lands at about 1.56 seconds, and
+  settles by about 1.84 seconds so each stage remains readable.
+- Prepare one immutable transition bundle off-main. Its full-canvas aligned
+  cutout, background-only image, and softly dilated protection mask share the
+  same downsampled dimensions. Inspection and card editing use the matching
+  alpha-trimmed sticker and outline-mask canvases so subjects do not inherit
+  transparent sensor-frame margins. Release full-canvas transition-resolution
+  assets when the transition completes or is cancelled; retain only the
+  sanitized original, trimmed sticker, and outline needed by the draft flow.
 - `MetalBackgroundDustView` owns `DustParticleRenderer` for exactly one reveal.
   Its representable returns an inactive transparent `MTKView` immediately, then
   prepares immutable Metal textures and pipelines in a cancellable
   user-initiated task before attaching the renderer on the main actor.
-  While that task runs, SwiftUI shows the aligned original and keeps the raw
-  cutout hidden. A thread-safe gate reports the first frame only after both its
+  Metal receives only the background-only and subject-protection images; the
+  source texture never contains the cat. While setup runs, SwiftUI shows the
+  aligned original beneath the one stable temporary sticker. A thread-safe gate reports
+  the first frame only after both its
   command buffer succeeds and its drawable's presented handler fires, then
-  SwiftUI swaps the placeholder for the raw cutout in a single animation-free
-  transaction so preparation never flashes a cutout-only frame.
+  SwiftUI swaps the placeholder for the Metal layer in a single animation-free
+  transaction so preparation never flashes an empty frame. The card choreography
+  clock starts from that same first-presented-frame signal, so Metal resource
+  preparation cannot consume the dust-only portion of the transition.
+  The renderer derives its centered aspect-fit viewport from the texture size
+  and its own `drawableSize`; SwiftUI point-space rectangles never cross into
+  Metal. Only the aligned photo rect is rendered by Metal. The sampled SwiftUI
+  backdrop stays static, and particle fragments are discarded at the photo
+  edges, so portrait, landscape, and square imports never animate letterboxed
+  or app-background pixels. A directional erosion front uses smoothly
+  interpolated turbulence instead of quantized noise cells, while particle
+  lifetimes consume the remaining reveal timeline. The softly dilated subject
+  mask attenuates particle opacity continuously by inverse protection; only
+  effectively fully protected pixels are skipped. This keeps source erosion,
+  dust emission, forward-depth growth, and fading in one continuous motion
+  without a separate terminal fade. Particle depth is simulated entirely in
+  the vertex shader: deterministic speed variation, restrained aspect-correct
+  expansion from the photograph center, and unbiased seeded micro-motion grow
+  each sprite toward a conservative point-size cap before it fades. There is no
+  shared screen-space wind vector, and the photograph and stable cat cutout do
+  not scale with the particles.
   Dismantling invalidates late preparation results, stops the display loop, and
   releases the coordinator reference. Setup or draw failures are logged and
-  switch to the same short background fade used for Reduce Motion and disabled
-  Card Motion; runtime failures begin that fade from the remaining source
-  contribution instead of flashing the full original back onscreen.
+  switch to a simple crossfade from the current visible state into the completed
+  draft card; no secondary renderer attempts to recreate intermediate particles.
+- `DraftCatCardView` reports its actual image-stage anchor in the transition's
+  named coordinate space. The temporary mask-outlined sticker maps from the
+  padded aspect-fit source crop into that measured destination. The real card's
+  cat stays at zero opacity until landing, then an animation-free transaction
+  reveals it and removes the temporary sticker atomically. Save and Edit remain
+  absent until this handoff and settle are complete. The transition container
+  preserves the inspection layout's safe-area geometry; only the photo and Metal
+  reveal layer extend behind system chrome. Reduce Motion and disabled
+  card motion skip Metal, travel, and spring motion and use a 0.25-second
+  crossfade into the identical inspection layout. The completion gate triggers
+  one restrained success haptic and one `Cat card ready.` VoiceOver announcement
+  at most once on both paths. A capture-owned transition identifier is consumed
+  with that handoff so cancellation or a newer capture cannot accept a stale
+  completion callback from an outgoing reveal.
 - `StoredImageView` should keep disk reads and `UIImage(data:)` decoding off
   the main actor, reuse a small cache for repeated local paths, and expose a
   clear placeholder/error state instead of silently hiding failed image loads.
@@ -240,10 +307,11 @@ Avoid reintroducing inline card `TextField`s for cat names unless the editing mo
 Unit tests should prioritize deterministic behavior and local data safety:
 
 - card style assignment
-- EXIF/GPS stripping
+- source metadata stripping and normalized orientation
 - image downsampling/compression
 - cutout trimming
-- deletion cleanup
+- file protection, backup exclusion, and whole-directory deletion cleanup
+- launch-time orphan-directory cleanup
 - Vision selection/failure handling
 - persistence across relaunch
 

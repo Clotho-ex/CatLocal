@@ -131,7 +131,7 @@ struct SettingsView: View {
         } header: {
             Text("Storage")
         } footer: {
-            Text("Originals, cutouts, thumbnails, card details, notes, and typed Catlas labels live only in CatLocal's private app container.")
+            Text("Sanitized originals, cutouts, and thumbnails stay in CatLocal's private app container. Their folders use iOS file protection until the first unlock after restart, are excluded from backups, and are removed with their cat.")
         }
     }
 
@@ -314,7 +314,7 @@ private struct PrivacyReceiptView: View {
                 PrivacyReceiptRow(
                     icon: "camera.fill",
                     title: "Photos",
-                    detail: "Only captures and imports you choose are stored."
+                    detail: "For each cat, CatLocal retains a sanitized, re-encoded original plus its cutout and thumbnail."
                 )
                 PrivacyReceiptRow(
                     icon: "brain.head.profile",
@@ -331,10 +331,15 @@ private struct PrivacyReceiptView: View {
                     title: "Network",
                     detail: "The collection requires no account, upload, cloud AI, or model-training use."
                 )
+                PrivacyReceiptRow(
+                    icon: "lock.doc.fill",
+                    title: "Image Storage",
+                    detail: "Image folders use iOS file protection until the first unlock after restart, are excluded from backups, and are deleted with their cat."
+                )
             } header: {
                 Text("On This iPhone")
             } footer: {
-                Text("EXIF and GPS metadata are removed before images are stored in CatLocal's private app container.")
+                Text("Before storage, CatLocal redraws the selected photo and re-encodes it without source EXIF, GPS, camera/device, or orientation metadata.")
             }
         }
         .listStyle(.insetGrouped)
