@@ -9,6 +9,37 @@ import UIKit
 
 struct CatLocalCoreTests {
     @Test
+    func capturePresentationRestoresTheOriginatingContentTabAndRejectsReentry() {
+        var state = AppTabPresentationState(initialTab: .settings)
+
+        let didPresent = state.presentCapture()
+        #expect(didPresent)
+        #expect(state.selectedTab == .capture)
+        #expect(state.lastContentTab == .settings)
+        #expect(state.presentedSheet == .capture)
+        let didPresentAgain = state.presentCapture()
+        #expect(!didPresentAgain)
+
+        let restoredTab = state.restoreContentTabSelection()
+        #expect(restoredTab == .settings)
+        #expect(state.selectedTab == .settings)
+        #expect(state.presentedSheet == nil)
+    }
+
+    @Test
+    func selectingContentTabsNeverMakesCaptureRestorable() {
+        var state = AppTabPresentationState(initialTab: .home)
+
+        state.selectContentTab(.settings)
+        #expect(state.selectedTab == .settings)
+        #expect(state.lastContentTab == .settings)
+
+        state.selectContentTab(.capture)
+        #expect(state.selectedTab == .settings)
+        #expect(state.lastContentTab == .settings)
+    }
+
+    @Test
     func cameraPrivacyBadgePreservesCopyAtAccessibilitySizes() {
         #expect(CameraPrivacyBadgeLayout.textLineLimit(for: .large) == 1)
         #expect(CameraPrivacyBadgeLayout.minimumScaleFactor(for: .large) == 0.86)

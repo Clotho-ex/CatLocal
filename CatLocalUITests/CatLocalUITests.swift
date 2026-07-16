@@ -216,6 +216,53 @@ final class CatLocalUITests: XCTestCase {
         XCTAssertFalse(app.buttons["onboarding-primary-action"].exists)
     }
 
+    func testPreIOS26CameraTabIsCenteredAndAccessible() throws {
+        if #available(iOS 26.0, *) {
+            throw XCTSkip("iOS 26 uses the system's detached camera tab treatment.")
+        }
+
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "-ui-testing-reset",
+            "-UIPreferredContentSizeCategoryName",
+            UIContentSizeCategory.accessibilityExtraExtraExtraLarge.rawValue
+        ]
+        app.launch()
+
+        let homeButton = app.tabBars.buttons["Home"]
+        let cameraButton = app.tabBars.buttons["Camera"]
+        let settingsButton = app.tabBars.buttons["Settings"]
+        XCTAssertTrue(homeButton.waitForExistence(timeout: 8))
+        XCTAssertTrue(cameraButton.exists)
+        XCTAssertTrue(settingsButton.exists)
+
+        XCTAssertLessThan(homeButton.frame.midX, cameraButton.frame.midX)
+        XCTAssertLessThan(cameraButton.frame.midX, settingsButton.frame.midX)
+        XCTAssertEqual(cameraButton.frame.midX, app.windows.firstMatch.frame.midX, accuracy: 4)
+
+        for tab in [homeButton, cameraButton, settingsButton] {
+            XCTAssertGreaterThanOrEqual(tab.frame.height, 44)
+        }
+    }
+
+    func testCaptureDismissalRestoresSettingsTab() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-ui-testing-reset", "-ui-testing-open-settings"]
+        app.launch()
+
+        let settingsButton = app.tabBars.buttons["Settings"]
+        XCTAssertTrue(settingsButton.waitForExistence(timeout: 8))
+        XCTAssertTrue(settingsButton.isSelected)
+
+        tapWhenHittable(app.tabBars.buttons["Camera"])
+        let closeButton = app.buttons["Close camera"]
+        XCTAssertTrue(closeButton.waitForExistence(timeout: 8))
+        tapWhenHittable(closeButton)
+
+        XCTAssertTrue(settingsButton.waitForExistence(timeout: 8))
+        XCTAssertTrue(settingsButton.isSelected)
+    }
+
     func testEmptyHomeCaptureEntryAndSettingsReceipt() {
         let app = XCUIApplication()
         app.launchArguments = ["-ui-testing-reset"]
