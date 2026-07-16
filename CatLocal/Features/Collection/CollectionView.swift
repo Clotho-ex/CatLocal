@@ -489,6 +489,7 @@ struct CollectionView: View {
         }
         .accessibilityHint(isSelectionMode ? "Double tap to select or deselect this card" : "Double tap to open this card")
         .accessibilityValue(selectionAccessibilityValue(isSelected: isSelected))
+        .accessibilityAddTraits(isSelectionMode && isSelected ? .isSelected : [])
     }
 
     private var catlas: some View {
@@ -876,16 +877,7 @@ struct CollectionView: View {
                 }
             }
             .padding(10)
-            .background(
-                RoundedRectangle(cornerRadius: 26, style: .continuous)
-                    .fill(CatLocalTheme.cardSurface.opacity(0.66))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 26, style: .continuous)
-                    .stroke(CatLocalTheme.imageOutline.opacity(0.72), lineWidth: 1)
-            )
             .catGlass(cornerRadius: 26)
-            .shadow(color: CatLocalTheme.shadow.opacity(0.12), radius: 8, y: 4)
             .accessibilityElement(children: .contain)
         }
     }
@@ -911,6 +903,7 @@ struct CollectionView: View {
             .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
             .minimumScaleFactor(dynamicTypeSize.isAccessibilitySize ? 1 : 0.78)
             .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityIdentifier("collection-selection-status")
     }
 
     private var bulkDeleteButton: some View {
