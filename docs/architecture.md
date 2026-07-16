@@ -46,9 +46,40 @@ CatLocal/
 - `CollectionView` powers the Home tab.
 - `SettingsView` is the secondary tab.
 - `CaptureView` is presented as a full-screen cover.
-- The camera entry is modeled as a `Tab` with `role: .search` so iOS 26 renders it as the detached right-side Liquid Glass control.
+- On iOS 26 and later, the camera entry is modeled as a `Tab` with
+  `role: .search` so the system renders it as the detached right-side Liquid
+  Glass control. On iOS 18 through iOS 25, the same action is the centered item
+  in the standard native `Home`, `Camera`, `Settings` tab order and presents the
+  identical full-screen capture flow. A dedicated state value keeps the last
+  content tab separate from transient capture presentation, rejects reentry,
+  and restores Home or Settings after dismissal.
 
 The app uses `.tabViewStyle(.sidebarAdaptable)` rather than a custom tab bar. This keeps navigation aligned with native iOS behavior and gives iOS 26 the system Liquid Glass treatment automatically.
+
+## Platform Compatibility
+
+CatLocal supports iOS 18 and later. Keep iOS 18 as the deployment target for
+the app, unit-test, and UI-test configurations unless product requirements and
+current adoption data justify changing the floor.
+
+- iOS 26 and later use native Liquid Glass containers, glass effects, and the
+  search-role camera tab.
+- iOS 18 through iOS 25 use the same product flows with native material
+  surfaces and a centered standard camera tab.
+- `CatGlassModifier` resolves legacy geometry and material from one of five
+  semantic roles: compact control, grouped action, camera overlay, sheet action,
+  or navigation-adjacent control. Camera overlays use stronger material than
+  controls over calm app backgrounds.
+- Reduce Transparency replaces legacy material with opaque
+  `CatLocalTheme.cardSurface`. Increase Contrast strengthens the semantic
+  outline without changing layout. Settings uses system-managed navigation
+  material on legacy systems.
+- APIs introduced after iOS 18 must be isolated behind `#available` checks with
+  a behaviorally equivalent fallback. Do not fork persistence, capture, Vision,
+  or image-storage behavior by OS version.
+- A successful build with `IPHONEOS_DEPLOYMENT_TARGET = 18.0` is the compile-time
+  availability check. Include an iOS 18 launch and primary-flow smoke test in
+  release validation.
 
 Persisted app preferences use the keys and typed value catalogs in `CatLocalApp.swift`. `RootView` applies appearance, card-motion, and haptic choices through SwiftUI environment values. `CollectionView` persists Home view and sort changes where those controls are used, while `SettingsView` stays focused on app-wide preferences, local storage, privacy, and app information. System Reduce Motion always overrides the in-app Card Motion preference.
 

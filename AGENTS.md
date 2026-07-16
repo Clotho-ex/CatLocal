@@ -60,9 +60,18 @@ and implementation decisions before adding secondary settings or metrics.
 
 The root shell uses SwiftUI `TabView` with `.tabViewStyle(.sidebarAdaptable)` so iOS owns the native Liquid Glass tab bar on iOS 26.
 
-The camera action is represented as a native tab with `role: .search`, because this installed SDK exposes `TabRole.search` but not `TabRole.prominent`. Tapping the camera tab presents `CaptureView` and keeps the previous content tab selected.
+On iOS 26 and later, the camera action is represented as a native tab with
+`role: .search`, because this installed SDK exposes `TabRole.search` but not
+`TabRole.prominent`. On iOS 18 through iOS 25, use a standard native tab bar
+ordered `Home`, `Camera`, `Settings`, with the camera action centered and given
+a descriptive VoiceOver hint. Both variants present `CaptureView`, reject
+reentrant presentation, and restore the previous content tab on dismissal.
 
 Do not reintroduce a custom floating tab bar unless a native API cannot express the behavior.
+
+The minimum deployment target is iOS 18 for the app, unit tests, and UI tests.
+Gate every post-iOS 18 API with `#available` and provide a behaviorally
+equivalent fallback while preserving the native iOS 26 presentation.
 
 ## Storage And Vision
 
@@ -84,6 +93,14 @@ Do not reintroduce a custom floating tab bar unless a native API cannot express 
 ## UI Notes
 
 - `CatLocalTheme` should remain semantic and dynamic for light/dark mode.
+- Pre-iOS 26 material controls use `CatLegacySurfaceRole`: `compactControl`,
+  `groupedAction`, `cameraOverlay`, `sheetAction`, or `navigationAdjacent`.
+  Reduce Transparency replaces materials with opaque `cardSurface`; Increase
+  Contrast strengthens the semantic outline without changing geometry. Camera
+  overlays use a stronger material than controls over calm app backgrounds.
+- Keep iOS 26 glass styling isolated inside its availability branch. Settings
+  hides its navigation background only on iOS 26; older systems use the native
+  system-managed navigation material and scroll-edge behavior.
 - Cards should be polished editorial surfaces, not Liquid Glass blobs.
 - Card text is display-only on the card surface. Keep name, note, and Catlas editing in capture/editor fields unless the editing model is intentionally redesigned.
 - Home grid thumbnails are deliberately muted with blur/material and wrapped in explicit aspect-ratio hit boxes so they do not steal touches from the `Catlas` segmented control.

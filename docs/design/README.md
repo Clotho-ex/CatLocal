@@ -96,8 +96,18 @@ explicit destructive actions.
 
 ## Component Guardrails
 
-- `RootView` uses native SwiftUI tabs and iOS 26 Liquid Glass behavior. Do not
+- `RootView` uses native SwiftUI tabs and iOS 26 Liquid Glass behavior. On iOS
+  18 through iOS 25, keep Camera centered between Home and Settings and use the
+  native material fallback rather than recreating Liquid Glass. Do not
   reintroduce a custom floating tab bar without a platform limitation.
+- Legacy material surfaces declare one semantic role: compact control, grouped
+  action, camera overlay, sheet action, or navigation-adjacent control. Use the
+  shared resolver rather than screen-local materials. It caps legacy geometry,
+  uses stronger material over camera imagery, swaps to opaque `cardSurface` for
+  Reduce Transparency, and strengthens outlines for Increase Contrast without
+  moving content.
+- Keep the iOS 26 `glassEffect` branch visually unchanged. On older systems,
+  Settings uses the native navigation background and scroll-edge behavior.
 - `CollectionView` should keep grid thumbnails cheap, static, and muted until a
   card is focused.
 - `CaptureView` owns the first-use product loop and should preserve explicit
