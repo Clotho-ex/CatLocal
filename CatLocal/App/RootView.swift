@@ -6,16 +6,13 @@ struct RootView: View {
     @AppStorage(CatLocalUserDefaults.appearanceKey) private var appearance = CatLocalAppearance.system
     @AppStorage(CatLocalUserDefaults.cardMotionEnabledKey) private var cardMotionEnabled = true
     @AppStorage(CatLocalUserDefaults.hapticsEnabledKey) private var hapticsEnabled = true
-    @State private var selectedTab: AppTab
-    @State private var lastContentTab: AppTab
-    @State private var presentedSheet: AppSheet?
+    @State private var tabState: AppTabPresentationState
     @State private var homeReselectionID = 0
     @State private var contentTabFeedbackTrigger = 0
 
     init() {
         let initialTab: AppTab = CommandLine.arguments.contains("-ui-testing-open-settings") ? .settings : .home
-        _selectedTab = State(initialValue: initialTab)
-        _lastContentTab = State(initialValue: initialTab)
+        _tabState = State(initialValue: AppTabPresentationState(initialTab: initialTab))
     }
 
     var body: some View {
@@ -37,7 +34,7 @@ struct RootView: View {
     private var appShell: some View {
         nativeTabs
             .catSensoryFeedback(.selection, trigger: contentTabFeedbackTrigger)
-            .fullScreenCover(item: $presentedSheet, onDismiss: restoreContentTabSelection) { sheet in
+            .fullScreenCover(item: $tabState.presentedSheet, onDismiss: restoreContentTabSelection) { sheet in
                 switch sheet {
                 case .capture:
                     CaptureView()
@@ -47,20 +44,19 @@ struct RootView: View {
 
     private var tabSelection: Binding<AppTab> {
         Binding {
-            selectedTab
+            tabState.selectedTab
         } set: { newTab in
             guard newTab != .capture else {
                 presentCapture()
                 return
             }
 
-            if selectedTab == .home, newTab == .home {
+            if tabState.selectedTab == .home, newTab == .home {
                 homeReselectionID += 1
             }
 
-            playContentTabHaptic(from: selectedTab, to: newTab)
-            selectedTab = newTab
-            lastContentTab = newTab
+            playContentTabHaptic(from: tabState.selectedTab, to: newTab)
+            tabState.selectContentTab(newTab)
         }
     }
 
@@ -73,7 +69,7 @@ struct RootView: View {
                         CollectionView(
                             onCaptureRequested: presentCapture,
                             homeReselectionID: homeReselectionID,
-                            selectedTab: selectedTab
+                            selectedTab: tabState.selectedTab
                         )
                     }
                 }
@@ -89,7 +85,7 @@ struct RootView: View {
                         CollectionView(
                             onCaptureRequested: presentCapture,
                             homeReselectionID: homeReselectionID,
-                            selectedTab: selectedTab
+                            selectedTab: tabState.selectedTab
                         )
                     }
                 } label: {
@@ -105,14 +101,8 @@ struct RootView: View {
                         CollectionView(
                             onCaptureRequested: presentCapture,
                             homeReselectionID: homeReselectionID,
-                            selectedTab: selectedTab
+                            selectedTab: tabState.selectedTab
                         )
-                    }
-                }
-
-                Tab("Settings", systemImage: "gearshape", value: AppTab.settings) {
-                    tabContent {
-                        SettingsView()
                     }
                 }
 
@@ -121,15 +111,24 @@ struct RootView: View {
                         CollectionView(
                             onCaptureRequested: presentCapture,
                             homeReselectionID: homeReselectionID,
-                            selectedTab: selectedTab
+                            selectedTab: tabState.selectedTab
                         )
                     }
                 } label: {
-                    Label("Camera", systemImage: "camera")
+                    Label("Camera", systemImage: "camera.fill")
+                        .accessibilityHint("Opens the camera and private photo import.")
+                }
+
+                Tab("Settings", systemImage: "gearshape", value: AppTab.settings) {
+                    tabContent {
+                        SettingsView()
+                    }
                 }
             }
             .tabViewStyle(.sidebarAdaptable)
             .tint(CatLocalTheme.blueAction)
+            .toolbarBackground(.regularMaterial, for: .tabBar)
+            .toolbarBackground(.visible, for: .tabBar)
         }
     }
 
@@ -143,12 +142,11 @@ struct RootView: View {
     }
 
     private func presentCapture() {
-        selectedTab = .capture
-        presentedSheet = .capture
+        guard tabState.presentCapture() else { return }
     }
 
     private func restoreContentTabSelection() {
-        selectedTab = lastContentTab
+        tabState.restoreContentTabSelection()
     }
 
     private func completeOnboarding() {
@@ -178,7 +176,41 @@ enum AppTab: Hashable {
     }
 }
 
-enum AppSheet: String, Identifiable {
+struct AppTabPresentationState: Equatable {
+    var selectedTab: AppTab
+    var lastContentTab: AppTab
+    var presentedSheet: AppSheet?
+
+    init(initialTab: AppTab) {
+        let contentTab = initialTab.isContentTab ? initialTab : .home
+        selectedTab = contentTab
+        lastContentTab = contentTab
+        presentedSheet = nil
+    }
+
+    mutating func selectContentTab(_ tab: AppTab) {
+        guard tab.isContentTab else { return }
+        selectedTab = tab
+        lastContentTab = tab
+    }
+
+    @discardableResult
+    mutating func presentCapture() -> Bool {
+        guard presentedSheet == nil else { return false }
+        selectedTab = .capture
+        presentedSheet = .capture
+        return true
+    }
+
+    @discardableResult
+    mutating func restoreContentTabSelection() -> AppTab {
+        presentedSheet = nil
+        selectedTab = lastContentTab
+        return lastContentTab
+    }
+}
+
+enum AppSheet: String, Identifiable, Equatable {
     case capture
 
     var id: String { rawValue }

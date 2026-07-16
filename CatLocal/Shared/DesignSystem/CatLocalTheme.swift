@@ -701,15 +701,62 @@ private extension CatSheetActionButton.Mode {
     }
 }
 
+enum CatLegacySurfaceRole: Equatable, Sendable {
+    case compactControl
+    case groupedAction
+    case cameraOverlay
+    case sheetAction
+    case navigationAdjacent
+
+    var maximumCornerRadius: CGFloat {
+        switch self {
+        case .compactControl, .navigationAdjacent:
+            16
+        case .groupedAction, .cameraOverlay, .sheetAction:
+            20
+        }
+    }
+}
+
+struct CatLegacySurfaceMetrics: Equatable, Sendable {
+    let cornerRadius: CGFloat
+    let outlineOpacity: Double
+    let shadowOpacity: Double
+    let shadowRadius: CGFloat
+    let shadowYOffset: CGFloat
+    let usesOpaqueSurface: Bool
+
+    static func resolve(
+        role: CatLegacySurfaceRole,
+        requestedCornerRadius: CGFloat,
+        reduceTransparency: Bool,
+        increasedContrast: Bool
+    ) -> CatLegacySurfaceMetrics {
+        CatLegacySurfaceMetrics(
+            cornerRadius: min(requestedCornerRadius, role.maximumCornerRadius),
+            outlineOpacity: increasedContrast ? 0.92 : 0.68,
+            shadowOpacity: reduceTransparency ? 0.08 : 0.13,
+            shadowRadius: role == .cameraOverlay ? 4 : 6,
+            shadowYOffset: role == .cameraOverlay ? 2 : 3,
+            usesOpaqueSurface: reduceTransparency
+        )
+    }
+}
+
 private struct CatGlassModifier: ViewModifier {
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
+
     let cornerRadius: CGFloat
     let interactive: Bool
+    let legacyRole: CatLegacySurfaceRole
 
+    @ViewBuilder
     func body(content: Content) -> some View {
-        let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+        if #available(iOS 26.0, *) {
+            let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
 
-        Group {
-            if #available(iOS 26.0, *) {
+            Group {
                 if interactive {
                     content
                         .glassEffect(
@@ -723,19 +770,56 @@ private struct CatGlassModifier: ViewModifier {
                             in: .rect(cornerRadius: cornerRadius)
                         )
                 }
-            } else {
-                content
-                    .background(.ultraThinMaterial, in: shape)
             }
+            .overlay(shape.stroke(CatLocalTheme.imageOutline.opacity(0.72), lineWidth: 1))
+            .shadow(color: CatLocalTheme.shadow.opacity(0.16), radius: 7, y: 3)
+        } else {
+            let metrics = CatLegacySurfaceMetrics.resolve(
+                role: legacyRole,
+                requestedCornerRadius: cornerRadius,
+                reduceTransparency: reduceTransparency,
+                increasedContrast: colorSchemeContrast == .increased
+            )
+            let shape = RoundedRectangle(cornerRadius: metrics.cornerRadius, style: .continuous)
+
+            Group {
+                if metrics.usesOpaqueSurface {
+                    content
+                        .background(CatLocalTheme.cardSurface, in: shape)
+                } else if legacyRole == .cameraOverlay {
+                    content
+                        .background(.regularMaterial, in: shape)
+                } else {
+                    content
+                        .background(.thinMaterial, in: shape)
+                }
+            }
+            .overlay(
+                shape.stroke(
+                    CatLocalTheme.imageOutline.opacity(metrics.outlineOpacity),
+                    lineWidth: 1
+                )
+            )
+            .shadow(
+                color: CatLocalTheme.shadow.opacity(metrics.shadowOpacity),
+                radius: metrics.shadowRadius,
+                y: metrics.shadowYOffset
+            )
         }
-        .overlay(shape.stroke(CatLocalTheme.imageOutline.opacity(0.72), lineWidth: 1))
-        .shadow(color: CatLocalTheme.shadow.opacity(0.16), radius: 7, y: 3)
     }
 }
 
 extension View {
-    nonisolated func catGlass(cornerRadius: CGFloat, interactive: Bool = false) -> some View {
-        modifier(CatGlassModifier(cornerRadius: cornerRadius, interactive: interactive))
+    nonisolated func catGlass(
+        cornerRadius: CGFloat,
+        interactive: Bool = false,
+        legacyRole: CatLegacySurfaceRole = .compactControl
+    ) -> some View {
+        modifier(CatGlassModifier(
+            cornerRadius: cornerRadius,
+            interactive: interactive,
+            legacyRole: legacyRole
+        ))
     }
 
     nonisolated func catEditorialTitle(size: CGFloat) -> some View {
@@ -779,7 +863,12 @@ extension View {
 
     nonisolated func catSingleActionIconSurface() -> some View {
         frame(width: 56, height: 56)
-            .catGlass(cornerRadius: 28, interactive: true)
+            .catGlass(cornerRadius: 28, interactive: true, legacyRole: .sheetAction)
+    }
+
+    nonisolated func catCameraOverlayIconSurface() -> some View {
+        frame(width: 56, height: 56)
+            .catGlass(cornerRadius: 28, interactive: true, legacyRole: .cameraOverlay)
     }
 
     nonisolated func catSingleActionPillSurface() -> some View {
@@ -787,7 +876,7 @@ extension View {
             .minimumScaleFactor(0.82)
             .padding(.horizontal, 18)
             .frame(minHeight: 56)
-            .catGlass(cornerRadius: 28, interactive: true)
+            .catGlass(cornerRadius: 28, interactive: true, legacyRole: .sheetAction)
             .contentShape(Capsule(style: .continuous))
     }
 
