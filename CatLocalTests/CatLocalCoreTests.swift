@@ -40,6 +40,46 @@ struct CatLocalCoreTests {
     }
 
     @Test
+    func legacySurfaceMetricsCapGeometryBySemanticRole() {
+        let compact = CatLegacySurfaceMetrics.resolve(
+            role: .compactControl,
+            requestedCornerRadius: 28,
+            reduceTransparency: false,
+            increasedContrast: false
+        )
+        let grouped = CatLegacySurfaceMetrics.resolve(
+            role: .groupedAction,
+            requestedCornerRadius: 28,
+            reduceTransparency: false,
+            increasedContrast: false
+        )
+
+        #expect(compact.cornerRadius == 16)
+        #expect(grouped.cornerRadius == 20)
+        #expect(grouped.shadowRadius <= 6)
+    }
+
+    @Test
+    func legacySurfaceMetricsStrengthenSeparationWithoutChangingGeometry() {
+        let standard = CatLegacySurfaceMetrics.resolve(
+            role: .cameraOverlay,
+            requestedCornerRadius: 28,
+            reduceTransparency: false,
+            increasedContrast: false
+        )
+        let accessible = CatLegacySurfaceMetrics.resolve(
+            role: .cameraOverlay,
+            requestedCornerRadius: 28,
+            reduceTransparency: true,
+            increasedContrast: true
+        )
+
+        #expect(accessible.cornerRadius == standard.cornerRadius)
+        #expect(accessible.outlineOpacity > standard.outlineOpacity)
+        #expect(accessible.usesOpaqueSurface)
+    }
+
+    @Test
     func cameraPrivacyBadgePreservesCopyAtAccessibilitySizes() {
         #expect(CameraPrivacyBadgeLayout.textLineLimit(for: .large) == 1)
         #expect(CameraPrivacyBadgeLayout.minimumScaleFactor(for: .large) == 0.86)
