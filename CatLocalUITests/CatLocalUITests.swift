@@ -1,4 +1,5 @@
 import XCTest
+import UIKit
 
 @MainActor
 final class CatLocalUITests: XCTestCase {
@@ -322,6 +323,55 @@ final class CatLocalUITests: XCTestCase {
         app.buttons["Cancel"].tap()
     }
 
+    func testCameraExposesAccessibleZoomControl() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-ui-testing-reset"]
+        app.launch()
+
+        XCTAssertTrue(app.staticTexts["CatLocal"].waitForExistence(timeout: 8))
+        let cameraButton = app.tabBars.buttons["Camera"]
+        XCTAssertTrue(cameraButton.waitForExistence(timeout: 5))
+        cameraButton.tap()
+
+        let captureScreen = app.descendants(matching: .any)["capture-screen"]
+        if !captureScreen.waitForExistence(timeout: 3) {
+            cameraButton.tap()
+        }
+        XCTAssertTrue(captureScreen.waitForExistence(timeout: 5))
+
+        let zoomControl = app.buttons["Camera zoom"]
+        XCTAssertTrue(zoomControl.waitForExistence(timeout: 5))
+        XCTAssertEqual(zoomControl.value as? String, "1×")
+    }
+
+    func testCameraPrivacyBadgeReflowsAtAccessibilityTextSize() {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "-ui-testing-reset",
+            "-UIPreferredContentSizeCategoryName",
+            UIContentSizeCategory.accessibilityExtraExtraExtraLarge.rawValue
+        ]
+        app.launch()
+
+        XCTAssertTrue(app.staticTexts["CatLocal"].waitForExistence(timeout: 8))
+        let cameraButton = app.tabBars.buttons["Camera"]
+        XCTAssertTrue(cameraButton.waitForExistence(timeout: 5))
+        cameraButton.tap()
+
+        let captureScreen = app.descendants(matching: .any)["capture-screen"]
+        if !captureScreen.waitForExistence(timeout: 3) {
+            cameraButton.tap()
+        }
+        XCTAssertTrue(captureScreen.waitForExistence(timeout: 5))
+
+        let privacyBadge = app.descendants(matching: .any)["Private scan on this iPhone"]
+        let closeButton = app.buttons["Close camera"]
+        XCTAssertTrue(privacyBadge.waitForExistence(timeout: 5))
+        XCTAssertTrue(closeButton.waitForExistence(timeout: 5))
+        XCTAssertFalse(privacyBadge.frame.intersects(closeButton.frame))
+        XCTAssertGreaterThan(privacyBadge.frame.height, 50)
+    }
+
     func testSeededCatlasGroupsPlacesPrivately() {
         let app = XCUIApplication()
         app.launchArguments = ["-ui-testing-reset", "-ui-testing-seed-atlas"]
@@ -359,6 +409,30 @@ final class CatLocalUITests: XCTestCase {
         selectButton.tap()
         XCTAssertTrue(app.buttons["Done selecting cards"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Choose cards to delete"].waitForExistence(timeout: 5))
+        XCTAssertTrue(
+            app.staticTexts["collection-selection-status"].waitForExistence(timeout: 5)
+        )
+
+        let selectableCard = app.buttons.matching(
+            NSPredicate(format: "label BEGINSWITH %@", "Cat,")
+        ).firstMatch
+        XCTAssertTrue(selectableCard.waitForExistence(timeout: 5))
+        XCTAssertFalse(selectableCard.isSelected)
+        tapWhenHittable(selectableCard)
+
+        let selectedCount = app.staticTexts["1 selected"]
+        if !selectedCount.waitForExistence(timeout: 2) {
+            tapWhenHittable(
+                app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Cat,")).firstMatch
+            )
+        }
+        XCTAssertTrue(selectedCount.waitForExistence(timeout: 5))
+
+        let selectedCard = app.buttons.matching(
+            NSPredicate(format: "label BEGINSWITH %@ AND selected == true", "Cat,")
+        ).firstMatch
+        XCTAssertTrue(selectedCard.waitForExistence(timeout: 5))
+
         app.buttons["Done selecting cards"].tap()
         XCTAssertTrue(app.buttons["Select cards for deletion"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.buttons["Add Memory Place"].waitForExistence(timeout: 1))
@@ -399,7 +473,7 @@ final class CatLocalUITests: XCTestCase {
         XCTAssertFalse(app.staticTexts["87%"].exists)
     }
 
-    func testValidationLiftKeepsFocusOnPhotoWithoutStopAction() {
+    func testValidationLiftOffersStopAndReturnAfterShortDelay() {
         let app = XCUIApplication()
         app.launchArguments = [
             "-ui-testing-reset",
@@ -422,7 +496,12 @@ final class CatLocalUITests: XCTestCase {
         validationButton.tap()
 
         XCTAssertTrue(app.descendants(matching: .any)["lifting-status"].waitForExistence(timeout: 8))
-        XCTAssertFalse(app.buttons["Stop and return"].exists)
+        let stopButton = app.buttons["Stop and return"]
+        XCTAssertTrue(stopButton.waitForExistence(timeout: 4))
+        stopButton.tap()
+
+        XCTAssertTrue(app.descendants(matching: .any)["capture-screen"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Use validation photo"].exists)
     }
 
     func testValidationImportReachesStickerEditor() {
@@ -511,6 +590,50 @@ final class CatLocalUITests: XCTestCase {
             app.swipeUp()
         }
         XCTAssertTrue(noteHeading.waitForExistence(timeout: 5))
+    }
+
+    func testCardStyleRecommendationsStackAtAccessibilityTextSize() {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "-ui-testing-reset",
+            "-catlocal-ui-import-fixture",
+            "-catlocal-ui-synthetic-photo",
+            "-catlocal-ui-synthetic-cutout",
+            "-catlocal-ui-skip-sticker-reveal",
+            "-UIPreferredContentSizeCategoryName",
+            UIContentSizeCategory.accessibilityExtraExtraExtraLarge.rawValue
+        ]
+        app.launch()
+
+        XCTAssertTrue(app.staticTexts["CatLocal"].waitForExistence(timeout: 8))
+        let cameraButton = app.tabBars.buttons["Camera"]
+        XCTAssertTrue(cameraButton.waitForExistence(timeout: 5))
+        cameraButton.tap()
+
+        let validationButton = app.buttons["Use validation photo"]
+        if !validationButton.waitForExistence(timeout: 5) {
+            cameraButton.tap()
+        }
+        XCTAssertTrue(validationButton.waitForExistence(timeout: 8))
+        validationButton.tap()
+
+        let customizeButton = app.buttons["tap-to-customize"]
+        XCTAssertTrue(customizeButton.waitForExistence(timeout: 15))
+        for _ in 0..<3 where !customizeButton.isHittable {
+            app.swipeUp()
+        }
+        tapWhenHittable(customizeButton)
+
+        let archiveStyle = app.buttons["recommended-card-style-archive"]
+        if !archiveStyle.waitForExistence(timeout: 2) {
+            app.swipeUp()
+        }
+        XCTAssertTrue(archiveStyle.waitForExistence(timeout: 5))
+        XCTAssertGreaterThan(
+            archiveStyle.frame.width,
+            app.frame.width * 0.7,
+            "Recommended styles should stack into wide rows at accessibility text sizes"
+        )
     }
 
     func testValidationImportShowsCutoutRevealBeforeEditor() {
@@ -644,7 +767,7 @@ final class CatLocalUITests: XCTestCase {
         let selectionPhoto = app.descendants(matching: .any)["foreground-selection-photo"]
         XCTAssertTrue(selectionPhoto.exists)
         XCTAssertTrue(app.buttons["Retake"].exists)
-        XCTAssertTrue(app.buttons["Choose Private Photo"].exists)
+        XCTAssertTrue(app.buttons["Choose private photo"].exists)
         XCTAssertFalse(app.buttons["Use Foreground Cutout"].exists)
 
         let photoFrame = selectionPhoto.frame
@@ -668,6 +791,42 @@ final class CatLocalUITests: XCTestCase {
         XCTAssertTrue(retryGuidance.exists)
 
         selectionPhoto.tap()
+        XCTAssertTrue(app.buttons["save-cat-immediate"].waitForExistence(timeout: 10))
+    }
+
+    func testValidationForegroundFallbackOffersNamedPhotoAreas() {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "-ui-testing-reset",
+            "-catlocal-ui-import-fixture",
+            "-catlocal-ui-synthetic-photo",
+            "-catlocal-ui-force-foreground-fallback",
+            "-catlocal-ui-synthetic-cutout",
+            "-catlocal-ui-skip-sticker-reveal"
+        ]
+        app.launch()
+
+        XCTAssertTrue(app.staticTexts["CatLocal"].waitForExistence(timeout: 8))
+        let cameraButton = app.tabBars.buttons["Camera"]
+        XCTAssertTrue(cameraButton.waitForExistence(timeout: 5))
+        cameraButton.tap()
+
+        let validationButton = app.buttons["Use validation photo"]
+        if !validationButton.waitForExistence(timeout: 5) {
+            cameraButton.tap()
+        }
+        XCTAssertTrue(validationButton.waitForExistence(timeout: 8))
+        validationButton.tap()
+
+        XCTAssertTrue(app.staticTexts["Tap the cat"].waitForExistence(timeout: 8))
+        let areaMenu = app.buttons["Choose photo area"]
+        XCTAssertTrue(areaMenu.waitForExistence(timeout: 5))
+        areaMenu.tap()
+
+        let topCenterButton = app.buttons["Top center"]
+        XCTAssertTrue(topCenterButton.waitForExistence(timeout: 5))
+        topCenterButton.tap()
+
         XCTAssertTrue(app.buttons["save-cat-immediate"].waitForExistence(timeout: 10))
     }
 }

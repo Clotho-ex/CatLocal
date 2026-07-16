@@ -2193,6 +2193,8 @@ enum CatCardContourMath {
 }
 
 struct CardStylePicker<Preview: View>: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Binding var selectedStyle: CardStyle
     let itemWidth: CGFloat
     let previewAspectRatio: CGFloat
@@ -2233,10 +2235,7 @@ struct CardStylePicker<Preview: View>: View {
                 .foregroundStyle(CatLocalTheme.secondaryText)
 
             LazyVGrid(
-                columns: [
-                    GridItem(.flexible(), spacing: 8),
-                    GridItem(.flexible(), spacing: 8)
-                ],
+                columns: recommendedColumns,
                 spacing: 8
             ) {
                 ForEach(CardStyleFamily.recommendedStyles) { style in
@@ -2288,6 +2287,17 @@ struct CardStylePicker<Preview: View>: View {
             selectedFamily = style.family
         }
         .catSensoryFeedback(.selection, trigger: selectionFeedbackTrigger)
+    }
+
+    private var recommendedColumns: [GridItem] {
+        if dynamicTypeSize.isAccessibilitySize {
+            [GridItem(.flexible(), spacing: 8)]
+        } else {
+            [
+                GridItem(.flexible(), spacing: 8),
+                GridItem(.flexible(), spacing: 8)
+            ]
+        }
     }
 
     private var familySelector: some View {
@@ -2373,7 +2383,7 @@ struct CardStylePicker<Preview: View>: View {
     }
 
     private func selectRecommendedStyle(_ style: CardStyle) {
-        withAnimation(.snappy(duration: 0.24)) {
+        withAnimation(reduceMotion ? nil : .snappy(duration: 0.24)) {
             selectedFamily = style.family
             selectedStyle = style
         }
@@ -2382,7 +2392,7 @@ struct CardStylePicker<Preview: View>: View {
 
     private func selectFamily(_ family: CardStyleFamily) {
         guard family != selectedFamily else { return }
-        withAnimation(.snappy(duration: 0.24)) {
+        withAnimation(reduceMotion ? nil : .snappy(duration: 0.24)) {
             selectedFamily = family
             selectedStyle = family.recommendedStyle
         }
@@ -2391,6 +2401,7 @@ struct CardStylePicker<Preview: View>: View {
 }
 
 struct CardStyleCarousel<Preview: View>: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Binding var selectedStyle: CardStyle
     let styles: [CardStyle]
     let showsTitle: Bool
@@ -2466,7 +2477,7 @@ struct CardStyleCarousel<Preview: View>: View {
             .onChange(of: selectedStyle) { _, style in
                 guard orderedStyles.contains(style) else { return }
                 guard currentCenteredStyle != style else { return }
-                withAnimation(.snappy(duration: 0.24)) {
+                withAnimation(reduceMotion ? nil : .snappy(duration: 0.24)) {
                     centeredItemID = centeredItemID(for: style)
                 }
             }
@@ -2564,7 +2575,7 @@ struct CardStyleCarousel<Preview: View>: View {
     }
 
     private func selectStyle(_ style: CardStyle) {
-        withAnimation(.snappy(duration: 0.24)) {
+        withAnimation(reduceMotion ? nil : .snappy(duration: 0.24)) {
             selectedStyle = style
             centeredItemID = centeredItemID(for: style)
         }

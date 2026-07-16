@@ -395,6 +395,62 @@ enum ForegroundSelectionAccessibility {
     static let defaultNormalizedPoint = CGPoint(x: 0.5, y: 0.5)
 }
 
+enum CameraPrivacyBadgeLayout {
+    static func textLineLimit(for dynamicTypeSize: DynamicTypeSize) -> Int? {
+        dynamicTypeSize.isAccessibilitySize ? nil : 1
+    }
+
+    static func minimumScaleFactor(for dynamicTypeSize: DynamicTypeSize) -> CGFloat {
+        dynamicTypeSize.isAccessibilitySize ? 1 : 0.86
+    }
+}
+
+private enum ForegroundSelectionArea: String, Identifiable, Sendable {
+    case topLeft
+    case topCenter
+    case topRight
+    case middleLeft
+    case center
+    case middleRight
+    case bottomLeft
+    case bottomCenter
+    case bottomRight
+
+    var id: Self { self }
+
+    var title: String {
+        switch self {
+        case .topLeft: "Top left"
+        case .topCenter: "Top center"
+        case .topRight: "Top right"
+        case .middleLeft: "Middle left"
+        case .center: "Center"
+        case .middleRight: "Middle right"
+        case .bottomLeft: "Bottom left"
+        case .bottomCenter: "Bottom center"
+        case .bottomRight: "Bottom right"
+        }
+    }
+
+    var normalizedPoint: CGPoint {
+        let coordinate: (column: CGFloat, row: CGFloat) = switch self {
+        case .topLeft: (0, 0)
+        case .topCenter: (1, 0)
+        case .topRight: (2, 0)
+        case .middleLeft: (0, 1)
+        case .center: (1, 1)
+        case .middleRight: (2, 1)
+        case .bottomLeft: (0, 2)
+        case .bottomCenter: (1, 2)
+        case .bottomRight: (2, 2)
+        }
+        return CGPoint(
+            x: (coordinate.column + 0.5) / 3,
+            y: (coordinate.row + 0.5) / 3
+        )
+    }
+}
+
 struct CaptureView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.catLocalCardMotionEnabled) private var cardMotionEnabled
@@ -431,6 +487,7 @@ struct CaptureView: View {
     @State private var isSaving = false
     @State private var isEditorSheetPresented = false
     @State private var isSavedCardDraftLoaded = false
+    @State private var showsProcessingCancellation = false
     @State private var pendingDiscardAction: CaptureDiscardAction?
     @State private var isDiscardConfirmationPresented = false
     @State private var isCardMintingDone = false
@@ -480,6 +537,27 @@ struct CaptureView: View {
         .onChange(of: photoItem) { _, item in
             guard let item else { return }
             startPhotoLoad(item)
+        }
+        .task(id: isProcessingCancellationEligible) {
+            guard isProcessingCancellationEligible else {
+                showsProcessingCancellation = false
+                return
+            }
+
+            do {
+                try await Task.sleep(for: .seconds(1.2))
+            } catch {
+                return
+            }
+            guard isProcessingCancellationEligible else { return }
+
+            if reduceMotion {
+                showsProcessingCancellation = true
+            } else {
+                withAnimation(.easeOut(duration: 0.2)) {
+                    showsProcessingCancellation = true
+                }
+            }
         }
         .sheet(isPresented: $isEditorSheetPresented) {
             editorSheet
@@ -567,10 +645,13 @@ struct CaptureView: View {
 
     private var cameraTopBar: some View {
         CatGlassGroup(spacing: 18) {
-            HStack {
+            HStack(
+                alignment: dynamicTypeSize.isAccessibilitySize ? .top : .center,
+                spacing: 12
+            ) {
                 cameraPrivacyBadge
 
-                Spacer()
+                Spacer(minLength: 12)
 
                 Button {
                     closeCamera()
@@ -581,6 +662,7 @@ struct CaptureView: View {
                         .catSingleActionIconSurface()
                 }
                 .buttonStyle(.catTactile)
+                .layoutPriority(2)
                 .accessibilityLabel("Close camera")
             }
         }
@@ -601,15 +683,33 @@ struct CaptureView: View {
                     .font(CatTypography.finePrint)
                     .opacity(0.82)
             }
-            .lineLimit(1)
-            .minimumScaleFactor(0.86)
+            .lineLimit(CameraPrivacyBadgeLayout.textLineLimit(for: dynamicTypeSize))
+            .minimumScaleFactor(CameraPrivacyBadgeLayout.minimumScaleFactor(for: dynamicTypeSize))
+            .fixedSize(horizontal: false, vertical: true)
         }
         .foregroundStyle(CatAttentionRole.info.strongForeground)
         .padding(.leading, 10)
         .padding(.trailing, 13)
+        .padding(.vertical, dynamicTypeSize.isAccessibilitySize ? 10 : 0)
         .frame(minHeight: 50)
-        .background(CatAttentionRole.info.accent.opacity(0.92), in: Capsule(style: .continuous))
-        .contentShape(Capsule(style: .continuous))
+        .frame(
+            maxWidth: dynamicTypeSize.isAccessibilitySize ? .infinity : nil,
+            alignment: .leading
+        )
+        .background(
+            CatAttentionRole.info.accent.opacity(0.92),
+            in: RoundedRectangle(
+                cornerRadius: dynamicTypeSize.isAccessibilitySize ? 18 : 25,
+                style: .continuous
+            )
+        )
+        .contentShape(
+            RoundedRectangle(
+                cornerRadius: dynamicTypeSize.isAccessibilitySize ? 18 : 25,
+                style: .continuous
+            )
+        )
+        .layoutPriority(1)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Private scan on this iPhone")
     }
@@ -642,7 +742,7 @@ struct CaptureView: View {
                     .buttonStyle(.catTactile)
                     .disabled(!canImportPhoto)
                     .opacity(canImportPhoto ? 1 : 0.45)
-                    .accessibilityLabel("Choose Private Photo")
+                    .accessibilityLabel("Choose private photo")
                     .accessibilityHint("The selected photo stays on this iPhone")
 
                     Spacer(minLength: 12)
@@ -666,9 +766,7 @@ struct CaptureView: View {
 
                     Spacer(minLength: 12)
 
-                    Color.clear
-                        .frame(width: 56, height: 56)
-                        .accessibilityHidden(true)
+                    cameraZoomControl
                 }
 
                 #if DEBUG
@@ -690,6 +788,66 @@ struct CaptureView: View {
                 #endif
             }
         }
+    }
+
+    private var cameraZoomControl: some View {
+        Menu {
+            if camera.minimumDisplayZoomFactor <= 0.5,
+               camera.maximumDisplayZoomFactor >= 0.5 {
+                Button("0.5×") {
+                    camera.setDisplayZoomFactor(0.5, animated: true)
+                }
+            }
+
+            if camera.minimumDisplayZoomFactor <= 1,
+               camera.maximumDisplayZoomFactor >= 1 {
+                Button("1×") {
+                    camera.setDisplayZoomFactor(1, animated: true)
+                }
+            }
+
+            if camera.minimumDisplayZoomFactor <= 2,
+               camera.maximumDisplayZoomFactor >= 2 {
+                Button("2×") {
+                    camera.setDisplayZoomFactor(2, animated: true)
+                }
+            }
+
+            if camera.minimumDisplayZoomFactor <= 3,
+               camera.maximumDisplayZoomFactor >= 3 {
+                Button("3×") {
+                    camera.setDisplayZoomFactor(3, animated: true)
+                }
+            }
+        } label: {
+            Text(cameraZoomLabel)
+                .font(CatTypography.badge.weight(.bold))
+                .foregroundStyle(.white)
+                .frame(width: 56, height: 56)
+                .catGlass(cornerRadius: 28, interactive: true)
+        }
+        .buttonStyle(.catTactile)
+        .disabled(!camera.isConfigured)
+        .opacity(camera.isConfigured ? 1 : 0.45)
+        .accessibilityLabel("Camera zoom")
+        .accessibilityValue(cameraZoomLabel)
+        .accessibilityHint("Double tap to choose a zoom level. Swipe up or down to adjust.")
+        .accessibilityAdjustableAction { direction in
+            switch direction {
+            case .increment:
+                camera.setDisplayZoomFactor(camera.displayZoomFactor + 0.5, animated: true)
+            case .decrement:
+                camera.setDisplayZoomFactor(camera.displayZoomFactor - 0.5, animated: true)
+            @unknown default:
+                break
+            }
+        }
+    }
+
+    private var cameraZoomLabel: String {
+        Double(camera.displayZoomFactor).formatted(
+            .number.precision(.fractionLength(0...1))
+        ) + "×"
     }
 
     private var cameraMagnifyGesture: some Gesture {
@@ -750,7 +908,7 @@ struct CaptureView: View {
 
     private var privatePhotoImportAction: some View {
         PhotosPicker(selection: $photoItem, matching: .images) {
-            Label("Choose Private Photo", systemImage: "photo.on.rectangle")
+            Label("Choose private photo", systemImage: "photo.on.rectangle")
                 .font(CatTypography.control)
                 .padding(.horizontal, 18)
                 .frame(maxWidth: .infinity)
@@ -851,6 +1009,33 @@ struct CaptureView: View {
                 ) {}
             }
         }
+        .overlay(alignment: .topTrailing) {
+            if showsProcessingCancellation, isProcessingCancellationEligible {
+                stopProcessingButton
+                    .padding(.top, 12)
+                    .padding(.trailing, CatLocalTheme.screenHorizontalPadding)
+                    .transition(.opacity.combined(with: .scale(scale: 0.98)))
+            }
+        }
+    }
+
+    private var isProcessingCancellationEligible: Bool {
+        stage == .analyzing || stage == .creatingCutout
+    }
+
+    private var stopProcessingButton: some View {
+        Button {
+            reset()
+        } label: {
+            Label("Stop and return", systemImage: "xmark")
+                .font(CatTypography.compactControl)
+                .foregroundStyle(.white)
+                .padding(.horizontal, 15)
+                .frame(minHeight: 44)
+                .catGlass(cornerRadius: 22, interactive: true)
+        }
+        .buttonStyle(.catTactile)
+        .accessibilityHint("Cancels on-device processing and returns to the camera")
     }
 
     private var catSelectionScreen: some View {
@@ -945,7 +1130,7 @@ struct CaptureView: View {
                         .font(CatTypography.pageTitle)
                         .foregroundStyle(CatLocalTheme.primaryText)
 
-                    Text("Tap directly on the cat you want to lift from this photo.")
+                    Text("Tap directly on the cat, or choose a named photo area below.")
                         .font(CatTypography.supporting)
                         .foregroundStyle(CatLocalTheme.secondaryText)
                         .multilineTextAlignment(.center)
@@ -957,6 +1142,8 @@ struct CaptureView: View {
                     }
                     .frame(maxHeight: .infinity)
                 }
+
+                foregroundSelectionAreaMenu
 
                 if let foregroundSelectionMessage {
                     Label(foregroundSelectionMessage, systemImage: "hand.tap.fill")
@@ -977,6 +1164,41 @@ struct CaptureView: View {
             .padding(.horizontal, CatLocalTheme.screenHorizontalPadding)
             .padding(.top, 14)
             .padding(.bottom, 24)
+        }
+    }
+
+    private var foregroundSelectionAreaMenu: some View {
+        Menu {
+            Section("Top") {
+                foregroundSelectionAreaButton(.topLeft)
+                foregroundSelectionAreaButton(.topCenter)
+                foregroundSelectionAreaButton(.topRight)
+            }
+
+            Section("Middle") {
+                foregroundSelectionAreaButton(.middleLeft)
+                foregroundSelectionAreaButton(.center)
+                foregroundSelectionAreaButton(.middleRight)
+            }
+
+            Section("Bottom") {
+                foregroundSelectionAreaButton(.bottomLeft)
+                foregroundSelectionAreaButton(.bottomCenter)
+                foregroundSelectionAreaButton(.bottomRight)
+            }
+        } label: {
+            Label("Choose photo area", systemImage: "square.grid.3x3")
+                .font(CatTypography.compactControl)
+                .foregroundStyle(CatLocalTheme.primaryText)
+                .catSingleActionPillSurface()
+        }
+        .accessibilityHint("Opens nine named regions for selecting the cat without an exact tap")
+        .accessibilityIdentifier("foreground-area-menu")
+    }
+
+    private func foregroundSelectionAreaButton(_ area: ForegroundSelectionArea) -> some View {
+        Button(area.title) {
+            chooseForeground(at: area.normalizedPoint)
         }
     }
 
@@ -2417,6 +2639,7 @@ struct CaptureView: View {
         processingTask = nil
         processingGate.cancel()
         transitionSessionGate.invalidate()
+        showsProcessingCancellation = false
     }
 
     private func optimizedCameraWorkingImage(
@@ -2960,7 +3183,7 @@ private struct ForegroundSelectionPhoto: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Photo for foreground selection")
-        .accessibilityHint("Double-tap to try the exact center of the photo. Use Retake or Choose Private Photo if the cat is elsewhere.")
+        .accessibilityHint("Double-tap to try the exact center of the photo. Use Retake or Choose private photo if the cat is elsewhere.")
         .accessibilityAction {
             onSelection(ForegroundSelectionAccessibility.defaultNormalizedPoint)
         }

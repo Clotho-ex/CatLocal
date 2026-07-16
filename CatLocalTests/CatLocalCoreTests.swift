@@ -2,11 +2,20 @@ import AVFoundation
 import CoreImage
 import ImageIO
 import SwiftData
+import SwiftUI
 import Testing
 import UIKit
 @testable import CatLocal
 
 struct CatLocalCoreTests {
+    @Test
+    func cameraPrivacyBadgePreservesCopyAtAccessibilitySizes() {
+        #expect(CameraPrivacyBadgeLayout.textLineLimit(for: .large) == 1)
+        #expect(CameraPrivacyBadgeLayout.minimumScaleFactor(for: .large) == 0.86)
+        #expect(CameraPrivacyBadgeLayout.textLineLimit(for: .accessibility3) == nil)
+        #expect(CameraPrivacyBadgeLayout.minimumScaleFactor(for: .accessibility3) == 1)
+    }
+
     @Test
     func cameraZoomMathConvertsAndClampsDisplayFactors() {
         #expect(CameraZoomMath.deviceFactor(

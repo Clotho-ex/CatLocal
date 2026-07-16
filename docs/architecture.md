@@ -134,8 +134,8 @@ saves or a stuck first-use flow.
   with one session-based in-flight coordinator. Each async operation keeps its
   session ID; completion from a cancelled or superseded session must be a no-op
   so it cannot clear or overwrite a newer retry.
-- Keep the active image-processing `Task` cancellable from lifecycle exits even
-  though the immersive lifting screen does not expose an interrupting action.
+- Keep the active image-processing `Task` cancellable from lifecycle exits and
+  expose `Stop and return` after a short delay on the immersive lifting screen.
   Vision's synchronous request may finish in the background, so cancellation
   checks run before and after each request before UI state changes.
 - Reset the in-flight session on every exit path: successful Vision handoff,
