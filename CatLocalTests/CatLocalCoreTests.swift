@@ -40,6 +40,15 @@ struct CatLocalCoreTests {
     }
 
     @Test
+    func restoringCaptureAsTheInitialTabFallsBackToHome() {
+        let state = AppTabPresentationState(initialTab: .capture)
+
+        #expect(state.selectedTab == .home)
+        #expect(state.lastContentTab == .home)
+        #expect(state.presentedSheet == nil)
+    }
+
+    @Test
     func legacySurfaceMetricsCapGeometryBySemanticRole() {
         let compact = CatLegacySurfaceMetrics.resolve(
             role: .compactControl,

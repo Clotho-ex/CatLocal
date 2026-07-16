@@ -182,8 +182,9 @@ struct AppTabPresentationState: Equatable {
     var presentedSheet: AppSheet?
 
     init(initialTab: AppTab) {
-        selectedTab = initialTab
-        lastContentTab = initialTab.isContentTab ? initialTab : .home
+        let contentTab = initialTab.isContentTab ? initialTab : .home
+        selectedTab = contentTab
+        lastContentTab = contentTab
         presentedSheet = nil
     }
 
