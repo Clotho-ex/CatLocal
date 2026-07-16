@@ -659,7 +659,7 @@ struct CaptureView: View {
                     Image(systemName: "xmark")
                         .font(.system(size: 22, weight: .semibold))
                         .foregroundStyle(.white)
-                        .catSingleActionIconSurface()
+                        .catCameraOverlayIconSurface()
                 }
                 .buttonStyle(.catTactile)
                 .layoutPriority(2)
@@ -737,7 +737,7 @@ struct CaptureView: View {
                         Image(systemName: "photo.on.rectangle")
                             .font(.system(size: 22, weight: .semibold))
                             .foregroundStyle(.white)
-                            .catSingleActionIconSurface()
+                            .catCameraOverlayIconSurface()
                     }
                     .buttonStyle(.catTactile)
                     .disabled(!canImportPhoto)
@@ -778,8 +778,12 @@ struct CaptureView: View {
                             .font(CatTypography.badge.weight(.bold))
                             .foregroundStyle(.white)
                             .padding(.horizontal, 14)
-                            .frame(minHeight: 40)
-                            .catGlass(cornerRadius: 20, interactive: true)
+                            .frame(minHeight: 44)
+                            .catGlass(
+                                cornerRadius: 20,
+                                interactive: true,
+                                legacyRole: .cameraOverlay
+                            )
                     }
                     .buttonStyle(.catTactile)
                     .disabled(!canImportPhoto)
@@ -824,7 +828,11 @@ struct CaptureView: View {
                 .font(CatTypography.badge.weight(.bold))
                 .foregroundStyle(.white)
                 .frame(width: 56, height: 56)
-                .catGlass(cornerRadius: 28, interactive: true)
+                .catGlass(
+                    cornerRadius: 28,
+                    interactive: true,
+                    legacyRole: .cameraOverlay
+                )
         }
         .buttonStyle(.catTactile)
         .disabled(!camera.isConfigured)
@@ -1032,7 +1040,11 @@ struct CaptureView: View {
                 .foregroundStyle(.white)
                 .padding(.horizontal, 15)
                 .frame(minHeight: 44)
-                .catGlass(cornerRadius: 22, interactive: true)
+                .catGlass(
+                    cornerRadius: 22,
+                    interactive: true,
+                    legacyRole: .cameraOverlay
+                )
         }
         .buttonStyle(.catTactile)
         .accessibilityHint("Cancels on-device processing and returns to the camera")
@@ -1096,7 +1108,11 @@ struct CaptureView: View {
                                     .foregroundStyle(CatLocalTheme.primaryText)
                                     .padding(.horizontal, 18)
                                     .frame(minHeight: 56)
-                                    .catGlass(cornerRadius: 20, interactive: true)
+                                    .catGlass(
+                                        cornerRadius: 20,
+                                        interactive: true,
+                                        legacyRole: .groupedAction
+                                    )
                                 }
                                 .buttonStyle(.catTactile)
                                 .accessibilityElement(children: .ignore)

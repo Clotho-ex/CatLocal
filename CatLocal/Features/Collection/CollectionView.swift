@@ -877,7 +877,7 @@ struct CollectionView: View {
                 }
             }
             .padding(10)
-            .catGlass(cornerRadius: 26)
+            .catGlass(cornerRadius: 26, legacyRole: .groupedAction)
             .accessibilityElement(children: .contain)
         }
     }

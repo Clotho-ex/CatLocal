@@ -28,7 +28,7 @@ struct SettingsView: View {
             .background { CatLocalBackground() }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.large)
-            .toolbarBackground(.hidden, for: .navigationBar)
+            .modifier(SettingsNavigationBackgroundModifier())
             .tint(CatLocalTheme.blueAction)
         }
         .task {
@@ -210,6 +210,17 @@ struct SettingsView: View {
         } catch {
             errorMessage = error.localizedDescription
             showingStorageError = true
+        }
+    }
+}
+
+private struct SettingsNavigationBackgroundModifier: ViewModifier {
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content.toolbarBackground(.hidden, for: .navigationBar)
+        } else {
+            content
         }
     }
 }

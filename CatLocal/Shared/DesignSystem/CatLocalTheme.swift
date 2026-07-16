@@ -866,6 +866,11 @@ extension View {
             .catGlass(cornerRadius: 28, interactive: true, legacyRole: .sheetAction)
     }
 
+    nonisolated func catCameraOverlayIconSurface() -> some View {
+        frame(width: 56, height: 56)
+            .catGlass(cornerRadius: 28, interactive: true, legacyRole: .cameraOverlay)
+    }
+
     nonisolated func catSingleActionPillSurface() -> some View {
         lineLimit(1)
             .minimumScaleFactor(0.82)
