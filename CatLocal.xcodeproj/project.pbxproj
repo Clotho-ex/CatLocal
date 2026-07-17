@@ -429,12 +429,7 @@
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				en,
-				el,
-				hr,
-				pl,
-				ro,
 				tr,
-				uk,
 				Base,
 			);
 			mainGroup = 442345A2C5CC9A905E052CF5;

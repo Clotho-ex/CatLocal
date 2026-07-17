@@ -35,60 +35,6 @@ final class CatLocalUITests: XCTestCase {
             cameraTitle: "Kamera"
         )
 
-        static let romanian = LocalizationGalleryLocale(
-            languageCode: "ro",
-            appleLocale: "ro_RO",
-            welcomeTitle: "Bun venit la CatLocal",
-            backTitle: "Înapoi",
-            readyTitle: "Ești gata pentru prima pisică",
-            firstCatTitle: "Fă cunoștință cu prima ta pisică",
-            settingsTitle: "Configurări",
-            cameraTitle: "Cameră"
-        )
-
-        static let polish = LocalizationGalleryLocale(
-            languageCode: "pl",
-            appleLocale: "pl_PL",
-            welcomeTitle: "Witaj w CatLocal",
-            backTitle: "Wstecz",
-            readyTitle: "Czas na pierwszego kota",
-            firstCatTitle: "Poznaj pierwszego kota",
-            settingsTitle: "Ustawienia",
-            cameraTitle: "Aparat"
-        )
-
-        static let ukrainian = LocalizationGalleryLocale(
-            languageCode: "uk",
-            appleLocale: "uk_UA",
-            welcomeTitle: "Вітаємо в CatLocal",
-            backTitle: "Назад",
-            readyTitle: "Готові до першого кота",
-            firstCatTitle: "Зустріньте першого кота",
-            settingsTitle: "Налаштування",
-            cameraTitle: "Камера"
-        )
-
-        static let greek = LocalizationGalleryLocale(
-            languageCode: "el",
-            appleLocale: "el_GR",
-            welcomeTitle: "Καλώς ήρθατε στο CatLocal",
-            backTitle: "Πίσω",
-            readyTitle: "Έτοιμοι για την πρώτη σας γάτα",
-            firstCatTitle: "Γνωρίστε την πρώτη σας γάτα",
-            settingsTitle: "Ρυθμίσεις",
-            cameraTitle: "Κάμερα"
-        )
-
-        static let croatian = LocalizationGalleryLocale(
-            languageCode: "hr",
-            appleLocale: "hr_HR",
-            welcomeTitle: "Dobro došli u CatLocal",
-            backTitle: "Natrag",
-            readyTitle: "Spremni za svoju prvu mačku",
-            firstCatTitle: "Upoznajte svoju prvu mačku",
-            settingsTitle: "Postavke",
-            cameraTitle: "Kamera"
-        )
     }
 
     override func setUpWithError() throws {
@@ -645,27 +591,7 @@ final class CatLocalUITests: XCTestCase {
         verifyLocalizationGallery(.turkish)
     }
 
-    func testLocalizationGalleryRomanian() {
-        verifyLocalizationGallery(.romanian)
-    }
-
-    func testLocalizationGalleryPolish() {
-        verifyLocalizationGallery(.polish)
-    }
-
-    func testLocalizationGalleryUkrainian() {
-        verifyLocalizationGallery(.ukrainian)
-    }
-
-    func testLocalizationGalleryGreek() {
-        verifyLocalizationGallery(.greek)
-    }
-
-    func testLocalizationGalleryCroatian() {
-        verifyLocalizationGallery(.croatian)
-    }
-
-    func testLocalizationFinalCleanupTurkishAndCroatian() {
+    func testLocalizationFinalCleanupTurkish() {
         let turkishApp = localizedRuntimeApp(
             .turkish,
             arguments: ["-ui-testing-reset", "-ui-testing-open-settings"]
@@ -725,22 +651,6 @@ final class CatLocalUITests: XCTestCase {
         XCTAssertTrue(builtWithoutBody.waitForExistence(timeout: 5))
         assertNoRawFormatTokens(in: turkishApp)
         turkishApp.terminate()
-
-        let croatianApp = localizedRuntimeApp(
-            .croatian,
-            arguments: ["-ui-testing-reset", "-ui-testing-open-settings"]
-        )
-        croatianApp.launch()
-        let croatianSettingsList = croatianApp.descendants(matching: .any)["settings-list"]
-        XCTAssertTrue(croatianSettingsList.waitForExistence(timeout: 8))
-        let croatianHaptics = croatianApp.descendants(matching: .any)["settings-haptics-toggle"]
-        for _ in 0..<10 where !croatianHaptics.exists {
-            scrollTowardBottom(croatianSettingsList)
-        }
-        XCTAssertTrue(croatianHaptics.waitForExistence(timeout: 8))
-        XCTAssertTrue(croatianHaptics.label.contains("Haptičke povratne informacije"))
-        assertNoRawFormatTokens(in: croatianApp)
-        croatianApp.terminate()
     }
 
     func testLocalizationRuntimeFlowsEnglish() {
@@ -751,52 +661,12 @@ final class CatLocalUITests: XCTestCase {
         verifyLocalizedRuntimeFlows(.turkish)
     }
 
-    func testLocalizationRuntimeFlowsRomanian() {
-        verifyLocalizedRuntimeFlows(.romanian)
-    }
-
-    func testLocalizationRuntimeFlowsPolish() {
-        verifyLocalizedRuntimeFlows(.polish)
-    }
-
-    func testLocalizationRuntimeFlowsUkrainian() {
-        verifyLocalizedRuntimeFlows(.ukrainian)
-    }
-
-    func testLocalizationRuntimeFlowsGreek() {
-        verifyLocalizedRuntimeFlows(.greek)
-    }
-
-    func testLocalizationRuntimeFlowsCroatian() {
-        verifyLocalizedRuntimeFlows(.croatian)
-    }
-
     func testLocalizationCameraDeniedEnglish() {
         verifyLocalizedCameraDenied(.english)
     }
 
     func testLocalizationCameraDeniedTurkish() {
         verifyLocalizedCameraDenied(.turkish)
-    }
-
-    func testLocalizationCameraDeniedRomanian() {
-        verifyLocalizedCameraDenied(.romanian)
-    }
-
-    func testLocalizationCameraDeniedPolish() {
-        verifyLocalizedCameraDenied(.polish)
-    }
-
-    func testLocalizationCameraDeniedUkrainian() {
-        verifyLocalizedCameraDenied(.ukrainian)
-    }
-
-    func testLocalizationCameraDeniedGreek() {
-        verifyLocalizedCameraDenied(.greek)
-    }
-
-    func testLocalizationCameraDeniedCroatian() {
-        verifyLocalizedCameraDenied(.croatian)
     }
 
     func testOnboardingMovesThroughWelcomePrivacyAndFirstCard() {
@@ -1108,7 +978,7 @@ final class CatLocalUITests: XCTestCase {
         XCTAssertTrue(languageFallback.label.contains("İngilizce Kullan"))
     }
 
-    func testSettingsUkrainianEnglishFallbackReturnsToSystemLanguage() {
+    func testSettingsUnsupportedUkrainianFallsBackToEnglishWithoutLanguageControl() {
         let app = XCUIApplication()
         app.launchArguments = [
             "-ui-testing-reset",
@@ -1118,20 +988,24 @@ final class CatLocalUITests: XCTestCase {
         ]
         app.launch()
 
-        XCTAssertTrue(app.navigationBars["Налаштування"].waitForExistence(timeout: 8))
+        XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 8))
         XCTAssertFalse(app.descendants(matching: .any)["settings-language-picker"].exists)
+        XCTAssertFalse(app.buttons["settings-language-fallback"].exists)
+    }
 
-        let languageFallback = app.buttons["settings-language-fallback"]
-        XCTAssertTrue(languageFallback.waitForExistence(timeout: 5))
-        XCTAssertTrue(languageFallback.label.contains("Використовувати англійську"))
-        tapWhenHittable(languageFallback)
+    func testSettingsUnsupportedBulgarianFallsBackToEnglishWithoutLanguageControl() {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "-ui-testing-reset",
+            "-ui-testing-open-settings",
+            "-AppleLanguages", "(bg)",
+            "-AppleLocale", "bg_BG",
+        ]
+        app.launch()
 
-        XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 5))
-        XCTAssertTrue(languageFallback.label.contains("Use System Language"))
-        tapWhenHittable(languageFallback)
-
-        XCTAssertTrue(app.navigationBars["Налаштування"].waitForExistence(timeout: 5))
-        XCTAssertTrue(languageFallback.label.contains("Використовувати англійську"))
+        XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 8))
+        XCTAssertFalse(app.descendants(matching: .any)["settings-language-picker"].exists)
+        XCTAssertFalse(app.buttons["settings-language-fallback"].exists)
     }
 
     func testSettingsDeleteConfirmationExplainsStoredData() {

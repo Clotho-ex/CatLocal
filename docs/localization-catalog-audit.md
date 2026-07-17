@@ -9,7 +9,7 @@ This is the repository record for the stale-entry correction required by the loc
 - Initial catalog: 203 keys, including 144 entries marked stale.
 - Initial stale classification: 34 live compiler-extractable entries, 109 live manual/dynamic entries, and one unused entry.
 - Corrected catalog: 288 keys, 241 intentional manual entries, 47 compiler-current entries, 13 plural entries, and zero stale entries.
-- All seven locales are present: English, Turkish, Romanian, Polish, Ukrainian, Greek, and Croatian.
+- Both supported locales are present: English and Turkish.
 - Every retained manual key has at least one exact app-source call site.
 - Purpose classifications: Accessibility 119, Dynamic runtime lookup 165, Visible UI 59. A key can serve more than one purpose.
 
@@ -149,18 +149,18 @@ These were replaced by the language-neutral `Use System Language` action so ever
 
 ## Intentionally Manual Active Entries (241)
 
-These are active, not stale. They are intentionally maintained because CatLocal supports an English fallback for every supported non-English iOS language, integer plural formatting, dynamic enum/model labels, and explicitly localized accessibility strings. Some visible literals are also held manually so the selected-language catalog remains complete and reviewable. The validator requires every manual key to retain an exact app-source call site, all seven locales, and a non-empty translation.
+These are active, not stale. They are intentionally maintained because CatLocal supports an English fallback for every supported non-English iOS language, integer plural formatting, dynamic enum/model labels, and explicitly localized accessibility strings. Some visible literals are also held manually so the selected-language catalog remains complete and reviewable. The validator requires every manual key to retain an exact app-source call site, both locales, and a non-empty translation.
 
 | Key | Confirmed purpose | App source call sites |
 | --- | --- | --- |
 | `%1$@ styles` | Accessibility | `CatLocal/Shared/UI/Card/CatCardView.swift:2414` |
 | `%1$@, cat number %2$lld, captured %3$@.` | Accessibility | `CatLocal/Features/Collection/CollectionView.swift:1490` |
-| `%1$lld in %2$@` | Dynamic runtime lookup | `CatLocal/Shared/Localization/CatLocalLocalization.swift:96` |
+| `%1$lld in %2$@` | Dynamic runtime lookup | `CatLocal/Shared/Localization/CatLocalLocalization.swift:91` |
 | `%lld cards selected` | Dynamic runtime lookup | `CatLocal/Features/Collection/CollectionView.swift:983` |
 | `%lld cats` | Dynamic runtime lookup | `CatLocal/Features/Collection/CollectionView.swift:1313` |
 | `%lld cats found` | Dynamic runtime lookup | `CatLocal/Features/Capture/CaptureView.swift:1083` |
 | `%lld cats saved locally` | Dynamic runtime lookup | `CatLocal/Features/Settings/SettingsView.swift:187` |
-| `%lld families` | Dynamic runtime lookup | `CatLocal/Shared/Localization/CatLocalLocalization.swift:91` |
+| `%lld families` | Dynamic runtime lookup | `CatLocal/Shared/Localization/CatLocalLocalization.swift:86` |
 | `%lld more cats` | Accessibility; Dynamic runtime lookup; Visible UI | `CatLocal/Features/Collection/CollectionView.swift:1444` |
 | `%lld places` | Dynamic runtime lookup | `CatLocal/Features/Collection/CollectionView.swift:630` |
 | `%lld places typed by you.` | Dynamic runtime lookup | `CatLocal/Features/Collection/CollectionView.swift:621` |
@@ -268,7 +268,7 @@ These are active, not stale. They are intentionally maintained because CatLocal 
 | `Gold Leaf` | Accessibility | `CatLocal/Core/Models/CatRecord.swift:209` |
 | `Haptic Feedback` | Dynamic runtime lookup | `CatLocal/Features/Settings/SettingsView.swift:103` |
 | `Home` | Dynamic runtime lookup; Visible UI | `CatLocal/App/RootView.swift:69`, `CatLocal/App/RootView.swift:101`, `CatLocal/Shared/UI/Effects/CardMintingSuccessView.swift:179` |
-| `Home opens next. Tap Camera when you meet a cat, or choose a private photo.` | Dynamic runtime lookup | `CatLocal/Features/Onboarding/OnboardingView.swift:366` |
+| `Home opens next. Tap Camera when you meet a cat, or choose a private photo.` | Dynamic runtime lookup | `CatLocal/Features/Onboarding/OnboardingView.swift:359`, `CatLocal/Features/Onboarding/OnboardingView.swift:366` |
 | `I couldn't find the cat clearly` | Dynamic runtime lookup | `CatLocal/Shared/UI/Loci/LociContext.swift:64` |
 | `Image Storage` | Dynamic runtime lookup | `CatLocal/Features/Settings/SettingsView.swift:367` |
 | `Includes card details, notes, typed Catlas labels, originals, cutouts, and thumbnails.` | Dynamic runtime lookup | `CatLocal/Features/Settings/SettingsView.swift:183` |
@@ -397,7 +397,7 @@ These are active, not stale. They are intentionally maintained because CatLocal 
 
 ## Accessibility Native-Review Queue (90)
 
-These active labels, values, and hints need native-speaker review in Turkish, Romanian, Polish, Ukrainian, Greek, and Croatian. Their comments identify accessibility context, but engineering validation cannot establish natural spoken phrasing.
+These active labels, values, and hints need native-speaker review in Turkish. Their comments identify accessibility context, but engineering validation cannot establish natural spoken phrasing.
 
 - `%1$@ styles`
 - `%1$@, cat number %2$lld, captured %3$@.`
@@ -496,4 +496,4 @@ These active labels, values, and hints need native-speaker review in Turkish, Ro
 - Run `xcrun xcstringstool compile --dry-run` to validate String Catalog compilation.
 - Run this generator when the catalog changes so the manual-entry inventory stays reviewable.
 - Do not remove a manual entry solely because Xcode marks it unextracted; first prove that no selected-language, plural, model, enum, or accessibility lookup reaches it.
-- Native-speaker review of all six translations remains a release gate and is not replaced by this engineering audit.
+- Native-speaker review of the Turkish translation remains a release gate and is not replaced by this engineering audit.

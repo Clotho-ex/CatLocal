@@ -14,13 +14,10 @@ struct CatLocalCoreTests {
             .system,
             .english,
             .turkish,
-            .romanian,
-            .polish,
-            .ukrainian,
-            .greek,
-            .croatian,
         ])
         #expect(CatLocalLanguage.resolved("tr") == .turkish)
+        #expect(CatLocalLanguage.resolved("bg") == .system)
+        #expect(CatLocalLanguage.resolved("uk") == .system)
         #expect(CatLocalLanguage.resolved("not-a-language") == .system)
         #expect(CatLocalLanguage.turkish.locale.identifier == "tr")
     }
@@ -28,15 +25,13 @@ struct CatLocalCoreTests {
     @Test
     func englishFallbackIsOfferedForEverySupportedNonEnglishPreferredLanguage() {
         #expect(CatLocalLanguage.shouldOfferEnglishFallback(preferredLanguages: ["tr-TR"]))
-        #expect(CatLocalLanguage.shouldOfferEnglishFallback(preferredLanguages: ["ro-RO"]))
-        #expect(CatLocalLanguage.shouldOfferEnglishFallback(preferredLanguages: ["pl-PL"]))
-        #expect(CatLocalLanguage.shouldOfferEnglishFallback(preferredLanguages: ["uk-UA"]))
-        #expect(CatLocalLanguage.shouldOfferEnglishFallback(preferredLanguages: ["el-GR"]))
-        #expect(CatLocalLanguage.shouldOfferEnglishFallback(preferredLanguages: ["hr-HR"]))
-        #expect(CatLocalLanguage.shouldOfferEnglishFallback(
-            preferredLanguages: ["es-ES", "uk-UA", "en-US"]
-        ))
+        #expect(!CatLocalLanguage.shouldOfferEnglishFallback(preferredLanguages: ["bg-BG"]))
         #expect(!CatLocalLanguage.shouldOfferEnglishFallback(preferredLanguages: ["en-TR"]))
+        #expect(!CatLocalLanguage.shouldOfferEnglishFallback(preferredLanguages: ["ro-RO"]))
+        #expect(!CatLocalLanguage.shouldOfferEnglishFallback(preferredLanguages: ["pl-PL"]))
+        #expect(!CatLocalLanguage.shouldOfferEnglishFallback(preferredLanguages: ["uk-UA"]))
+        #expect(!CatLocalLanguage.shouldOfferEnglishFallback(preferredLanguages: ["el-GR"]))
+        #expect(!CatLocalLanguage.shouldOfferEnglishFallback(preferredLanguages: ["hr-HR"]))
         #expect(!CatLocalLanguage.shouldOfferEnglishFallback(
             preferredLanguages: ["es-ES", "en-US", "uk-UA"]
         ))
@@ -48,16 +43,12 @@ struct CatLocalCoreTests {
     func englishFallbackAlternatesBetweenSystemLanguageAndEnglish() {
         #expect(CatLocalLanguage.englishFallbackSelection(from: .system) == .english)
         #expect(CatLocalLanguage.englishFallbackSelection(from: .turkish) == .english)
-        #expect(CatLocalLanguage.englishFallbackSelection(from: .ukrainian) == .english)
         #expect(CatLocalLanguage.englishFallbackSelection(from: .english) == .system)
     }
 
     @Test
     func appLanguageCatalogResolvesLocalizedInterfaceCopy() {
         #expect(CatLocalLocalization.string("Settings", language: .turkish) == "Ayarlar")
-        #expect(CatLocalLocalization.string("Settings", language: .polish) == "Ustawienia")
-        #expect(CatLocalLocalization.string("Camera", language: .ukrainian) == "Камера")
-        #expect(CatLocalLocalization.string("Privacy Receipt", language: .romanian) == "Raport de confidențialitate")
         #expect(CatLocalLocalization.format("%lld cats", language: .turkish, Int64(3)) == "3 kedi")
         #expect(
             CatLocalLocalization.cardStyleSummary(
@@ -66,24 +57,11 @@ struct CatLocalCoreTests {
                 language: .turkish,
             ) == "4 ailede 20"
         )
-        #expect(
-            CatLocalLocalization.format(
-                "Step %1$@ of %2$@",
-                language: .ukrainian,
-                "2",
-                "3"
-            ) == "Крок 2 з 3"
-        )
     }
 
     @Test(arguments: [
         (CatLocalLanguage.english, ["0 cats", "1 cat", "2 cats", "3 cats", "4 cats", "5 cats", "11 cats", "12 cats", "21 cats", "22 cats", "25 cats", "101 cats"]),
         (CatLocalLanguage.turkish, ["0 kedi", "1 kedi", "2 kedi", "3 kedi", "4 kedi", "5 kedi", "11 kedi", "12 kedi", "21 kedi", "22 kedi", "25 kedi", "101 kedi"]),
-        (CatLocalLanguage.romanian, ["0 pisici", "1 pisică", "2 pisici", "3 pisici", "4 pisici", "5 pisici", "11 pisici", "12 pisici", "21 de pisici", "22 de pisici", "25 de pisici", "101 pisici"]),
-        (CatLocalLanguage.polish, ["0 kotów", "1 kot", "2 koty", "3 koty", "4 koty", "5 kotów", "11 kotów", "12 kotów", "21 kotów", "22 koty", "25 kotów", "101 kotów"]),
-        (CatLocalLanguage.ukrainian, ["0 котів", "1 кіт", "2 коти", "3 коти", "4 коти", "5 котів", "11 котів", "12 котів", "21 кіт", "22 коти", "25 котів", "101 кіт"]),
-        (CatLocalLanguage.greek, ["0 γάτες", "1 γάτα", "2 γάτες", "3 γάτες", "4 γάτες", "5 γάτες", "11 γάτες", "12 γάτες", "21 γάτες", "22 γάτες", "25 γάτες", "101 γάτες"]),
-        (CatLocalLanguage.croatian, ["0 mačaka", "1 mačka", "2 mačke", "3 mačke", "4 mačke", "5 mačaka", "11 mačaka", "12 mačaka", "21 mačka", "22 mačke", "25 mačaka", "101 mačka"]),
     ])
     func catCountUsesLocalePluralRules(
         language: CatLocalLanguage,
@@ -130,11 +108,6 @@ struct CatLocalCoreTests {
     @Test(arguments: [
         (CatLocalLanguage.english, ["37 in 0 families", "37 in 1 family", "37 in 2 families", "37 in 3 families", "37 in 4 families", "37 in 5 families", "37 in 11 families", "37 in 12 families", "37 in 21 families", "37 in 22 families", "37 in 25 families", "37 in 101 families"]),
         (CatLocalLanguage.turkish, ["0 ailede 37", "1 ailede 37", "2 ailede 37", "3 ailede 37", "4 ailede 37", "5 ailede 37", "11 ailede 37", "12 ailede 37", "21 ailede 37", "22 ailede 37", "25 ailede 37", "101 ailede 37"]),
-        (CatLocalLanguage.romanian, ["37 în 0 familii", "37 în 1 familie", "37 în 2 familii", "37 în 3 familii", "37 în 4 familii", "37 în 5 familii", "37 în 11 familii", "37 în 12 familii", "37 în 21 de familii", "37 în 22 de familii", "37 în 25 de familii", "37 în 101 familii"]),
-        (CatLocalLanguage.polish, ["37 w 0 rodzinach", "37 w 1 rodzinie", "37 w 2 rodzinach", "37 w 3 rodzinach", "37 w 4 rodzinach", "37 w 5 rodzinach", "37 w 11 rodzinach", "37 w 12 rodzinach", "37 w 21 rodzinach", "37 w 22 rodzinach", "37 w 25 rodzinach", "37 w 101 rodzinach"]),
-        (CatLocalLanguage.ukrainian, ["37 у 0 сімействах", "37 у 1 сімействі", "37 у 2 сімействах", "37 у 3 сімействах", "37 у 4 сімействах", "37 у 5 сімействах", "37 у 11 сімействах", "37 у 12 сімействах", "37 у 21 сімействі", "37 у 22 сімействах", "37 у 25 сімействах", "37 у 101 сімействі"]),
-        (CatLocalLanguage.greek, ["37 σε 0 οικογένειες", "37 σε 1 οικογένεια", "37 σε 2 οικογένειες", "37 σε 3 οικογένειες", "37 σε 4 οικογένειες", "37 σε 5 οικογένειες", "37 σε 11 οικογένειες", "37 σε 12 οικογένειες", "37 σε 21 οικογένειες", "37 σε 22 οικογένειες", "37 σε 25 οικογένειες", "37 σε 101 οικογένειες"]),
-        (CatLocalLanguage.croatian, ["37 u 0 obitelji", "37 u 1 obitelji", "37 u 2 obitelji", "37 u 3 obitelji", "37 u 4 obitelji", "37 u 5 obitelji", "37 u 11 obitelji", "37 u 12 obitelji", "37 u 21 obitelji", "37 u 22 obitelji", "37 u 25 obitelji", "37 u 101 obitelji"]),
     ])
     func cardStyleFamilyCountUsesTheSecondArgumentPluralRule(
         language: CatLocalLanguage,
@@ -189,10 +162,7 @@ struct CatLocalCoreTests {
     @Test
     func localizationFinalCleanupUsesCanonicalKeysAndReviewedTranslations() {
         #expect(CatLocalLocalization.string("Edit Before Saving", language: .turkish) == "Kaydetmeden önce düzenle")
-        #expect(CatLocalLocalization.string("On this iPhone", language: .croatian) == "Na ovom iPhoneu")
-        #expect(CatLocalLocalization.string("Preparing cat card", language: .ukrainian) == "Підготовка картки кота")
         #expect(CatLocalLocalization.string("Built Without", language: .turkish) == "İçermediklerimiz")
-        #expect(CatLocalLocalization.string("Haptic Feedback", language: .croatian) == "Haptičke povratne informacije")
 
         let turkishHeadingTranslations = [
             "A New Cat": "Yeni Bir Kedi",

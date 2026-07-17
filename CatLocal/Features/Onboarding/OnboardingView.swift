@@ -356,7 +356,7 @@ private enum OnboardingPage: Int, CaseIterable, Identifiable {
         case .privacy:
             return "Photos stay on this iPhone."
         case .firstCard:
-            return "Home opens next.\nTap Camera when you meet a cat, or choose a private photo."
+            return "Home opens next. Tap Camera when you meet a cat, or choose a private photo."
         }
     }
 

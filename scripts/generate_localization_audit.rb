@@ -132,7 +132,7 @@ output = <<~MARKDOWN
   - Initial catalog: 203 keys, including 144 entries marked stale.
   - Initial stale classification: 34 live compiler-extractable entries, 109 live manual/dynamic entries, and one unused entry.
   - Corrected catalog: #{strings.length} keys, #{manual_keys.length} intentional manual entries, #{strings.length - manual_keys.length} compiler-current entries, 13 plural entries, and zero stale entries.
-  - All seven locales are present: English, Turkish, Romanian, Polish, Ukrainian, Greek, and Croatian.
+  - Both supported locales are present: English and Turkish.
   - Every retained manual key has at least one exact app-source call site.
   - Purpose classifications: #{manual_purpose_counts.sort.map { |purpose, count| "#{purpose} #{count}" }.join(", ")}. A key can serve more than one purpose.
 
@@ -187,7 +187,7 @@ output = <<~MARKDOWN
 
   ## Intentionally Manual Active Entries (#{manual_keys.length})
 
-  These are active, not stale. They are intentionally maintained because CatLocal supports an English fallback for every supported non-English iOS language, integer plural formatting, dynamic enum/model labels, and explicitly localized accessibility strings. Some visible literals are also held manually so the selected-language catalog remains complete and reviewable. The validator requires every manual key to retain an exact app-source call site, all seven locales, and a non-empty translation.
+  These are active, not stale. They are intentionally maintained because CatLocal supports an English fallback for every supported non-English iOS language, integer plural formatting, dynamic enum/model labels, and explicitly localized accessibility strings. Some visible literals are also held manually so the selected-language catalog remains complete and reviewable. The validator requires every manual key to retain an exact app-source call site, both locales, and a non-empty translation.
 
   | Key | Confirmed purpose | App source call sites |
   | --- | --- | --- |
@@ -195,7 +195,7 @@ output = <<~MARKDOWN
 
   ## Accessibility Native-Review Queue (#{accessibility_review_keys.length})
 
-  These active labels, values, and hints need native-speaker review in Turkish, Romanian, Polish, Ukrainian, Greek, and Croatian. Their comments identify accessibility context, but engineering validation cannot establish natural spoken phrasing.
+  These active labels, values, and hints need native-speaker review in Turkish. Their comments identify accessibility context, but engineering validation cannot establish natural spoken phrasing.
 
   #{key_list(accessibility_review_keys)}
 
@@ -205,7 +205,7 @@ output = <<~MARKDOWN
   - Run `xcrun xcstringstool compile --dry-run` to validate String Catalog compilation.
   - Run this generator when the catalog changes so the manual-entry inventory stays reviewable.
   - Do not remove a manual entry solely because Xcode marks it unextracted; first prove that no selected-language, plural, model, enum, or accessibility lookup reaches it.
-  - Native-speaker review of all six translations remains a release gate and is not replaced by this engineering audit.
+  - Native-speaker review of the Turkish translation remains a release gate and is not replaced by this engineering audit.
 MARKDOWN
 
 File.write(File.join(root, "docs/localization-catalog-audit.md"), output)

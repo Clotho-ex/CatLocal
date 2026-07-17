@@ -5,11 +5,6 @@ enum CatLocalLanguage: String, CaseIterable, Identifiable {
     case system
     case english = "en"
     case turkish = "tr"
-    case romanian = "ro"
-    case polish = "pl"
-    case ukrainian = "uk"
-    case greek = "el"
-    case croatian = "hr"
 
     var id: String { rawValue }
 

@@ -7,16 +7,11 @@ raw_catalog = File.read(catalog_path)
 catalog = JSON.parse(raw_catalog)
 strings = catalog.fetch("strings")
 
-supported_locales = %w[en tr ro pl uk el hr]
+supported_locales = %w[en tr]
 translation_locales = supported_locales.drop(1)
 plural_categories = {
   "en" => %w[one other],
-  "tr" => %w[other],
-  "ro" => %w[one few other],
-  "pl" => %w[one few many other],
-  "uk" => %w[one few many other],
-  "el" => %w[one other],
-  "hr" => %w[one few other]
+  "tr" => %w[other]
 }
 plural_keys = [
   "%lld cats",
@@ -65,7 +60,6 @@ preserved_keys = [
 ]
 reviewed_direct_values = {
   ["Built Without", "tr"] => "İçermediklerimiz",
-  ["Haptic Feedback", "hr"] => "Haptičke povratne informacije",
   ["A New Cat", "tr"] => "Yeni Bir Kedi",
   ["About CatLocal", "tr"] => "CatLocal Hakkında",
   ["Add a Memory Place to build Catlas.", "tr"] => "Catlas'ı oluşturmak için bir anı konumu ekleyin.",
@@ -102,10 +96,7 @@ reviewed_direct_values = {
   ["Welcome to CatLocal", "tr"] => "CatLocal'a Hoş Geldiniz",
   ["iOS Reduce Motion always takes priority over Card Motion.", "tr"] => "iOS Hareketi Azalt ayarı her zaman Kart Hareketi ayarına göre önceliklidir."
 }
-reviewed_plural_values = {
-  ["Photo with %lld cats marked by number", "pl", "other"] => "Liczba kotów oznaczonych numerami na zdjęciu: %lld",
-  ["Photo with %lld cats marked by number", "uk", "other"] => "Кількість котів, позначених номерами на фото: %lld"
-}
+reviewed_plural_values = {}
 
 failures = []
 failures << "sourceLanguage must be en" unless catalog["sourceLanguage"] == "en"
@@ -191,12 +182,7 @@ end
 
 privacy_key = "Sanitized originals, cutouts, and thumbnails stay in CatLocal's private app container. Their folders use iOS file protection until the first unlock after restart, are excluded from backups, and are removed with their cat."
 privacy_fragments = {
-  "tr" => ["özel uygulama kapsayıcısında", "yeniden başlatmanın ardından ilk kilit", "yedeklemelere dahil edilmez", "kediyle birlikte silinir"],
-  "ro" => ["containerul privat", "prima deblocare după repornire", "copiile de siguranță", "șterse împreună"],
-  "pl" => ["prywatnym kontenerze", "pierwszego odblokowania po ponownym uruchomieniu", "kopii zapasowych", "usuwane razem"],
-  "uk" => ["приватному контейнері", "першого розблокування після перезапуску", "резервних копій", "видаляються разом"],
-  "el" => ["ιδιωτικό κοντέινερ", "πρώτο ξεκλείδωμα μετά από επανεκκίνηση", "αντίγραφα ασφαλείας", "διαγράφονται μαζί"],
-  "hr" => ["privatnom spremniku", "prvog otključavanja nakon ponovnog pokretanja", "sigurnosnih kopija", "brišu se zajedno"]
+  "tr" => ["özel uygulama kapsayıcısında", "yeniden başlatmanın ardından ilk kilit", "yedeklemelere dahil edilmez", "kediyle birlikte silinir"]
 }
 privacy_fragments.each do |locale, fragments|
   value = strings.dig(privacy_key, "localizations", locale, "stringUnit", "value").to_s
@@ -205,8 +191,7 @@ end
 
 gps_key = "Typed labels only. No GPS is requested."
 gps_access_terms = {
-  "tr" => "GPS erişimi istemez", "ro" => "acces la GPS", "pl" => "dostęp do GPS",
-  "uk" => "доступ до GPS", "el" => "πρόσβαση στο GPS", "hr" => "pristup GPS-u"
+  "tr" => "GPS erişimi istemez"
 }
 gps_access_terms.each do |locale, fragment|
   value = strings.dig(gps_key, "localizations", locale, "stringUnit", "value").to_s

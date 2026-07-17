@@ -141,7 +141,7 @@ All user-facing content must remain localizable.
 - Use the project's String Catalog and existing localization helpers.
 - Use localizable SwiftUI string literals for compiler-extracted copy and the existing localization helpers for dynamic or runtime-resolved strings. Do not render user-visible runtime `String` values verbatim when that would bypass the String Catalog.
 - Localize screen text, buttons, menus, alerts, errors, empty states, accessibility labels, accessibility values, accessibility hints, card-style names, dynamic lookup strings, and notification copy.
-- Maintain every locale currently present in the String Catalog. The current supported set is English, Turkish, Romanian, Polish, Ukrainian, Greek, and Croatian.
+- Maintain every locale currently present in the String Catalog. The current supported set is English and Turkish.
 - Preserve automatic iOS language resolution. For supported non-English system languages, Settings offers only the English fallback; while that override is active, the same control returns the app to the system language. Do not reintroduce the full language picker unless explicitly requested.
 - Do not bypass the selected app language with direct `Bundle.main` assumptions or unscoped localization lookups.
 - Use plural rules for counted content.
