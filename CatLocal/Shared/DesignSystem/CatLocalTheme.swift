@@ -532,12 +532,15 @@ struct CatDeletionConfirmationSheet: View {
                     .padding(.bottom, 12)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
+            .accessibilityIdentifier("deletion-confirmation-scroll")
             .scrollIndicators(.hidden)
         }
         .presentationDetents(presentationDetents)
         .presentationDragIndicator(.visible)
         .presentationBackground(CatLocalTheme.background)
         .interactiveDismissDisabled(isDeleting)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("deletion-confirmation-screen")
     }
 
     private var sheetContent: some View {
@@ -553,13 +556,13 @@ struct CatDeletionConfirmationSheet: View {
             deleteIcon
 
             VStack(alignment: .leading, spacing: 6) {
-                Text(title)
+                Text(catLocalKey: title)
                     .font(CatTypography.momentTitle)
                     .foregroundStyle(CatLocalTheme.primaryText)
                     .lineLimit(nil)
                     .fixedSize(horizontal: false, vertical: true)
 
-                Text(message)
+                Text(catLocalKey: message)
                     .font(CatTypography.supporting)
                     .foregroundStyle(CatLocalTheme.secondaryText)
                     .fixedSize(horizontal: false, vertical: true)
@@ -575,7 +578,7 @@ struct CatDeletionConfirmationSheet: View {
                 .foregroundStyle(CatAttentionRole.destructive.text)
 
             if let detail {
-                Text(detail)
+                Text(catLocalKey: detail)
                     .font(CatTypography.metadata)
                     .foregroundStyle(CatLocalTheme.secondaryText)
                     .fixedSize(horizontal: false, vertical: true)
@@ -632,6 +635,7 @@ struct CatDeletionConfirmationSheet: View {
         }
         .buttonStyle(.catTactile)
         .disabled(isDeleting)
+        .accessibilityIdentifier("deletion-cancel")
     }
 
     private var deleteButton: some View {
@@ -647,7 +651,7 @@ struct CatDeletionConfirmationSheet: View {
                         .accessibilityHidden(true)
                 }
 
-                Text(isDeleting ? "Deleting" : deleteTitle)
+                Text(catLocalKey: isDeleting ? "Deleting" : deleteTitle)
                     .font(CatTypography.control)
                     .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
                     .minimumScaleFactor(dynamicTypeSize.isAccessibilitySize ? 1 : 0.82)
@@ -660,7 +664,8 @@ struct CatDeletionConfirmationSheet: View {
         }
         .buttonStyle(.catTactile)
         .disabled(isDeleting)
-        .accessibilityLabel(isDeleting ? "Deleting" : deleteTitle)
+        .accessibilityLabel(Text(catLocalKey: isDeleting ? "Deleting" : deleteTitle))
+        .accessibilityIdentifier("deletion-confirm")
     }
 
     private var presentationDetents: Set<PresentationDetent> {
@@ -694,9 +699,9 @@ private extension CatSheetActionButton.Mode {
     var accessibilityLabel: String {
         switch self {
         case .close:
-            "Close"
+            "Close".catLocalized
         case .confirm:
-            "Done"
+            "Done".catLocalized
         }
     }
 }

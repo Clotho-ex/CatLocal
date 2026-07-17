@@ -9,6 +9,7 @@ struct SettingsView: View {
     @AppStorage(CatLocalUserDefaults.appearanceKey) private var appearance = CatLocalAppearance.system
     @AppStorage(CatLocalUserDefaults.cardMotionEnabledKey) private var cardMotionEnabled = true
     @AppStorage(CatLocalUserDefaults.hapticsEnabledKey) private var hapticsEnabled = true
+    @AppStorage(CatLocalUserDefaults.languageKey) private var language = CatLocalLanguage.system
 
     @State private var storageText = "Calculating..."
     @State private var storageByteCount: Int64?
@@ -23,6 +24,7 @@ struct SettingsView: View {
                 storageSection
                 informationSection
             }
+            .accessibilityIdentifier("settings-list")
             .listStyle(.insetGrouped)
             .scrollContentBackground(.hidden)
             .background { CatLocalBackground() }
@@ -31,6 +33,7 @@ struct SettingsView: View {
             .modifier(SettingsNavigationBackgroundModifier())
             .tint(CatLocalTheme.blueAction)
         }
+        .id(language)
         .task {
             await refreshStorage()
         }
@@ -57,9 +60,24 @@ struct SettingsView: View {
 
     private var preferencesSection: some View {
         Section {
+            if CatLocalLanguage.shouldOfferEnglishFallback() {
+                Button {
+                    language = CatLocalLanguage.englishFallbackSelection(from: language)
+                } label: {
+                    SettingsRowLabel(
+                        title: language == .english ? "Use System Language" : "Use English",
+                        detail: language == .english
+                            ? "Return to your iOS language."
+                            : "Switch CatLocal to English.",
+                        systemImage: "globe"
+                    )
+                }
+                .accessibilityIdentifier("settings-language-fallback")
+            }
+
             Picker(selection: $appearance) {
                 ForEach(CatLocalAppearance.allCases) { option in
-                    Text(option.title).tag(option)
+                    Text(catLocalKey: option.title).tag(option)
                 }
             } label: {
                 SettingsRowLabel(
@@ -166,11 +184,7 @@ struct SettingsView: View {
     }
 
     private func savedCatText(_ count: Int) -> String {
-        switch count {
-        case 0: "No cats saved yet"
-        case 1: "1 cat saved locally"
-        default: "\(count) cats saved locally"
-        }
+        CatLocalLocalization.plural("%lld cats saved locally", count: count)
     }
 
     private var storageSizeRole: CatAttentionRole {
@@ -195,8 +209,8 @@ struct SettingsView: View {
             storageText = ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)
         } catch {
             storageByteCount = nil
-            storageText = "Unavailable"
-            errorMessage = "CatLocal could not measure local storage. \(error.localizedDescription)"
+            storageText = "Unavailable".catLocalized
+            errorMessage = "\("CatLocal could not measure local storage.".catLocalized) \(error.localizedDescription)"
             showingStorageError = true
         }
     }
@@ -234,6 +248,7 @@ private struct StorageSummaryRow: View {
         ViewThatFits(in: .horizontal) {
             HStack(alignment: .center, spacing: 14) {
                 StorageSummaryIdentity(savedCatText: savedCatText)
+                    .fixedSize(horizontal: true, vertical: false)
                 Spacer(minLength: 10)
                 StorageSizePill(storageText: storageText, role: storageRole)
             }
@@ -285,7 +300,9 @@ private struct StorageSizePill: View {
             .catAttentionPillSurface(role: role, cornerRadius: 17)
             .animation(.smooth(duration: 0.22, extraBounce: 0), value: storageText)
             .animation(.smooth(duration: 0.22, extraBounce: 0), value: role)
-            .accessibilityLabel("Storage used, \(storageText)")
+            .accessibilityLabel(
+                CatLocalLocalization.format("Storage used, %1$@", storageText)
+            )
             .accessibilityIdentifier("settings-storage-size")
     }
 }
@@ -298,11 +315,12 @@ private struct SettingsRowLabel: View {
     var body: some View {
         Label {
             VStack(alignment: .leading, spacing: 3) {
-                Text(title)
+                Text(catLocalKey: title)
                     .font(CatTypography.body)
                     .foregroundStyle(CatLocalTheme.primaryText)
+                    .fixedSize(horizontal: false, vertical: true)
                 if let detail {
-                    Text(detail)
+                    Text(catLocalKey: detail)
                         .font(CatTypography.metadata)
                         .foregroundStyle(CatLocalTheme.secondaryText)
                         .fixedSize(horizontal: false, vertical: true)
@@ -315,6 +333,8 @@ private struct SettingsRowLabel: View {
                 .frame(width: 26)
                 .accessibilityHidden(true)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .layoutPriority(-1)
     }
 }
 
@@ -348,7 +368,7 @@ private struct PrivacyReceiptView: View {
                     detail: "Image folders use iOS file protection until the first unlock after restart, are excluded from backups, and are deleted with their cat."
                 )
             } header: {
-                Text("On This iPhone")
+                Text("On this iPhone")
             } footer: {
                 Text("Before storage, CatLocal redraws the selected photo and re-encodes it without source EXIF, GPS, camera/device, or orientation metadata.")
             }
@@ -358,6 +378,7 @@ private struct PrivacyReceiptView: View {
         .background { CatLocalBackground() }
         .navigationTitle("Privacy Receipt")
         .navigationBarTitleDisplayMode(.inline)
+        .accessibilityIdentifier("privacy-receipt-screen")
     }
 }
 
@@ -375,10 +396,10 @@ private struct PrivacyReceiptRow: View {
                 .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 5) {
-                Text(title)
+                Text(catLocalKey: title)
                     .font(CatTypography.supportingEmphasized)
                     .foregroundStyle(CatLocalTheme.primaryText)
-                Text(detail)
+                Text(catLocalKey: detail)
                     .font(CatTypography.metadata)
                     .foregroundStyle(CatLocalTheme.secondaryText)
                     .fixedSize(horizontal: false, vertical: true)
@@ -392,7 +413,7 @@ private struct PrivacyReceiptRow: View {
 private struct AboutCatLocalView: View {
     private var versionText: String {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
-        return version ?? "Unavailable"
+        return version ?? "Unavailable".catLocalized
     }
 
     var body: some View {

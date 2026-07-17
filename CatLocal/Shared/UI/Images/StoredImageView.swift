@@ -17,7 +17,11 @@ struct StoredImageView<Placeholder: View>: View {
                     .aspectRatio(contentMode: contentMode)
             } else {
                 placeholder()
-                    .accessibilityLabel(didFailToLoad ? "Stored image unavailable" : "Stored image loading")
+                    .accessibilityLabel(
+                        didFailToLoad
+                            ? "Stored image unavailable".catLocalized
+                            : "Stored image loading".catLocalized
+                    )
             }
         }
         .task(id: path) {

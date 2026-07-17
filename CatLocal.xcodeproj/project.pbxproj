@@ -31,6 +31,8 @@
 		BA93CEB9F3312E542294D25B /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B964E0402B2EFBC1640AA3 /* RootView.swift */; };
 		C22F46ED2FEBDC7400385C0F /* LiveInteractiveCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C22F46EC2FEBDC6F00385C0F /* LiveInteractiveCardView.swift */; };
 		C982ADF153B9B1AF278AD467 /* CatVisionProcessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEAFBCFBDEEE3B140EB0F707 /* CatVisionProcessor.swift */; };
+		C0A110000000000000000001 /* CatLocalLocalization.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0A110000000000000000003 /* CatLocalLocalization.swift */; };
+		C0A110000000000000000002 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = C0A110000000000000000004 /* Localizable.xcstrings */; };
 		D1A7C0DE0000000000000001 /* DustingRevealView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1A7C0DE0000000000000002 /* DustingRevealView.swift */; };
 		D1A7C0E00000000000000001 /* DustRevealShaders.metal in Sources */ = {isa = PBXBuildFile; fileRef = D1A7C0E00000000000000002 /* DustRevealShaders.metal */; };
 		D1A7C0DF0000000000000001 /* CardMintingSuccessView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1A7C0DF0000000000000002 /* CardMintingSuccessView.swift */; };
@@ -83,6 +85,8 @@
 		B00000000000000000000001 /* OnboardingView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = OnboardingView.swift; path = CatLocal/Features/Onboarding/OnboardingView.swift; sourceTree = "<group>"; };
 		C22F46EC2FEBDC6F00385C0F /* LiveInteractiveCardView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LiveInteractiveCardView.swift; path = CatLocal/Shared/UI/Effects/LiveInteractiveCardView.swift; sourceTree = "<group>"; };
 		C8B964E0402B2EFBC1640AA3 /* RootView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = RootView.swift; path = CatLocal/App/RootView.swift; sourceTree = "<group>"; };
+		C0A110000000000000000003 /* CatLocalLocalization.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CatLocalLocalization.swift; path = CatLocal/Shared/Localization/CatLocalLocalization.swift; sourceTree = "<group>"; };
+		C0A110000000000000000004 /* Localizable.xcstrings */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.json.xcstrings; name = Localizable.xcstrings; path = CatLocal/Resources/Localizable.xcstrings; sourceTree = "<group>"; };
 		D1A7C0DE0000000000000002 /* DustingRevealView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DustingRevealView.swift; path = CatLocal/Shared/UI/Effects/DustingRevealView.swift; sourceTree = "<group>"; };
 		D1A7C0E00000000000000002 /* DustRevealShaders.metal */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.metal; name = DustRevealShaders.metal; path = CatLocal/Shared/UI/Effects/DustRevealShaders.metal; sourceTree = "<group>"; };
 		D1A7C0DF0000000000000002 /* CardMintingSuccessView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CardMintingSuccessView.swift; path = CatLocal/Shared/UI/Effects/CardMintingSuccessView.swift; sourceTree = "<group>"; };
@@ -221,6 +225,7 @@
 			isa = PBXGroup;
 			children = (
 				A00000000000000000000010 /* DesignSystem */,
+				C0A110000000000000000005 /* Localization */,
 				A00000000000000000000011 /* UI */,
 			);
 			name = Shared;
@@ -232,6 +237,14 @@
 				2B34D0EFB9539E239D6122F2 /* CatLocalTheme.swift */,
 			);
 			name = DesignSystem;
+			sourceTree = "<group>";
+		};
+		C0A110000000000000000005 /* Localization */ = {
+			isa = PBXGroup;
+			children = (
+				C0A110000000000000000003 /* CatLocalLocalization.swift */,
+			);
+			name = Localization;
 			sourceTree = "<group>";
 		};
 		A00000000000000000000011 /* UI */ = {
@@ -271,6 +284,7 @@
 			children = (
 				D9A100000000000000000003 /* AppIcon.icon */,
 				5C0C1CE8A57605EDE232C146 /* Assets.xcassets */,
+				C0A110000000000000000004 /* Localizable.xcstrings */,
 				D9A100000000000000000001 /* PrivacyInfo.xcprivacy */,
 			);
 			name = Resources;
@@ -415,6 +429,12 @@
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				en,
+				el,
+				hr,
+				pl,
+				ro,
+				tr,
+				uk,
 				Base,
 			);
 			mainGroup = 442345A2C5CC9A905E052CF5;
@@ -449,6 +469,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				D9A100000000000000000004 /* AppIcon.icon in Resources */,
+				C0A110000000000000000002 /* Localizable.xcstrings in Resources */,
 				D9A100000000000000000002 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -476,6 +497,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C0A110000000000000000001 /* CatLocalLocalization.swift in Sources */,
 				A1069F8537A27BFAD0DCDFD1 /* CatLocalApp.swift in Sources */,
 				BA93CEB9F3312E542294D25B /* RootView.swift in Sources */,
 				B00000000000000000000002 /* OnboardingView.swift in Sources */,

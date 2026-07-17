@@ -79,7 +79,11 @@ struct LociStateView: View {
 
             if let buttonTitle, let buttonAction {
                 Button(action: buttonAction) {
-                    Label(buttonTitle, systemImage: buttonSystemImage)
+                    Label {
+                        Text(catLocalKey: buttonTitle)
+                    } icon: {
+                        Image(systemName: buttonSystemImage)
+                    }
                         .font(CatTypography.control)
                         .frame(maxWidth: .infinity)
                         .catPrimaryActionSurface(role: buttonRole, cornerRadius: 28)
@@ -100,7 +104,7 @@ private struct LociStateText: View {
 
     var body: some View {
         VStack(spacing: 8) {
-            Text(title)
+            Text(catLocalKey: title)
                 .font(CatTypography.pageTitle)
                 .foregroundStyle(CatLocalTheme.primaryText)
                 .multilineTextAlignment(.center)
@@ -108,7 +112,7 @@ private struct LociStateText: View {
                 .accessibilityAddTraits(.isHeader)
 
             if let subtitle {
-                Text(subtitle)
+                Text(catLocalKey: subtitle)
                     .font(CatTypography.body)
                     .foregroundStyle(CatLocalTheme.secondaryText)
                     .multilineTextAlignment(.center)

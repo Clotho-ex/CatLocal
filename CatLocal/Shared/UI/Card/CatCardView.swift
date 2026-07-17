@@ -49,7 +49,11 @@ struct CatCardView: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityLabel)
-        .accessibilityHint(presentation == .focused ? "Drag the cat to shift its light" : "Double tap to open focused cat view.")
+        .accessibilityHint(
+            presentation == .focused
+                ? "Drag the cat to shift its light".catLocalized
+                : "Double tap to open focused cat view.".catLocalized
+        )
     }
 
     private var imagePath: String {
@@ -57,14 +61,30 @@ struct CatCardView: View {
     }
 
     private var accessibilityLabel: String {
-        let note = record.note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "" : " Note saved."
-        let place = if presentation == .thumbnail, showsThumbnailPlaceFooter {
-            record.memoryPlaceLabel.map { " Memory Place, \($0)." } ?? " No Memory Place yet."
-        } else {
-            showsThumbnailPlaceFooter ? record.memoryPlaceLabel.map { " Memory Place, \($0)." } ?? "" : ""
+        var parts = [
+            CatLocalLocalization.format(
+                "Cat, %1$@. Cat number %2$lld. Captured %3$@.",
+                record.displayName,
+                Int64(record.sequence),
+                record.capturedAt.formatted(date: .abbreviated, time: .omitted)
+            ),
+        ]
+
+        if presentation == .thumbnail, showsThumbnailPlaceFooter {
+            parts.append(
+                record.memoryPlaceLabel.map {
+                    CatLocalLocalization.format("Memory Place, %1$@", $0)
+                } ?? "No Memory Place yet.".catLocalized
+            )
+        } else if showsThumbnailPlaceFooter, let label = record.memoryPlaceLabel {
+            parts.append(CatLocalLocalization.format("Memory Place, %1$@", label))
         }
 
-        return "Cat, \(record.displayName). Cat number \(record.sequence.formatted()). Captured \(record.capturedAt.formatted(date: .abbreviated, time: .omitted)).\(place)\(note)"
+        if !record.note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            parts.append("Note saved.".catLocalized)
+        }
+
+        return parts.joined(separator: " ")
     }
 }
 
@@ -444,7 +464,7 @@ private struct CatCardSurface<CatImage: View>: View {
                 VStack(alignment: .leading, spacing: 4) {
                     metadataHeading(title: "Notes", icon: "note.text")
 
-                    Text(note.isEmpty ? "No Note Yet." : note)
+                    Text(note.isEmpty ? "No note yet.".catLocalized : note)
                         .font(CatTypography.body)
                         .lineLimit(dynamicTypeSize.isAccessibilitySize ? 5 : 3)
                         .foregroundStyle(note.isEmpty ? secondaryContentColor : primaryContentColor)
@@ -526,7 +546,7 @@ private struct CatCardSurface<CatImage: View>: View {
                 .frame(width: 20, height: 19, alignment: .center)
                 .accessibilityHidden(true)
 
-            Text(title)
+            Text(catLocalKey: title)
                 .font(CatTypography.supportingEmphasized)
         }
         .foregroundStyle(metadataContentColor)
@@ -543,7 +563,7 @@ private struct CatCardSurface<CatImage: View>: View {
                 .imageScale(.small)
                 .accessibilityHidden(true)
 
-            Text(title)
+            Text(catLocalKey: title)
                 .lineLimit(1)
                 .minimumScaleFactor(0.74)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -577,16 +597,18 @@ private struct CatCardSurface<CatImage: View>: View {
 
         if let placeName {
             if let placeDetail {
-                parts.append("Memory Place, \(placeName), \(placeDetail)")
+                parts.append(
+                    CatLocalLocalization.format("Memory Place, %1$@, %2$@", placeName, placeDetail)
+                )
             } else {
-                parts.append("Memory Place, \(placeName)")
+                parts.append(CatLocalLocalization.format("Memory Place, %1$@", placeName))
             }
         } else {
-            parts.append("No Memory Place yet")
+            parts.append("No Memory Place yet.".catLocalized)
         }
 
         if hasNote {
-            parts.append("Note saved")
+            parts.append("Note saved.".catLocalized)
         }
 
         return parts.joined(separator: ". ")
@@ -2250,7 +2272,12 @@ struct CardStylePicker<Preview: View>: View {
 
                 Spacer(minLength: 12)
 
-                Text("\(CardStyle.orderedCases.count) in \(CardStyleFamily.allCases.count) families")
+                Text(
+                    CatLocalLocalization.cardStyleSummary(
+                        styleCount: CardStyle.orderedCases.count,
+                        familyCount: CardStyleFamily.allCases.count
+                    )
+                )
                     .font(CatTypography.finePrint)
                     .foregroundStyle(CatLocalTheme.secondaryText)
             }
@@ -2258,13 +2285,13 @@ struct CardStylePicker<Preview: View>: View {
             familySelector
 
             HStack(alignment: .firstTextBaseline) {
-                Text(selectedFamily.title)
+                Text(catLocalKey: selectedFamily.title)
                     .font(CatTypography.control)
                     .foregroundStyle(CatLocalTheme.primaryText)
 
                 Spacer(minLength: 12)
 
-                Text("\(selectedFamily.styles.count) styles")
+                Text(CatLocalLocalization.plural("%lld styles", count: selectedFamily.styles.count))
                     .font(CatTypography.finePrint)
                     .foregroundStyle(CatLocalTheme.secondaryText)
             }
@@ -2311,7 +2338,7 @@ struct CardStylePicker<Preview: View>: View {
         }
         .scrollIndicators(.hidden)
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("Card style families")
+        .accessibilityLabel("Card style families".catLocalized)
     }
 
     private func recommendedStyleButton(_ style: CardStyle) -> some View {
@@ -2330,7 +2357,7 @@ struct CardStylePicker<Preview: View>: View {
                 .aspectRatio(1.55, contentMode: .fit)
                 .clipped()
 
-                Text(style.title)
+                Text(catLocalKey: style.title)
                     .font(CatTypography.badge)
                     .foregroundStyle(isSelected ? CatAttentionRole.action.text : CatLocalTheme.primaryText)
                     .lineLimit(2)
@@ -2349,8 +2376,13 @@ struct CardStylePicker<Preview: View>: View {
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("recommended-card-style-\(style.rawValue)")
-        .accessibilityLabel("Recommended, \(style.title)")
-        .accessibilityHint("Selects this card design")
+        .accessibilityLabel(
+            CatLocalLocalization.format(
+                "Recommended, %1$@",
+                CatLocalLocalization.string(style.title)
+            )
+        )
+        .accessibilityHint("Selects this card design".catLocalized)
         .accessibilityAddTraits(isSelected ? [.isSelected] : [])
     }
 
@@ -2360,7 +2392,7 @@ struct CardStylePicker<Preview: View>: View {
         return Button {
             selectFamily(family)
         } label: {
-            Text(family.title)
+            Text(catLocalKey: family.title)
                 .font(CatTypography.badge)
                 .foregroundStyle(isSelected ? CatAttentionRole.action.text : CatLocalTheme.secondaryText)
                 .padding(.horizontal, 14)
@@ -2377,8 +2409,15 @@ struct CardStylePicker<Preview: View>: View {
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("card-style-family-\(family.rawValue)")
-        .accessibilityLabel("\(family.title) styles")
-        .accessibilityHint("Shows \(family.styles.count) styles")
+        .accessibilityLabel(
+            CatLocalLocalization.format(
+                "%1$@ styles",
+                CatLocalLocalization.string(family.title)
+            )
+        )
+        .accessibilityHint(
+            CatLocalLocalization.plural("Shows %lld styles", count: family.styles.count)
+        )
         .accessibilityAddTraits(isSelected ? [.isSelected] : [])
     }
 
@@ -2547,7 +2586,7 @@ struct CardStyleCarousel<Preview: View>: View {
                     .aspectRatio(previewAspectRatio, contentMode: .fit)
                     .allowsHitTesting(false)
 
-                Text(style.title)
+                Text(catLocalKey: style.title)
                     .font(CatTypography.badge)
                     .foregroundStyle(isSelected ? CatAttentionRole.action.text : CatLocalTheme.secondaryText)
                     .lineLimit(2)
@@ -2569,8 +2608,14 @@ struct CardStyleCarousel<Preview: View>: View {
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Design \(style.displayIndex + 1), \(style.title) card design")
-        .accessibilityHint("Selects this card design")
+        .accessibilityLabel(
+            CatLocalLocalization.format(
+                "Design %1$lld, %2$@ card design",
+                Int64(style.displayIndex + 1),
+                CatLocalLocalization.string(style.title)
+            )
+        )
+        .accessibilityHint("Selects this card design".catLocalized)
         .accessibilityAddTraits(isSelected ? [.isSelected] : [])
     }
 

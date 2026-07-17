@@ -76,9 +76,13 @@ struct LiveInteractiveCardView<Content: View>: View {
             .accessibilityAdjustableAction { direction in
                 adjustLighting(direction: direction, size: size)
             }
-            .accessibilityLabel("Card lighting")
-            .accessibilityValue(motionIsReduced ? "Motion reduced" : lightingPosition.accessibilityValue)
-            .accessibilityHint(motionIsReduced ? "Card motion is reduced." : "Swipe up or down to move the light.")
+            .accessibilityLabel("Card lighting".catLocalized)
+            .accessibilityValue(motionIsReduced ? "Motion reduced".catLocalized : lightingPosition.accessibilityValue)
+            .accessibilityHint(
+                motionIsReduced
+                    ? "Card motion is reduced.".catLocalized
+                    : "Swipe up or down to move the light.".catLocalized
+            )
             .onAppear {
                 spotlightLocation = CGPoint(x: size.width / 2, y: size.height / 2)
                 lightingPosition = .center
@@ -230,11 +234,11 @@ enum LiveInteractiveCardLightingPosition: Int, CaseIterable, Sendable {
     var accessibilityValue: String {
         switch self {
         case .left:
-            "Light left"
+            "Light left".catLocalized
         case .center:
-            "Light centered"
+            "Light centered".catLocalized
         case .right:
-            "Light right"
+            "Light right".catLocalized
         }
     }
 

@@ -6,6 +6,7 @@ struct RootView: View {
     @AppStorage(CatLocalUserDefaults.appearanceKey) private var appearance = CatLocalAppearance.system
     @AppStorage(CatLocalUserDefaults.cardMotionEnabledKey) private var cardMotionEnabled = true
     @AppStorage(CatLocalUserDefaults.hapticsEnabledKey) private var hapticsEnabled = true
+    @AppStorage(CatLocalUserDefaults.languageKey) private var language = CatLocalLanguage.system
     @State private var tabState: AppTabPresentationState
     @State private var homeReselectionID = 0
     @State private var contentTabFeedbackTrigger = 0
@@ -28,6 +29,7 @@ struct RootView: View {
         .animation(reduceMotion ? nil : .smooth(duration: 0.24, extraBounce: 0), value: hasCompletedOnboarding)
         .environment(\.catLocalCardMotionEnabled, cardMotionEnabled)
         .environment(\.catLocalHapticsEnabled, hapticsEnabled)
+        .environment(\.locale, language.locale)
         .preferredColorScheme(appearance.preferredColorScheme)
     }
 
@@ -117,6 +119,7 @@ struct RootView: View {
                 } label: {
                     Label("Camera", systemImage: "camera.fill")
                         .accessibilityHint("Opens the camera and private photo import.")
+                        .accessibilityIdentifier("capture-tab")
                 }
 
                 Tab("Settings", systemImage: "gearshape", value: AppTab.settings) {

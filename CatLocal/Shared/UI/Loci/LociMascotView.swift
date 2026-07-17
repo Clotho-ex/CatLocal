@@ -67,7 +67,7 @@ struct LociMascotView: View {
             .renderingMode(.original)
             .interpolation(.high)
             .scaledToFit()
-            .accessibilityLabel(Text(accessibilityLabel ?? ""))
+            .accessibilityLabel(Text(catLocalKey: accessibilityLabel ?? ""))
             .accessibilityHidden(accessibilityLabel == nil)
     }
 

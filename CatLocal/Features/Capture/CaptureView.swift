@@ -529,8 +529,13 @@ struct CaptureView: View {
         }
         .simultaneousGesture(cameraMagnifyGesture)
         .task {
+            #if DEBUG
+            if forcesCameraDeniedForValidation {
+                return
+            }
+            #endif
             await camera.requestAccessAndConfigure()
-            if camera.authorizationStatus == .authorized {
+            if effectiveCameraAuthorizationStatus == .authorized {
                 camera.start()
             }
         }
@@ -579,15 +584,17 @@ struct CaptureView: View {
             titleVisibility: .visible,
             presenting: pendingDiscardAction
         ) { action in
-            Button(action.destructiveTitle, role: .destructive) {
+            Button(role: .destructive) {
                 performDiscardAction(action)
+            } label: {
+                Text(catLocalKey: action.destructiveTitle)
             }
             Button("Keep Draft") {
                 pendingDiscardAction = nil
                 isDiscardConfirmationPresented = false
             }
         } message: { action in
-            Text(action.message)
+            Text(catLocalKey: action.message)
         }
         .onChange(of: isDiscardConfirmationPresented) { _, isPresented in
             if !isPresented {
@@ -604,7 +611,7 @@ struct CaptureView: View {
         ZStack {
             Color.black.ignoresSafeArea()
 
-            if camera.isConfigured {
+            if camera.isConfigured && effectiveCameraAuthorizationStatus == .authorized {
                 CameraPreview(session: camera.session)
                     .ignoresSafeArea()
                     .allowsHitTesting(false)
@@ -625,7 +632,7 @@ struct CaptureView: View {
                 Spacer()
                 cameraGuidance
                 if camera.isConfigured, let cameraError = camera.errorMessage {
-                    Text(cameraError)
+                    Text(cameraError.catLocalized)
                         .font(CatTypography.finePrint)
                         .foregroundStyle(.white)
                         .multilineTextAlignment(.center)
@@ -640,6 +647,7 @@ struct CaptureView: View {
             .padding(.top, 10)
             .padding(.bottom, 22)
         }
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("capture-screen")
     }
 
@@ -788,6 +796,7 @@ struct CaptureView: View {
                     .buttonStyle(.catTactile)
                     .disabled(!canImportPhoto)
                     .opacity(canImportPhoto ? 1 : 0.45)
+                    .accessibilityIdentifier("capture-validation-photo")
                 }
                 #endif
             }
@@ -881,14 +890,15 @@ struct CaptureView: View {
 
     private var cameraUnavailableBackground: some View {
         VStack(spacing: 15) {
-            Image(systemName: camera.authorizationStatus == .denied ? "camera.fill.badge.xmark" : "camera.aperture")
+            Image(systemName: effectiveCameraAuthorizationStatus == .denied ? "camera.fill.badge.xmark" : "camera.aperture")
                 .font(.system(size: 58, weight: .ultraLight))
                 .foregroundStyle(.white.opacity(0.9))
 
-            if camera.authorizationStatus == .denied || camera.authorizationStatus == .restricted {
+            if effectiveCameraAuthorizationStatus == .denied || effectiveCameraAuthorizationStatus == .restricted {
                 Text("Camera access is off")
                     .font(CatTypography.momentTitle)
                     .foregroundStyle(.white)
+                    .accessibilityIdentifier("camera-permission-denied-state")
                 Text("You can still choose a private photo, or enable camera access in Settings.")
                     .multilineTextAlignment(.center)
                     .foregroundStyle(.white.opacity(0.68))
@@ -900,7 +910,7 @@ struct CaptureView: View {
                 }
                 .frame(maxWidth: 280)
             } else if let cameraError = camera.errorMessage {
-                Text(cameraError)
+                Text(cameraError.catLocalized)
                     .multilineTextAlignment(.center)
                     .foregroundStyle(.white.opacity(0.72))
                     .frame(maxWidth: 300)
@@ -912,6 +922,11 @@ struct CaptureView: View {
                     .tint(.white)
             }
         }
+        .accessibilityIdentifier(
+            effectiveCameraAuthorizationStatus == .denied
+                ? "camera-permission-denied-state"
+                : "camera-unavailable-state"
+        )
     }
 
     private var privatePhotoImportAction: some View {
@@ -964,7 +979,7 @@ struct CaptureView: View {
                 ProgressView()
                     .controlSize(.large)
                     .tint(.white)
-                Text(stage == .analyzing ? "Looking for cats" : "Lifting the subject")
+                Text(catLocalKey: stage == .analyzing ? "Looking for cats" : "Removing the background")
                     .font(CatTypography.pageTitle)
                     .foregroundStyle(.white)
                     .multilineTextAlignment(.center)
@@ -974,7 +989,11 @@ struct CaptureView: View {
                     .multilineTextAlignment(.center)
             }
             .accessibilityElement(children: .combine)
-            .accessibilityLabel(stage == .analyzing ? "Looking for cats" : "Creating cat cutout")
+            .accessibilityLabel(
+                stage == .analyzing
+                    ? "Looking for cats".catLocalized
+                    : "Creating cat cutout".catLocalized
+            )
             .padding(24)
         }
     }
@@ -1048,6 +1067,7 @@ struct CaptureView: View {
         }
         .buttonStyle(.catTactile)
         .accessibilityHint("Cancels on-device processing and returns to the camera")
+        .accessibilityIdentifier("capture-stop-processing")
     }
 
     private var catSelectionScreen: some View {
@@ -1059,7 +1079,10 @@ struct CaptureView: View {
                     HStack {
                         Button("Retake") { requestDiscardAction(.retake) }
                         Spacer()
-                        Label("\(detections.count) cats found", systemImage: "checkmark.circle.fill")
+                        Label(
+                            CatLocalLocalization.plural("%lld cats found", count: detections.count),
+                            systemImage: "checkmark.circle.fill"
+                        )
                             .font(CatTypography.supportingEmphasized)
                             .catAttentionPillSurface(role: .success)
                     }
@@ -1093,10 +1116,20 @@ struct CaptureView: View {
                                         CatSelectionNumberBadge(number: index + 1, size: 34)
 
                                         VStack(alignment: .leading, spacing: 2) {
-                                            Text("Cat \(index + 1)")
+                                            Text(
+                                                CatLocalLocalization.format(
+                                                    "Cat %lld",
+                                                    Int64(index + 1)
+                                                )
+                                            )
                                                 .font(CatTypography.control)
 
-                                            Text("Marked \(index + 1) in the photo")
+                                            Text(
+                                                CatLocalLocalization.format(
+                                                    "Marked %lld in the photo",
+                                                    Int64(index + 1)
+                                                )
+                                            )
                                                 .font(CatTypography.metadata)
                                                 .foregroundStyle(CatLocalTheme.secondaryText)
                                         }
@@ -1116,8 +1149,15 @@ struct CaptureView: View {
                                 }
                                 .buttonStyle(.catTactile)
                                 .accessibilityElement(children: .ignore)
-                                .accessibilityLabel("Cat \(index + 1), marked \(index + 1) in the photo")
+                                .accessibilityLabel(
+                                    CatLocalLocalization.format(
+                                        "Cat %1$lld, marked %2$lld in the photo",
+                                        Int64(index + 1),
+                                        Int64(index + 1)
+                                    )
+                                )
                                 .accessibilityHint("Selects this cat for the card")
+                                .accessibilityIdentifier("cat-selection-option-\(index + 1)")
                             }
                         }
                     }
@@ -1162,7 +1202,11 @@ struct CaptureView: View {
                 foregroundSelectionAreaMenu
 
                 if let foregroundSelectionMessage {
-                    Label(foregroundSelectionMessage, systemImage: "hand.tap.fill")
+                    Label {
+                        Text(catLocalKey: foregroundSelectionMessage)
+                    } icon: {
+                        Image(systemName: "hand.tap.fill")
+                    }
                         .font(CatTypography.metadata)
                         .foregroundStyle(CatAttentionRole.warning.text)
                         .padding(.horizontal, 14)
@@ -1213,8 +1257,10 @@ struct CaptureView: View {
     }
 
     private func foregroundSelectionAreaButton(_ area: ForegroundSelectionArea) -> some View {
-        Button(area.title) {
+        Button {
             chooseForeground(at: area.normalizedPoint)
+        } label: {
+            Text(catLocalKey: area.title)
         }
     }
 
@@ -1328,10 +1374,10 @@ struct CaptureView: View {
                 .accessibilityHidden(true)
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(isSaving ? "Preparing card" : "Save Cat")
+                    Text(catLocalKey: isSaving ? "Preparing card" : "Save Cat")
                         .font(CatTypography.control)
 
-                    Text(isSaving ? "Adding a little finish" : "Edit details later")
+                    Text(catLocalKey: isSaving ? "Adding finishing touches" : "Edit details later")
                         .font(CatTypography.metadata)
                         .foregroundStyle(CatLocalTheme.secondaryText)
                 }
@@ -1350,7 +1396,9 @@ struct CaptureView: View {
         .disabled(isSaving)
         .padding(.horizontal, CatLocalTheme.screenHorizontalPadding)
         .accessibilityIdentifier("save-cat-immediate")
-        .accessibilityLabel(isSaving ? "Preparing Cat Card" : "Save Cat")
+        .accessibilityLabel(
+            isSaving ? "Preparing cat card".catLocalized : "Save Cat".catLocalized
+        )
         .accessibilityHint("Saves this card now. You can edit the name, design, and Catlas details later.")
     }
 
@@ -1394,7 +1442,7 @@ struct CaptureView: View {
         .opacity(isSaving ? 0.55 : 1)
         .padding(.horizontal, CatLocalTheme.screenHorizontalPadding)
         .accessibilityIdentifier("tap-to-customize")
-        .accessibilityLabel("Edit before saving")
+        .accessibilityLabel("Edit Before Saving")
         .accessibilityHint("Opens design, name, note, and Catlas fields before saving.")
     }
 
@@ -1452,10 +1500,10 @@ struct CaptureView: View {
                 .accessibilityHidden(true)
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(isSaving ? "Preparing card" : "Save Cat")
+                    Text(catLocalKey: isSaving ? "Preparing card" : "Save Cat")
                         .font(CatTypography.control)
 
-                    Text(isSaving ? "Adding a little finish" : "Save to Collection")
+                    Text(catLocalKey: isSaving ? "Adding finishing touches" : "Save to Collection")
                         .font(CatTypography.metadata)
                         .foregroundStyle(CatLocalTheme.secondaryText)
                 }
@@ -1472,7 +1520,10 @@ struct CaptureView: View {
         .buttonStyle(.catTactile)
         .contentShape(shape)
         .disabled(isSaving)
-        .accessibilityLabel(isSaving ? "Preparing Cat Card" : "Save Cat")
+        .accessibilityLabel(
+            isSaving ? "Preparing cat card".catLocalized : "Save Cat".catLocalized
+        )
+        .accessibilityIdentifier("capture-editor-save")
     }
 
     private var editorForm: some View {
@@ -1511,6 +1562,7 @@ struct CaptureView: View {
                     .textInputAutocapitalization(.words)
                     .focused($focusedEditorField, equals: .nickname)
                     .catInputSurface()
+                    .accessibilityIdentifier("capture-editor-nickname")
 
                 editorFieldHeading("Catlas")
 
@@ -1519,12 +1571,14 @@ struct CaptureView: View {
                     .focused($focusedEditorField, equals: .placeName)
                     .catInputSurface()
                     .accessibilityHint("Adds a manual place label to the private Catlas")
+                    .accessibilityIdentifier("capture-editor-place")
 
                 TextField("Place Detail", text: $placeDetail, axis: .vertical)
                     .lineLimit(1...3)
                     .textInputAutocapitalization(.sentences)
                     .focused($focusedEditorField, equals: .placeDetail)
                     .catInputSurface()
+                    .accessibilityIdentifier("capture-editor-place-detail")
 
                 editorFieldHeading("Encounter Note")
 
@@ -1532,10 +1586,9 @@ struct CaptureView: View {
                     .lineLimit(2...5)
                     .focused($focusedEditorField, equals: .note)
                     .catInputSurface()
+                    .accessibilityIdentifier("capture-editor-note")
 
                 catlasPrivacyNote
-
-                editorSaveSection
             }
             .padding(18)
             .padding(.top, 52)
@@ -1549,8 +1602,16 @@ struct CaptureView: View {
                     }
             }
         }
+        .accessibilityIdentifier("capture-editor-scroll")
         .scrollIndicators(.hidden)
         .scrollDismissesKeyboard(.interactively)
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            editorSaveSection
+                .padding(.horizontal, 18)
+                .padding(.top, 12)
+                .padding(.bottom, 10)
+                .background(CatLocalTheme.background.opacity(0.96))
+        }
     }
 
     private var editorSaveSection: some View {
@@ -1595,12 +1656,8 @@ struct CaptureView: View {
     }
 
     private var makeItYoursHeading: some View {
-        (
-            Text("Make It ")
-                .foregroundStyle(CatLocalTheme.primaryText)
-            + Text("Yours")
-                .foregroundStyle(CatAttentionRole.action.text)
-        )
+        Text("Make It Yours")
+        .foregroundStyle(CatLocalTheme.primaryText)
         .font(CatTypography.pageTitle)
         .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
         .fixedSize(horizontal: false, vertical: true)
@@ -1745,7 +1802,7 @@ struct CaptureView: View {
                 .catSingleActionIconSurface()
         }
         .buttonStyle(.catTactile)
-        .accessibilityLabel(accessibilityLabel)
+        .accessibilityLabel(accessibilityLabel.catLocalized)
         .accessibilityIdentifier(accessibilityIdentifier)
     }
 
@@ -1789,7 +1846,7 @@ struct CaptureView: View {
     }
 
     private func editorFieldHeading(_ title: String) -> some View {
-        Text(title)
+        Text(catLocalKey: title)
             .font(CatTypography.fieldLabel)
             .foregroundStyle(CatLocalTheme.secondaryText)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -1813,12 +1870,12 @@ struct CaptureView: View {
                     )
 
                     VStack(spacing: 8) {
-                        Text(failureTitle)
+                        Text(catLocalKey: failureTitle)
                             .font(CatTypography.pageTitle)
                             .foregroundStyle(CatLocalTheme.primaryText)
                             .multilineTextAlignment(.center)
                             .lineLimit(nil)
-                        Text(errorMessage ?? "CatLocal could not create a clean cutout from this photo. Try a photo with the whole cat in view.")
+                        Text(catLocalKey: errorMessage ?? "CatLocal could not create a clean cutout from this photo. Try a photo with the whole cat in view.")
                             .font(CatTypography.body)
                             .multilineTextAlignment(.center)
                             .foregroundStyle(CatLocalTheme.secondaryText)
@@ -1872,6 +1929,15 @@ struct CaptureView: View {
         camera.isConfigured && stage == .camera && processingGate.canStart(.camera)
     }
 
+    private var effectiveCameraAuthorizationStatus: AVAuthorizationStatus {
+        #if DEBUG
+        if forcesCameraDeniedForValidation {
+            return .denied
+        }
+        #endif
+        return camera.authorizationStatus
+    }
+
     private var canImportPhoto: Bool {
         (stage == .camera || stage == .choosingForeground) && processingGate.canStart(.gallery)
     }
@@ -1891,6 +1957,10 @@ struct CaptureView: View {
     #if DEBUG
     private var showsValidationImport: Bool {
         ProcessInfo.processInfo.arguments.contains("-catlocal-ui-import-fixture")
+    }
+
+    private var forcesCameraDeniedForValidation: Bool {
+        ProcessInfo.processInfo.arguments.contains("-catlocal-ui-force-camera-denied")
     }
 
     private var usesSyntheticValidationPhoto: Bool {
@@ -1919,6 +1989,11 @@ struct CaptureView: View {
 
     private var prefillsValidationEditorFields: Bool {
         ProcessInfo.processInfo.arguments.contains("-catlocal-ui-prefill-editor-fields")
+            || usesLongValidationContent
+    }
+
+    private var usesLongValidationContent: Bool {
+        ProcessInfo.processInfo.arguments.contains("-ui-testing-seed-long-content")
     }
 
     private var forcesReducedMotionRevealForValidation: Bool {
@@ -1926,6 +2001,14 @@ struct CaptureView: View {
     }
 
     private func prefillValidationEditorFields() {
+        if usesLongValidationContent {
+            nickname = "Captain Marmalade of the Bosphorus"
+            placeName = "Old Stone Garden Behind the Neighborhood Library"
+            placeDetail = "Under the ivy-covered bench by the eastern wall"
+            note = "A patient afternoon visitor who waited through the rain before saying hello."
+            return
+        }
+
         nickname = "Pixel"
         placeName = "Rooftop"
         placeDetail = "South ledge"
@@ -2282,7 +2365,7 @@ struct CaptureView: View {
             stage = .stickerInspecting
         }
         captureCompletionFeedbackTrigger += 1
-        UIAccessibility.post(notification: .announcement, argument: "Cat card ready.")
+        UIAccessibility.post(notification: .announcement, argument: "Cat card ready.".catLocalized)
     }
 
     #if DEBUG
@@ -2704,7 +2787,7 @@ struct CaptureView: View {
         subjectToCardCompletionGate.reset()
         isCardMintingDone = false
         stage = .camera
-        if camera.authorizationStatus == .authorized {
+        if effectiveCameraAuthorizationStatus == .authorized {
             camera.start()
         }
     }
@@ -2825,7 +2908,7 @@ private struct SubjectToCardTransitionView<Destination: View>: View {
             }
         }
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("Preparing cat card")
+        .accessibilityLabel("Preparing cat card".catLocalized)
         .accessibilityValue(phaseIdentifier)
         .accessibilityIdentifier("subject-card-transition-active")
     }
@@ -2850,12 +2933,12 @@ private struct SubjectToCardTransitionView<Destination: View>: View {
 
     private var phaseIdentifier: String {
         switch phase {
-        case .preparing: "preparing"
-        case .dusting: "dusting"
-        case .lifting: "lifting"
-        case .settling: "settling"
-        case .completed: "completed"
-        case .failed: "failed"
+        case .preparing: "Preparing".catLocalized
+        case .dusting: "Removing background".catLocalized
+        case .lifting: "Positioning cat cutout".catLocalized
+        case .settling: "Settling card".catLocalized
+        case .completed: "Completed".catLocalized
+        case .failed: "Failed".catLocalized
         }
     }
 
@@ -3199,11 +3282,13 @@ private struct ForegroundSelectionPhoto: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Photo for foreground selection")
-        .accessibilityHint("Double-tap to try the exact center of the photo. Use Retake or Choose private photo if the cat is elsewhere.")
+        .accessibilityHint(
+            "Double-tap to try the center of the photo. Use Retake or Choose private photo if the cat is elsewhere."
+        )
         .accessibilityAction {
             onSelection(ForegroundSelectionAccessibility.defaultNormalizedPoint)
         }
-        .accessibilityAction(named: "Try exact center") {
+        .accessibilityAction(named: "Try the center") {
             onSelection(ForegroundSelectionAccessibility.defaultNormalizedPoint)
         }
         .accessibilityIdentifier("foreground-selection-photo")
@@ -3245,7 +3330,12 @@ private struct CatSelectionImage: View {
                 .stroke(CatLocalTheme.imageOutline, lineWidth: 1)
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Photo with \(detections.count) cats marked by number")
+        .accessibilityLabel(
+            CatLocalLocalization.plural(
+                "Photo with %lld cats marked by number",
+                count: detections.count
+            )
+        )
         .accessibilityHint("Use the numbered choices below to select a cat")
     }
 }
