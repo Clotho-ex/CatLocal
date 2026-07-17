@@ -1,151 +1,329 @@
-# CatLocal Agent Guide
+# CatLocal Repository Guide
 
-CatLocal is a private, local-first iPhone journal that turns real cat
-encounters into tactile collectible cards. The core loop is:
+## Product
 
-`capture/import -> on-device Vision processing -> transparent cutout -> card reveal/editor -> local collection`
+CatLocal is a private, local-first iPhone field journal for real cat encounters.
 
-The README leads with this product promise and the four-step flow:
-photograph or privately import a cat, detect and separate it with Apple Vision
-on-device, reveal/edit a card, then save the card and local image variants with
-SwiftData and Application Support. Let that sequence dominate product, design,
-and implementation decisions before adding secondary settings or metrics.
+Its primary product loop is:
 
-## Product Guardrails
+`capture or import -> on-device cat detection -> foreground cutout -> card editor -> local collection`
 
-- Keep v1 local-only: no accounts, backend, maps, GPS, cloud AI, ads, or social graph.
-- Keep cat detection and foreground separation on device with Apple Vision.
-- Keep saved images EXIF/GPS-free.
-- Preserve the app's quiet, editorial design direction. Use native controls where possible.
-- Preserve development team `5SN9TWDXQ4` and existing signing settings.
+Preserve this loop as the center of the product. Secondary features must not weaken its privacy, simplicity, or tactile card-collecting focus.
 
-## Project Structure
+Before making product, architecture, or design decisions, inspect:
 
-- `CatLocal/App/CatLocalApp.swift`: app entry point, SwiftData container setup, persisted preference contracts, and shared motion/haptic environments.
-- `CatLocal/App/RootView.swift`: native tab shell, camera sheet routing, app appearance/preferences, and iOS 26 sidebar-adaptable tab behavior.
-- `CatLocal/Core/Models/CatRecord.swift`: SwiftData source of truth for card metadata, local image filenames, capture source, sequence, notes, optional Vision bounding box, and card styles (`Archive`, `Sunstamp`, `Clear`, `Garden`, `Midnight`, `Apricot`, `Midnight Prism`, `Gold Leaf`, `Contour Light`, `Ember Lines`, `Lagoon Lines`, `Moss Lines`, `Dusk Lines`, `Pine Shadow`, `Cedar Shade`, `Fern Trace`, `Moss Veil`, `Cobalt Halo`, `Apricot Beam`, `Aurora Pool`).
-- `CatLocal/Core/Services/CameraController.swift`: camera permission, preview, capture session, and camera error copy.
-- `CatLocal/Core/Services/CatImageStore.swift`: Application Support storage, EXIF/GPS stripping, downsampling, HEIC/PNG encoding, thumbnails, storage size, and deletion cleanup.
-- `CatLocal/Core/Services/CatVisionProcessor.swift`: on-device Apple Vision cat recognition, foreground mask generation, cutout creation, and Vision error copy.
-- `CatLocal/Features/Capture/CaptureView.swift`: primary capture/import flow, processing states, multi-cat selection, card editor, fallback/error handling, and save path.
-- `CatLocal/Features/Collection/CollectionView.swift`: default tab, empty state, privacy proof points, collection summary, and card grid.
-- `CatLocal/Features/Settings/SettingsView.swift`: appearance, card motion, haptics, privacy receipt, local storage summary, destructive deletion, and app information.
-- `CatLocal/Shared/DesignSystem/CatLocalTheme.swift`: semantic dynamic colors, glass helper, background treatment, and editorial title helper.
-- `CatLocal/Shared/UI/Card`: card surfaces, focused-card editing, and presentation details.
-- `CatLocal/Shared/UI/Effects/LiveInteractiveCardView.swift`: live drag tilt, foil lighting, spring constants, and boundary haptics.
-- `CatLocal/Shared/UI/Images/StoredImageView.swift`: local image loading/display helper.
-- `CatLocal/Resources`: asset catalogs and bundled resources.
-- `CatLocalTests`: unit tests for persistence, storage, Vision helpers, and card logic.
-- `CatLocalUITests`: UI smoke tests for launch and primary flows.
-- `docs`: architecture, design, and implementation notes.
+- `README.md`
+- `docs/architecture.md`
+- `docs/design/README.md`
+- the relevant implementation and tests
 
-## Product Goals
+The repository and current application behavior are the source of truth. Do not rely on stale documentation when it conflicts with working code.
 
-- Keep onboarding Home-first and low-pressure. From Home, the capture path uses `Camera`, `Choose private photo`, `Looking for cats`, `Lifting the subject`, `Make it yours`, and `Add to Collection`.
-- Keep the collection organized around real saved cards: `CatRecord.displayName`, plain sequence numbers, capture dates, optional notes, and card styles are the product's native data shape.
-- Treat privacy as visible product behavior, not a generic claim: use existing copy such as `On-device only`, `On this iPhone, by design`, `No Account`, `No Public Map`, and `No Model Training`.
-- Preserve local data safety: originals, cutouts, and thumbnails stay in Application Support; SwiftData stores metadata and filenames only.
-- Keep v1 focused on tactile card collecting rather than discovery, maps, sharing, feeds, accounts, or remote processing.
+## Non-Negotiable Product Guardrails
 
-## Content And Design Grounding
+- Keep CatLocal local-first and private by default.
+- Keep cat recognition, foreground separation, and cutout generation on-device using Apple frameworks.
+- Do not introduce accounts, remote AI processing, analytics, advertising, public profiles, social feeds, tracking, GPS collection, or cloud storage unless explicitly requested.
+- Do not upload cat photos, cutouts, metadata, notes, or collection records to a remote service.
+- Keep app-generated saved and exported image variants free of EXIF, GPS, and unnecessary source metadata.
+- Store image files locally in Application Support and persist only their metadata and filenames through SwiftData.
+- Preserve existing bundle identifiers, development team, entitlements, signing configuration, deployment targets, and App Store capabilities unless explicitly asked to change them.
+- Do not claim that a feature is private, local, anonymous, or on-device unless the implementation actually guarantees it.
 
-- Before designing UI, read `README.md`, `docs/architecture.md`, `docs/design/README.md`, and the relevant Swift files. The repo is the source of truth.
-- Pull product language from existing app strings and docs. Use real labels such as `CatLocal`, `YOUR COLLECTION`, `Meet Your First Local`, `Private import`, `Local storage`, `Edit Card`, `Delete Card`, and `A private field journal for the cats you meet`.
-- Do not invent taglines, features, metrics, social claims, map concepts, cloud behavior, testimonials, placeholder cats, or fake sample data that the repo does not already support.
-- Inherit the current visual identity: the design note is `Sea-Glass Field Archive`, with pale mineral/limestone surfaces, frosted sea-glass details, ink/deep forest typography, sparing warm apricot and cobalt accents, personal notes beside structured metadata, native Liquid Glass tab navigation, and foil/depth reserved for focused cards.
-- Use `CatLocalTheme` rather than hardcoded colors. Key tokens include limestone/background, chalk/elevated surface, card surface, forest/ink primary text, secondary text, separator, shadow, apricot/warning, and cobalt/blue action.
-- Let the product's shape organize screens: capture/import pipeline, Vision processing, transparent cutout, card reveal/editor, local collection, and privacy/storage settings.
+## Supported Platform
 
-## Navigation
+- The minimum deployment target is iOS 18 unless the project configuration says otherwise.
+- Gate APIs introduced after the deployment target with `#available`.
+- Provide a behaviorally equivalent fallback where practical.
+- Prefer native SwiftUI and Apple platform APIs over custom imitations.
+- Preserve native navigation, accessibility, system appearance, Dynamic Type, Reduce Motion, and platform interaction conventions.
+- Do not reimplement a system component solely to imitate a newer visual treatment on an older system.
 
-The root shell uses SwiftUI `TabView` with `.tabViewStyle(.sidebarAdaptable)` so iOS owns the native Liquid Glass tab bar on iOS 26.
+## Architecture Ownership
 
-On iOS 26 and later, the camera action is represented as a native tab with
-`role: .search`, because this installed SDK exposes `TabRole.search` but not
-`TabRole.prominent`. On iOS 18 through iOS 25, use a standard native tab bar
-ordered `Home`, `Camera`, `Settings`, with the camera action centered and given
-a descriptive VoiceOver hint. Both variants present `CaptureView`, reject
-reentrant presentation, and restore the previous content tab on dismissal.
+Use the existing architecture and ownership boundaries.
 
-Do not reintroduce a custom floating tab bar unless a native API cannot express the behavior.
+Important areas include:
 
-The minimum deployment target is iOS 18 for the app, unit tests, and UI tests.
-Gate every post-iOS 18 API with `#available` and provide a behaviorally
-equivalent fallback while preserving the native iOS 26 presentation.
+- `CatLocal/App`: application entry point, root navigation, dependency setup, and shared environment configuration.
+- `CatLocal/Core/Models`: SwiftData models and persistent product data.
+- `CatLocal/Core/Services`: camera, Vision, image storage, processing, and infrastructure.
+- `CatLocal/Features`: feature-owned screens, state, and workflows.
+- `CatLocal/Shared/DesignSystem`: semantic colors, typography, spacing, materials, and reusable styling.
+- `CatLocal/Shared/UI`: reusable visual components and card rendering.
+- `CatLocal/Resources`: assets, String Catalogs, and bundled resources.
+- `CatLocalTests`: unit and integration tests.
+- `CatLocalUITests`: UI smoke and workflow tests.
+- `docs`: durable architecture and design decisions.
 
-## Storage And Vision
+Before creating a new service, model, component, helper, or state container, search for an existing owner.
 
-- `CatImageStore` owns Application Support paths, metadata stripping, downsampling, compression, thumbnails, and deletion cleanup.
-- `CatVisionProcessor` owns on-device animal detection and foreground mask/cutout generation.
-- `CatRecord` stores SwiftData metadata, optional normalized Vision bounding boxes, and references local image filenames, not remote URLs.
-- Never validate local image paths with a naive string prefix check. Use directory-aware URL containment so sibling folders with the same prefix cannot be read.
-- Treat `CatImageStore.save(...)` plus `modelContext.save()` as one logical persistence operation. If SwiftData save fails after files are written, roll back the new image directory.
-- Do not silently swallow storage migration/optimization errors. If a maintenance routine is intentionally best-effort, document the reason and surface enough diagnostics for debugging.
-- Keep full-image decode, downsampling, alpha-bound scanning, and Vision work off the main actor.
+Prefer:
 
-## Capture Flow Safety
+- small, explicit SwiftUI views;
+- focused services with clear responsibilities;
+- local state for local presentation behavior;
+- shared models only when state must genuinely be shared;
+- value types and typed state over loosely structured dictionaries or flags.
 
-- Gate camera capture, private import, and validation import with one in-flight state so repeated taps cannot start overlapping image work or overwrite the active camera completion.
-- Reset that in-flight state on every path: success, failure, cancel, close, and reset.
-- The first-save reveal must never depend on optional decorative sampling finishing. Start with safe fallback bounds and update precise animation anchors asynchronously.
-- When adding or changing capture stages, preserve explicit transitions between camera, analyzing, cutout creation, sticker reveal, inspection/editor, celebration, and failure.
+Do not add a view model, coordinator, repository layer, protocol, or abstraction only because the pattern is common elsewhere.
 
-## UI Notes
+## Persistence and Data Safety
 
-- `CatLocalTheme` should remain semantic and dynamic for light/dark mode.
-- Pre-iOS 26 material controls use `CatLegacySurfaceRole`: `compactControl`,
-  `groupedAction`, `cameraOverlay`, `sheetAction`, or `navigationAdjacent`.
-  Reduce Transparency replaces materials with opaque `cardSurface`; Increase
-  Contrast strengthens the semantic outline without changing geometry. Camera
-  overlays use a stronger material than controls over calm app backgrounds.
-- Keep iOS 26 glass styling isolated inside its availability branch. Settings
-  hides its navigation background only on iOS 26; older systems use the native
-  system-managed navigation material and scroll-edge behavior.
-- Cards should be polished editorial surfaces, not Liquid Glass blobs.
-- Card text is display-only on the card surface. Keep name, note, and Catlas editing in capture/editor fields unless the editing model is intentionally redesigned.
-- Home grid thumbnails are deliberately muted with blur/material and wrapped in explicit aspect-ratio hit boxes so they do not steal touches from the `Catlas` segmented control.
-- Focused foil and spotlight effects should be calm at rest and fade in while touched. Thumbnail rendering must stay static and cheap.
-- The contour-line styles are procedural and asset-free: use seeded gradients plus visible contour strokes, not a flat rainbow wash or a heavy per-frame Canvas in scrolling views.
-- Botanical material styles are procedural and asset-free: use lightweight `Shape` strokes and gradients for pine, cedar, fern, and moss shadow effects rather than bitmap assets.
-- Light-effect styles can use gradients and moving glow bands, but should remain calm at rest and cheap in thumbnails.
-- Card-style selection leads with four recommendations, reveals Archive, Contour, Botanical, and Light families, then repeats carousel cycles only within the active family. Keep the small selection haptic as the centered style changes.
-- Liquid Glass belongs on native navigation and compact actions.
-- `LiveInteractiveCardView` passes `rotateX`, `rotateY`, and `isInteracting` into card content. It preserves one-shot boundary haptics and thresholded tilt haptics; do not alter the haptic gate or spring constants casually.
-- Keep grid thumbnails cheap: static overlays, thumbnail image paths, no live tilt, no motion sensors, no full premium foil stack.
-- Cache or reuse decoded local thumbnails where practical; do not repeatedly read and decode the same image path during ordinary grid rebuilds.
-- Derive sorted records, Catlas groups, and animation identity arrays once per render path instead of re-sorting/filtering the same `@Query` data across several computed properties.
-- Remove unused implementation helpers from both the filesystem and `CatLocal.xcodeproj/project.pbxproj`; do not leave compiled sensor/timer/effect models around as dormant future traps.
+Treat local collection data as user-owned and irreplaceable.
 
-## Verification
+- `CatRecord` and the current SwiftData schema are the source of truth for card metadata.
+- Store file references as controlled local filenames or relative identifiers, not arbitrary absolute paths or remote URLs.
+- Validate local paths with directory-aware URL containment. Never use a naive string-prefix check.
+- Treat writing image files and saving the SwiftData record as one logical transaction.
+- If metadata persistence fails after files are written, remove newly created files and restore a consistent state.
+- If file persistence fails, do not insert a success-shaped SwiftData record.
+- When deleting a record, clean up all owned original, cutout, thumbnail, and derivative files.
+- Do not delete files outside the record's validated storage directory.
+- Preserve existing records when changing the SwiftData schema.
+- Add an appropriate migration path for persistent-model changes.
+- Do not rename persisted fields, enum raw values, filenames, directories, or `AppStorage` keys without considering migration and backward compatibility.
+- Surface storage failures through the app's established user-facing and diagnostic paths.
+- Do not silently swallow migration, optimization, deletion, or cleanup failures.
 
-Preferred validation after code changes:
+Add or update tests for:
 
-1. `git diff --check`
-2. Build/run the `CatLocal` scheme on an iOS Simulator.
-3. Run relevant unit/UI tests when behavior changes.
-4. Visually inspect light/dark UI changes when touching design.
+- path traversal and path containment;
+- partial-save rollback;
+- deletion cleanup;
+- schema migration;
+- invalid or missing files;
+- image metadata stripping;
+- filename normalization.
+
+## Image and Vision Processing
+
+- `CatVisionProcessor` owns cat detection, foreground masking, and cutout generation.
+- `CatImageStore` owns image persistence, metadata stripping, resizing, encoding, thumbnails, storage paths, and cleanup.
+- Keep file I/O, full-image decoding, resizing, alpha-bound scanning, and Vision requests off the main actor.
+- Return to the main actor only for UI state changes and model-context work that requires it.
+- Avoid decoding full-resolution images when a thumbnail or downsampled representation is sufficient.
+- Preserve alpha when processing cutouts.
+- Handle image orientation correctly.
+- Bound memory use for large camera and photo-library images.
+- Do not add remote-processing fallbacks when local Vision processing fails.
+- Present a clear recoverable failure state instead.
+
+## Capture State Machine
+
+The capture and import workflow must remain deterministic.
+
+- Allow only one capture, import, validation, or image-processing operation in flight.
+- Repeated taps must not start overlapping operations or replace an active completion handler.
+- Reset the in-flight state on success, failure, cancellation, dismissal, close, and explicit reset.
+- Represent meaningful workflow stages explicitly rather than inferring them from unrelated booleans.
+- Preserve clear transitions between acquisition, analysis, cutout generation, cat selection, reveal, editing, saving, success, and failure.
+- Do not let optional decorative work block saving or the first-card reveal.
+- Begin reveals with safe fallback geometry and refine optional bounds asynchronously.
+- Cancellation must leave the app in a valid reusable state.
+- Saving must be idempotent from the user's perspective: one confirmed save action must create no more than one record.
 
 Add or update tests when changing:
 
-- path containment, storage save ordering, or deletion cleanup;
-- capture/import in-flight state;
-- first-save reveal timing or completion behavior;
-- collection sorting/grouping logic;
-- thumbnail/image loading behavior.
+- capture/import mutual exclusion;
+- cancellation and reset behavior;
+- repeated taps;
+- multi-cat selection;
+- save idempotency;
+- first-save reveal completion;
+- processing failures;
+- photo-library and camera permission handling.
 
-After any Simulator build, run, test, or screenshot:
+## Localization
 
-1. Stop the CatLocal app.
-2. Shut down every booted Simulator.
-3. Confirm no Simulator remains booted.
-4. Confirm no `/usr/bin/xcodebuild` process remains active.
+All user-facing content must remain localizable.
 
-When using XcodeBuildMCP, call `session_show_defaults` before build/run/test calls in a fresh session.
+- Use the project's String Catalog and existing localization helpers.
+- Use localizable SwiftUI string literals for compiler-extracted copy and the existing localization helpers for dynamic or runtime-resolved strings. Do not render user-visible runtime `String` values verbatim when that would bypass the String Catalog.
+- Localize screen text, buttons, menus, alerts, errors, empty states, accessibility labels, accessibility values, accessibility hints, card-style names, dynamic lookup strings, and notification copy.
+- Maintain every locale currently present in the String Catalog. The current supported set is English, Turkish, Romanian, Polish, Ukrainian, Greek, and Croatian.
+- Preserve automatic iOS language resolution. For supported non-English system languages, Settings offers only the English fallback; while that override is active, the same control returns the app to the system language. Do not reintroduce the full language picker unless explicitly requested.
+- Do not bypass the selected app language with direct `Bundle.main` assumptions or unscoped localization lookups.
+- Use plural rules for counted content.
+- Do not construct sentences by concatenating independently translated fragments.
+- Preserve interpolation placeholders and argument ordering across locales.
+- When adding or changing a localization key, update every supported locale.
+- Do not replace reviewed translations with machine-generated copy without explicitly identifying that the translations require native-speaker review.
+- Treat missing translations, untranslated accessibility copy, broken placeholders, and stale live keys as defects.
 
-## Working Rules
+## Accessibility
 
-- The worktree may already contain intentional uncommitted product changes. Do not revert user-owned changes.
-- Stage only intentional files if asked to commit.
-- Keep project organization aligned between filesystem paths and `CatLocal.xcodeproj/project.pbxproj`.
-- Prefer small, explicit SwiftUI views and local state over unnecessary view models.
-- Add docs when adding a new architectural convention.
+- Every interactive element must have an appropriate accessible name.
+- Add accessibility hints only when the action is not apparent from the label.
+- Ensure custom controls expose correct roles, values, selected states, and enabled states.
+- Keep decorative imagery hidden from accessibility.
+- Support Dynamic Type without truncating critical information or breaking layouts.
+- Preserve logical VoiceOver order.
+- Do not rely solely on color, blur, animation, gesture, or haptic feedback to communicate state.
+- Ensure controls have practical touch targets.
+- Respect Reduce Motion and Reduce Transparency where applicable.
+- Keep camera, card editing, segmented controls, menus, deletion, and success/error flows operable with VoiceOver.
+
+## Design System
+
+Preserve CatLocal's quiet, premium, editorial visual language.
+
+- Use semantic tokens from `CatLocalTheme`.
+- Do not hardcode light-mode or dark-mode colors in feature views.
+- Preserve the current sea-glass, limestone, forest, apricot, cobalt, and card-surface relationships unless a redesign is explicitly requested.
+- Use Liquid Glass and native materials selectively for navigation and compact controls.
+- Cards should remain tactile editorial objects, not generic glass panels.
+- Reserve rich foil, glint, depth, and spotlight effects for focused or interactive card presentation.
+- Keep collection-grid thumbnails static and inexpensive.
+- Use thumbnail image variants in grids rather than full-resolution originals.
+- Avoid live motion sensors, continuous animation, expensive per-frame canvases, and full premium effect stacks in scrolling collections.
+- Keep effects calm at rest and progressively visible during direct interaction.
+- Preserve established card proportions, corner treatment, metadata hierarchy, and interaction behavior unless intentionally redesigning the card system.
+- Use existing Loci mascot assets and state mappings consistently. Do not invent unrelated mascot designs, props, poses, or personality changes during ordinary feature work.
+
+Do not invent unsupported:
+
+- product features;
+- social claims;
+- maps or location behavior;
+- cloud behavior;
+- fake metrics;
+- testimonials;
+- placeholder user collections;
+- sample cats presented as user data;
+- privacy claims not backed by implementation.
+
+## Performance
+
+- Keep collection scrolling responsive with realistic collection sizes.
+- Avoid repeated sorting, filtering, grouping, or identity generation within the same render path.
+- Compute derived collection data once at the appropriate level.
+- Cache or reuse decoded thumbnails where the existing architecture permits it.
+- Do not perform synchronous disk reads or image decoding during ordinary SwiftUI body evaluation.
+- Avoid broad observable dependencies that cause unrelated views to redraw.
+- Keep animation identity stable.
+- Preserve existing haptic thresholds, interaction gates, and spring behavior unless changing them is part of the task.
+- Profile before introducing complex performance-specific architecture.
+
+## Error Handling
+
+- Use typed errors or established domain errors where practical.
+- Preserve the underlying cause for diagnostics.
+- Map technical failures to clear, human user-facing messages at the feature boundary.
+- Do not add empty `catch` blocks.
+- Do not convert failures into false success states.
+- Do not use broad fallback behavior that can save incomplete, invalid, or privacy-compromised data.
+- Recover gracefully where a retry, cancellation, reset, or alternate local input is available.
+
+## Project Hygiene
+
+- Keep filesystem organization and `CatLocal.xcodeproj/project.pbxproj` aligned.
+- When adding, moving, renaming, or deleting source files, confirm the Xcode project references remain correct.
+- Remove obsolete source files, project references, tests, assets, previews, and helpers when replacing an implementation.
+- Do not leave dormant sensor, timer, animation, or image-processing implementations compiled into the target as speculative future code.
+- Do not edit generated files manually.
+- Avoid unrelated formatting or project-file churn.
+- Preserve user-owned worktree changes.
+
+## Documentation
+
+Update documentation when introducing or changing:
+
+- persistent data contracts;
+- storage layout;
+- architectural ownership;
+- capture-state-machine behavior;
+- privacy guarantees;
+- localization architecture;
+- a reusable design-system convention;
+- a non-obvious performance constraint.
+
+Do not copy volatile implementation inventories into `AGENTS.md`.
+
+Keep this file focused on durable rules. Put detailed feature behavior in code, tests, or the relevant document under `docs`.
+
+## Verification
+
+After code changes, run the relevant available checks.
+
+At minimum:
+
+1. Inspect the affected code and tests.
+2. Run `git diff --check`.
+3. Build the `CatLocal` scheme for an available iOS Simulator.
+4. Run focused unit tests for changed behavior.
+5. Run broader tests when the change affects shared infrastructure or primary workflows.
+6. Inspect the final diff for accidental or unrelated changes.
+
+Use:
+
+```bash
+xcodebuild -project CatLocal.xcodeproj -scheme CatLocal -showdestinations
+```
+
+Select an available simulator destination rather than assuming a particular installed device.
+
+For UI changes, also inspect:
+
+- light appearance;
+- dark appearance;
+- relevant Dynamic Type sizes;
+- VoiceOver behavior where interaction changed;
+- Reduce Motion behavior where animation changed;
+- empty, loading, success, failure, and populated states;
+- narrow and wide supported device sizes.
+
+For privacy, storage, Vision, capture, or persistence changes, test the relevant failure and cancellation paths rather than only the successful path.
+
+If a required test cannot run because of unavailable SDKs, simulator runtimes, permissions, hardware, credentials, or services, state the limitation explicitly.
+
+After Simulator build, run, test, or screenshot work:
+
+1. Stop CatLocal.
+2. Shut down every simulator booted for the task.
+3. Confirm no simulator remains booted.
+4. Confirm no task-owned `xcodebuild` process remains active.
+
+When using XcodeBuildMCP in a fresh session, inspect or establish the session defaults before build, run, test, or screenshot commands.
+
+## Review Guidelines
+
+During code review, prioritize:
+
+- privacy or local-only regressions;
+- image metadata leakage;
+- unvalidated local paths or path traversal;
+- data loss and incomplete-save states;
+- orphaned image files;
+- SwiftData migration problems;
+- overlapping capture or import operations;
+- main-thread Vision, decoding, or file I/O;
+- unsafe concurrency or actor isolation;
+- broken cancellation;
+- duplicate record creation;
+- unlocalized user-facing or accessibility copy;
+- accessibility regressions;
+- expensive thumbnail rendering;
+- repeated image decoding;
+- incorrect project-file references;
+- signing, entitlement, or deployment-target changes;
+- missing regression tests for changed invariants.
+
+Treat cosmetic preferences as findings only when they violate the established design system, platform behavior, accessibility requirements, or an explicit task requirement.
+
+## Definition of Done
+
+A change is complete only when:
+
+- the requested behavior is implemented across every affected surface;
+- privacy and local-only guarantees remain intact;
+- persistence and cleanup remain consistent;
+- localization is complete for every supported locale;
+- accessibility behavior is preserved or improved;
+- relevant tests pass;
+- the app builds for an available simulator;
+- UI changes have been visually inspected where feasible;
+- the final diff contains no accidental changes;
+- any validation limitation is reported clearly.
+
+Do not commit, push, open a pull request, deploy, publish, or alter signing unless the user explicitly requests it.
