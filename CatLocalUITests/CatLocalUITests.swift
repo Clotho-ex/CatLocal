@@ -3,6 +3,94 @@ import UIKit
 
 @MainActor
 final class CatLocalUITests: XCTestCase {
+    private struct LocalizationGalleryLocale {
+        let languageCode: String
+        let appleLocale: String
+        let welcomeTitle: String
+        let backTitle: String
+        let readyTitle: String
+        let firstCatTitle: String
+        let settingsTitle: String
+        let cameraTitle: String
+
+        static let english = LocalizationGalleryLocale(
+            languageCode: "en",
+            appleLocale: "en_US",
+            welcomeTitle: "Welcome to CatLocal",
+            backTitle: "Back",
+            readyTitle: "Ready for Your First Cat",
+            firstCatTitle: "Meet Your First Cat",
+            settingsTitle: "Settings",
+            cameraTitle: "Camera"
+        )
+
+        static let turkish = LocalizationGalleryLocale(
+            languageCode: "tr",
+            appleLocale: "tr_TR",
+            welcomeTitle: "CatLocal'a Hoş Geldiniz",
+            backTitle: "Geri",
+            readyTitle: "İlk kediniz için hazırsınız",
+            firstCatTitle: "İlk kedinizle tanışın",
+            settingsTitle: "Ayarlar",
+            cameraTitle: "Kamera"
+        )
+
+        static let romanian = LocalizationGalleryLocale(
+            languageCode: "ro",
+            appleLocale: "ro_RO",
+            welcomeTitle: "Bun venit la CatLocal",
+            backTitle: "Înapoi",
+            readyTitle: "Ești gata pentru prima pisică",
+            firstCatTitle: "Fă cunoștință cu prima ta pisică",
+            settingsTitle: "Configurări",
+            cameraTitle: "Cameră"
+        )
+
+        static let polish = LocalizationGalleryLocale(
+            languageCode: "pl",
+            appleLocale: "pl_PL",
+            welcomeTitle: "Witaj w CatLocal",
+            backTitle: "Wstecz",
+            readyTitle: "Czas na pierwszego kota",
+            firstCatTitle: "Poznaj pierwszego kota",
+            settingsTitle: "Ustawienia",
+            cameraTitle: "Aparat"
+        )
+
+        static let ukrainian = LocalizationGalleryLocale(
+            languageCode: "uk",
+            appleLocale: "uk_UA",
+            welcomeTitle: "Вітаємо в CatLocal",
+            backTitle: "Назад",
+            readyTitle: "Готові до першого кота",
+            firstCatTitle: "Зустріньте першого кота",
+            settingsTitle: "Налаштування",
+            cameraTitle: "Камера"
+        )
+
+        static let greek = LocalizationGalleryLocale(
+            languageCode: "el",
+            appleLocale: "el_GR",
+            welcomeTitle: "Καλώς ήρθατε στο CatLocal",
+            backTitle: "Πίσω",
+            readyTitle: "Έτοιμοι για την πρώτη σας γάτα",
+            firstCatTitle: "Γνωρίστε την πρώτη σας γάτα",
+            settingsTitle: "Ρυθμίσεις",
+            cameraTitle: "Κάμερα"
+        )
+
+        static let croatian = LocalizationGalleryLocale(
+            languageCode: "hr",
+            appleLocale: "hr_HR",
+            welcomeTitle: "Dobro došli u CatLocal",
+            backTitle: "Natrag",
+            readyTitle: "Spremni za svoju prvu mačku",
+            firstCatTitle: "Upoznajte svoju prvu mačku",
+            settingsTitle: "Postavke",
+            cameraTitle: "Kamera"
+        )
+    }
+
     override func setUpWithError() throws {
         continueAfterFailure = false
     }
@@ -73,6 +161,644 @@ final class CatLocalUITests: XCTestCase {
         XCTAssertTrue(destination.waitForExistence(timeout: 5), file: file, line: line)
     }
 
+    private func localizedLaunchArguments(
+        for locale: LocalizationGalleryLocale,
+        appArguments: [String]
+    ) -> [String] {
+        appArguments + [
+            "-AppleLanguages", "(\(locale.languageCode))",
+            "-AppleLocale", locale.appleLocale
+        ]
+    }
+
+    private func keepScreenshot(
+        of app: XCUIApplication,
+        named name: String
+    ) {
+        let attachment = XCTAttachment(screenshot: app.screenshot())
+        attachment.name = name
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
+
+    private func assertNoRawFormatTokens(
+        in app: XCUIApplication,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        let rawFormatPattern = #".*%([0-9]+\$)?(lld|ld|d|@).*"#
+        let descendants = app.descendants(matching: .any)
+        let rawLabel = descendants.matching(
+            NSPredicate(format: "label MATCHES %@", rawFormatPattern)
+        ).firstMatch
+        let rawValue = descendants.matching(
+            NSPredicate(format: "value MATCHES %@", rawFormatPattern)
+        ).firstMatch
+
+        XCTAssertFalse(rawLabel.exists, "Raw format token rendered in an accessibility label", file: file, line: line)
+        XCTAssertFalse(rawValue.exists, "Raw format token rendered in an accessibility value", file: file, line: line)
+    }
+
+    private func verifyLocalizationGallery(
+        _ locale: LocalizationGalleryLocale,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        let onboardingApp = XCUIApplication()
+        onboardingApp.launchArguments = localizedLaunchArguments(
+            for: locale,
+            appArguments: ["-ui-testing-reset", "-ui-testing-show-onboarding"]
+        )
+        onboardingApp.launch()
+
+        let primaryAction = onboardingApp.buttons["onboarding-primary-action"]
+        XCTAssertTrue(primaryAction.waitForExistence(timeout: 8), file: file, line: line)
+        XCTAssertTrue(
+            onboardingApp.staticTexts[locale.welcomeTitle].waitForExistence(timeout: 5),
+            file: file,
+            line: line
+        )
+        assertNoRawFormatTokens(in: onboardingApp, file: file, line: line)
+        keepScreenshot(of: onboardingApp, named: "\(locale.languageCode)-01-onboarding-welcome")
+
+        let privacyTitle = onboardingApp.descendants(matching: .any)["onboarding-privacy-title"]
+        tapToNavigate(
+            primaryAction,
+            destination: privacyTitle,
+            file: file,
+            line: line
+        )
+        XCTAssertTrue(onboardingApp.buttons[locale.backTitle].exists, file: file, line: line)
+        assertNoRawFormatTokens(in: onboardingApp, file: file, line: line)
+        keepScreenshot(of: onboardingApp, named: "\(locale.languageCode)-02-onboarding-privacy")
+
+        tapToNavigate(
+            primaryAction,
+            destination: onboardingApp.staticTexts[locale.readyTitle],
+            file: file,
+            line: line
+        )
+        assertNoRawFormatTokens(in: onboardingApp, file: file, line: line)
+        keepScreenshot(of: onboardingApp, named: "\(locale.languageCode)-03-onboarding-first-card")
+
+        tapToNavigate(
+            primaryAction,
+            destination: onboardingApp.descendants(matching: .any)["collection-screen"],
+            file: file,
+            line: line
+        )
+        XCTAssertTrue(
+            onboardingApp.staticTexts[locale.firstCatTitle].waitForExistence(timeout: 8),
+            file: file,
+            line: line
+        )
+        onboardingApp.terminate()
+
+        let collectionApp = XCUIApplication()
+        collectionApp.launchArguments = localizedLaunchArguments(
+            for: locale,
+            appArguments: ["-ui-testing-reset", "-ui-testing-seed-atlas"]
+        )
+        collectionApp.launch()
+
+        XCTAssertTrue(
+            collectionApp.descendants(matching: .any)["collection-screen"]
+                .waitForExistence(timeout: 8),
+            file: file,
+            line: line
+        )
+        XCTAssertTrue(
+            collectionApp.descendants(matching: .any)["collection-mode-picker"]
+                .waitForExistence(timeout: 5),
+            file: file,
+            line: line
+        )
+        assertNoRawFormatTokens(in: collectionApp, file: file, line: line)
+        keepScreenshot(of: collectionApp, named: "\(locale.languageCode)-04-cards")
+
+        tapWhenHittable(collectionApp.buttons["Catlas"], file: file, line: line)
+        XCTAssertTrue(
+            collectionApp.descendants(matching: .any)["catlas-cat-row-Miso"]
+                .waitForExistence(timeout: 5),
+            file: file,
+            line: line
+        )
+        assertNoRawFormatTokens(in: collectionApp, file: file, line: line)
+        keepScreenshot(of: collectionApp, named: "\(locale.languageCode)-05-catlas")
+        collectionApp.terminate()
+
+        let settingsApp = XCUIApplication()
+        settingsApp.launchArguments = localizedLaunchArguments(
+            for: locale,
+            appArguments: ["-ui-testing-reset", "-ui-testing-open-settings"]
+        )
+        settingsApp.launch()
+
+        XCTAssertTrue(
+            settingsApp.descendants(matching: .any)["settings-screen"]
+                .waitForExistence(timeout: 8),
+            file: file,
+            line: line
+        )
+        XCTAssertTrue(
+            settingsApp.navigationBars[locale.settingsTitle].waitForExistence(timeout: 5),
+            file: file,
+            line: line
+        )
+        assertNoRawFormatTokens(in: settingsApp, file: file, line: line)
+        keepScreenshot(of: settingsApp, named: "\(locale.languageCode)-06-settings")
+        settingsApp.terminate()
+    }
+
+    private var localizedRuntimeLaneArguments: [String] {
+        if UIScreen.main.bounds.width <= 390 {
+            return [
+                "-catlocal.appearance", "dark",
+                "-UIPreferredContentSizeCategoryName",
+                UIContentSizeCategory.accessibilityExtraExtraExtraLarge.rawValue
+            ]
+        }
+        return ["-catlocal.appearance", "light"]
+    }
+
+    private func localizedRuntimeApp(
+        _ locale: LocalizationGalleryLocale,
+        arguments: [String]
+    ) -> XCUIApplication {
+        let app = XCUIApplication()
+        app.launchArguments = arguments
+            + ["-ui-testing-language", locale.languageCode]
+            + localizedRuntimeLaneArguments
+        return app
+    }
+
+    private func openCapture(
+        in app: XCUIApplication,
+        locale: LocalizationGalleryLocale,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        let identifiedTab = app.tabBars.buttons["capture-tab"]
+        let captureTab = identifiedTab.waitForExistence(timeout: 2)
+            ? identifiedTab
+            : app.tabBars.buttons[locale.cameraTitle]
+        tapWhenHittable(captureTab, file: file, line: line)
+
+        let captureScreen = app.descendants(matching: .any)["capture-screen"]
+        let validationPhoto = app.buttons["capture-validation-photo"]
+        let permissionDenied = app.descendants(matching: .any)["camera-permission-denied-state"]
+        if !captureScreen.waitForExistence(timeout: 3)
+            && !validationPhoto.exists
+            && !permissionDenied.exists {
+            captureTab.tap()
+        }
+        XCTAssertTrue(
+            captureScreen.waitForExistence(timeout: 8)
+                || validationPhoto.exists
+                || permissionDenied.exists,
+            file: file,
+            line: line
+        )
+    }
+
+    private func swipeUntilHittable(
+        _ element: XCUIElement,
+        in app: XCUIApplication,
+        attempts: Int = 8,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        XCTAssertTrue(element.waitForExistence(timeout: 5), file: file, line: line)
+        for _ in 0..<attempts where !element.isHittable {
+            let scrollView = app.scrollViews.firstMatch
+            if scrollView.exists {
+                scrollView.swipeUp()
+            } else {
+                app.swipeUp()
+            }
+        }
+        XCTAssertTrue(element.isHittable, file: file, line: line)
+    }
+
+    private func scrollTowardBottom(_ scrollView: XCUIElement) {
+        let start = scrollView.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.82))
+        let end = scrollView.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.18))
+        start.press(forDuration: 0.05, thenDragTo: end)
+    }
+
+    private func hittableButton(_ identifier: String, in app: XCUIApplication) -> XCUIElement {
+        let matches = app.buttons.matching(identifier: identifier)
+        for index in 0..<matches.count {
+            let candidate = matches.element(boundBy: index)
+            if candidate.isHittable {
+                return candidate
+            }
+        }
+        return matches.firstMatch
+    }
+
+    private func verifyLocalizedRuntimeFlows(
+        _ locale: LocalizationGalleryLocale,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        XCTContext.runActivity(named: "Photo import, detection, and multiple cats") { _ in
+            let app = localizedRuntimeApp(
+                locale,
+                arguments: [
+                    "-ui-testing-reset",
+                    "-catlocal-ui-import-fixture",
+                    "-catlocal-ui-synthetic-photo",
+                    "-catlocal-ui-multiple-cat-selection"
+                ]
+            )
+            app.launch()
+            openCapture(in: app, locale: locale, file: file, line: line)
+            tapWhenHittable(app.buttons["capture-validation-photo"], file: file, line: line)
+            for number in ["1", "2"] {
+                let option = app.buttons.matching(
+                    NSPredicate(format: "label CONTAINS %@", number)
+                ).firstMatch
+                XCTAssertTrue(option.waitForExistence(timeout: 10), file: file, line: line)
+                XCTAssertFalse(option.label.isEmpty, file: file, line: line)
+            }
+            assertNoRawFormatTokens(in: app, file: file, line: line)
+            app.terminate()
+        }
+
+        XCTContext.runActivity(named: "Cutout progress and recovery") { _ in
+            let app = localizedRuntimeApp(
+                locale,
+                arguments: [
+                    "-ui-testing-reset",
+                    "-catlocal-ui-import-fixture",
+                    "-catlocal-ui-synthetic-photo",
+                    "-catlocal-ui-hold-processing"
+                ]
+            )
+            app.launch()
+            openCapture(in: app, locale: locale, file: file, line: line)
+            tapWhenHittable(app.buttons["capture-validation-photo"], file: file, line: line)
+            let stop = app.buttons["capture-stop-processing"]
+            XCTAssertTrue(stop.waitForExistence(timeout: 20), file: file, line: line)
+            tapWhenHittable(stop, file: file, line: line)
+            XCTAssertTrue(
+                app.buttons["capture-validation-photo"].waitForExistence(timeout: 8),
+                file: file,
+                line: line
+            )
+            assertNoRawFormatTokens(in: app, file: file, line: line)
+            app.terminate()
+        }
+
+        XCTContext.runActivity(named: "Edit and save long card content") { _ in
+            let app = localizedRuntimeApp(
+                locale,
+                arguments: [
+                    "-ui-testing-reset",
+                    "-catlocal-ui-import-fixture",
+                    "-catlocal-ui-synthetic-photo",
+                    "-catlocal-ui-synthetic-cutout",
+                    "-catlocal-ui-skip-sticker-reveal",
+                    "-ui-testing-seed-long-content"
+                ]
+            )
+            app.launch()
+            openCapture(in: app, locale: locale, file: file, line: line)
+            tapWhenHittable(app.buttons["capture-validation-photo"], file: file, line: line)
+            let customize = app.buttons["tap-to-customize"]
+            XCTAssertTrue(customize.waitForExistence(timeout: 15), file: file, line: line)
+            swipeUntilHittable(customize, in: app, file: file, line: line)
+            tapWhenHittable(customize, file: file, line: line)
+
+            let nickname = app.textFields["capture-editor-nickname"]
+            if !nickname.waitForExistence(timeout: 3) {
+                app.swipeUp()
+            }
+            XCTAssertTrue(nickname.waitForExistence(timeout: 5), file: file, line: line)
+            XCTAssertEqual(
+                nickname.value as? String,
+                "Captain Marmalade of the Bosphorus",
+                file: file,
+                line: line
+            )
+            assertNoRawFormatTokens(in: app, file: file, line: line)
+            keepScreenshot(of: app, named: "\(locale.languageCode)-07-long-card-editor")
+
+            let save = app.buttons["capture-editor-save"]
+            let editorScroll = app.scrollViews["capture-editor-scroll"]
+            XCTAssertTrue(editorScroll.waitForExistence(timeout: 5), file: file, line: line)
+            for _ in 0..<20 where !save.isHittable {
+                scrollTowardBottom(editorScroll)
+            }
+            XCTAssertTrue(save.isHittable, file: file, line: line)
+            tapWhenHittable(save, file: file, line: line)
+            let home = app.buttons["card-minting-home"]
+            XCTAssertTrue(home.waitForExistence(timeout: 15), file: file, line: line)
+            tapWhenHittable(home, file: file, line: line)
+            XCTAssertTrue(
+                app.descendants(matching: .any)["collection-screen"].waitForExistence(timeout: 8),
+                file: file,
+                line: line
+            )
+            XCTAssertTrue(
+                app.staticTexts["Captain Marmalade of the Bosphorus"].exists,
+                file: file,
+                line: line
+            )
+            app.terminate()
+        }
+
+        XCTContext.runActivity(named: "Delete one and multiple cards") { _ in
+            let app = localizedRuntimeApp(
+                locale,
+                arguments: ["-ui-testing-reset", "-ui-testing-seed-atlas"]
+            )
+            app.launch()
+
+            let firstCard = app.buttons["collection-card-1"]
+            XCTAssertTrue(firstCard.waitForExistence(timeout: 8), file: file, line: line)
+            tapWhenHittable(firstCard, file: file, line: line)
+            tapWhenHittable(app.buttons["focused-card-edit"], file: file, line: line)
+
+            let deleteCat = app.buttons["cat-edit-delete"]
+            let editForm = app.descendants(matching: .any)["cat-edit-form"]
+            XCTAssertTrue(editForm.waitForExistence(timeout: 5), file: file, line: line)
+            for _ in 0..<20 where !deleteCat.isHittable {
+                scrollTowardBottom(editForm)
+            }
+            XCTAssertTrue(deleteCat.isHittable, file: file, line: line)
+            tapWhenHittable(deleteCat, file: file, line: line)
+            keepScreenshot(of: app, named: "\(locale.languageCode)-08-delete-confirmation")
+            XCTAssertTrue(
+                app.buttons["deletion-confirm"].waitForExistence(timeout: 5),
+                file: file,
+                line: line
+            )
+            assertNoRawFormatTokens(in: app, file: file, line: line)
+            app.terminate()
+
+            let selectionApp = localizedRuntimeApp(
+                locale,
+                arguments: ["-ui-testing-reset", "-ui-testing-seed-atlas"]
+            )
+            selectionApp.launch()
+            let selectionToggle = selectionApp.buttons["collection-selection-toggle"]
+            XCTAssertTrue(selectionToggle.waitForExistence(timeout: 8), file: file, line: line)
+            tapWhenHittable(selectionToggle, file: file, line: line)
+            for identifier in ["collection-card-1", "collection-card-2"] {
+                let card = hittableButton(identifier, in: selectionApp)
+                XCTAssertTrue(card.waitForExistence(timeout: 5), file: file, line: line)
+                tapWhenHittable(card, file: file, line: line)
+            }
+            let selectionStatus = selectionApp.staticTexts["collection-selection-status"]
+            XCTAssertTrue(
+                selectionStatus.waitForExistence(timeout: 5)
+                    && selectionStatus.label.contains("2"),
+                file: file,
+                line: line
+            )
+            let deleteSelected = selectionApp.buttons["collection-delete-selected"]
+            swipeUntilHittable(deleteSelected, in: selectionApp, file: file, line: line)
+            tapWhenHittable(deleteSelected, file: file, line: line)
+            XCTAssertTrue(
+                selectionApp.buttons["deletion-confirm"].waitForExistence(timeout: 5),
+                file: file,
+                line: line
+            )
+            assertNoRawFormatTokens(in: selectionApp, file: file, line: line)
+            selectionApp.terminate()
+        }
+
+        XCTContext.runActivity(named: "Settings, privacy, storage, and delete all") { _ in
+            let app = localizedRuntimeApp(
+                locale,
+                arguments: ["-ui-testing-reset", "-ui-testing-seed-atlas", "-ui-testing-open-settings"]
+            )
+            app.launch()
+
+            let privacy = app.descendants(matching: .any)["settings-privacy-receipt"]
+            let settingsList = app.descendants(matching: .any)["settings-list"]
+            XCTAssertTrue(settingsList.waitForExistence(timeout: 5), file: file, line: line)
+            for _ in 0..<20 where !privacy.isHittable {
+                scrollTowardBottom(settingsList)
+            }
+            XCTAssertTrue(privacy.isHittable, file: file, line: line)
+            tapWhenHittable(privacy, file: file, line: line)
+            XCTAssertTrue(
+                app.descendants(matching: .any)["privacy-receipt-screen"]
+                    .waitForExistence(timeout: 5),
+                file: file,
+                line: line
+            )
+            assertNoRawFormatTokens(in: app, file: file, line: line)
+            app.terminate()
+
+            let deleteApp = localizedRuntimeApp(
+                locale,
+                arguments: ["-ui-testing-reset", "-ui-testing-seed-atlas", "-ui-testing-open-settings"]
+            )
+            deleteApp.launch()
+            let deleteAll = deleteApp.buttons["settings-delete-all-cats"]
+            let deleteSettingsList = deleteApp.descendants(matching: .any)["settings-list"]
+            XCTAssertTrue(deleteSettingsList.waitForExistence(timeout: 5), file: file, line: line)
+            for _ in 0..<20 where !deleteAll.isHittable {
+                scrollTowardBottom(deleteSettingsList)
+            }
+            XCTAssertTrue(deleteAll.isHittable, file: file, line: line)
+            tapWhenHittable(deleteAll, file: file, line: line)
+            XCTAssertTrue(
+                deleteApp.buttons["deletion-confirm"].waitForExistence(timeout: 5),
+                file: file,
+                line: line
+            )
+            assertNoRawFormatTokens(in: deleteApp, file: file, line: line)
+            deleteApp.terminate()
+        }
+    }
+
+    private func verifyLocalizedCameraDenied(
+        _ locale: LocalizationGalleryLocale,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        let app = localizedRuntimeApp(
+            locale,
+            arguments: ["-ui-testing-reset", "-catlocal-ui-force-camera-denied"]
+        )
+        app.launch()
+        openCapture(in: app, locale: locale, file: file, line: line)
+        XCTAssertTrue(
+            app.descendants(matching: .any)["camera-permission-denied-state"]
+                .waitForExistence(timeout: 5),
+            file: file,
+            line: line
+        )
+        assertNoRawFormatTokens(in: app, file: file, line: line)
+    }
+
+    func testLocalizationGalleryEnglish() {
+        verifyLocalizationGallery(.english)
+    }
+
+    func testLocalizationGalleryTurkish() {
+        verifyLocalizationGallery(.turkish)
+    }
+
+    func testLocalizationGalleryRomanian() {
+        verifyLocalizationGallery(.romanian)
+    }
+
+    func testLocalizationGalleryPolish() {
+        verifyLocalizationGallery(.polish)
+    }
+
+    func testLocalizationGalleryUkrainian() {
+        verifyLocalizationGallery(.ukrainian)
+    }
+
+    func testLocalizationGalleryGreek() {
+        verifyLocalizationGallery(.greek)
+    }
+
+    func testLocalizationGalleryCroatian() {
+        verifyLocalizationGallery(.croatian)
+    }
+
+    func testLocalizationFinalCleanupTurkishAndCroatian() {
+        let turkishApp = localizedRuntimeApp(
+            .turkish,
+            arguments: ["-ui-testing-reset", "-ui-testing-open-settings"]
+        )
+        turkishApp.launch()
+
+        let turkishSettings = turkishApp.descendants(matching: .any)["settings-screen"]
+        XCTAssertTrue(turkishSettings.waitForExistence(timeout: 8))
+
+        let settingsList = turkishApp.descendants(matching: .any)["settings-list"]
+        XCTAssertTrue(settingsList.waitForExistence(timeout: 5))
+
+        let cardMotion = turkishApp.descendants(matching: .any)["settings-card-motion-toggle"]
+        for _ in 0..<10 where !cardMotion.exists {
+            scrollTowardBottom(settingsList)
+        }
+        XCTAssertTrue(cardMotion.waitForExistence(timeout: 5))
+        XCTAssertTrue(cardMotion.label.contains("Kart Hareketi"))
+        XCTAssertFalse(cardMotion.label.contains("Kart hareketi"))
+
+        let haptics = turkishApp.descendants(matching: .any)["settings-haptics-toggle"]
+        for _ in 0..<10 where !haptics.exists {
+            scrollTowardBottom(settingsList)
+        }
+        XCTAssertTrue(haptics.waitForExistence(timeout: 5))
+        XCTAssertTrue(haptics.label.contains("Dokunsal Geri Bildirim"))
+        XCTAssertFalse(haptics.label.contains("Dokunsal geri bildirim"))
+
+        let localStorage = turkishApp.staticTexts["Yerel Depolama"]
+        for _ in 0..<10 where !localStorage.exists {
+            scrollTowardBottom(settingsList)
+        }
+        XCTAssertTrue(localStorage.waitForExistence(timeout: 5))
+
+        let privacy = turkishApp.buttons["settings-privacy-receipt"]
+        for _ in 0..<10 where !privacy.exists {
+            scrollTowardBottom(settingsList)
+        }
+        XCTAssertTrue(privacy.waitForExistence(timeout: 5))
+        XCTAssertTrue(privacy.label.hasPrefix("Gizlilik Özeti"))
+
+        let about = turkishApp.buttons["settings-about-catlocal"]
+        for _ in 0..<20 where !about.isHittable {
+            scrollTowardBottom(settingsList)
+        }
+        tapWhenHittable(about)
+        XCTAssertTrue(turkishApp.navigationBars["CatLocal Hakkında"].waitForExistence(timeout: 5))
+        let builtWithoutBody = turkishApp.staticTexts
+            .matching(NSPredicate(
+                format: "label BEGINSWITH %@",
+                "Hesap, herkese açık harita"
+            ))
+            .firstMatch
+        for _ in 0..<10 where !builtWithoutBody.exists {
+            turkishApp.swipeUp()
+        }
+        XCTAssertTrue(builtWithoutBody.waitForExistence(timeout: 5))
+        assertNoRawFormatTokens(in: turkishApp)
+        turkishApp.terminate()
+
+        let croatianApp = localizedRuntimeApp(
+            .croatian,
+            arguments: ["-ui-testing-reset", "-ui-testing-open-settings"]
+        )
+        croatianApp.launch()
+        let croatianSettingsList = croatianApp.descendants(matching: .any)["settings-list"]
+        XCTAssertTrue(croatianSettingsList.waitForExistence(timeout: 8))
+        let croatianHaptics = croatianApp.descendants(matching: .any)["settings-haptics-toggle"]
+        for _ in 0..<10 where !croatianHaptics.exists {
+            scrollTowardBottom(croatianSettingsList)
+        }
+        XCTAssertTrue(croatianHaptics.waitForExistence(timeout: 8))
+        XCTAssertTrue(croatianHaptics.label.contains("Haptičke povratne informacije"))
+        assertNoRawFormatTokens(in: croatianApp)
+        croatianApp.terminate()
+    }
+
+    func testLocalizationRuntimeFlowsEnglish() {
+        verifyLocalizedRuntimeFlows(.english)
+    }
+
+    func testLocalizationRuntimeFlowsTurkish() {
+        verifyLocalizedRuntimeFlows(.turkish)
+    }
+
+    func testLocalizationRuntimeFlowsRomanian() {
+        verifyLocalizedRuntimeFlows(.romanian)
+    }
+
+    func testLocalizationRuntimeFlowsPolish() {
+        verifyLocalizedRuntimeFlows(.polish)
+    }
+
+    func testLocalizationRuntimeFlowsUkrainian() {
+        verifyLocalizedRuntimeFlows(.ukrainian)
+    }
+
+    func testLocalizationRuntimeFlowsGreek() {
+        verifyLocalizedRuntimeFlows(.greek)
+    }
+
+    func testLocalizationRuntimeFlowsCroatian() {
+        verifyLocalizedRuntimeFlows(.croatian)
+    }
+
+    func testLocalizationCameraDeniedEnglish() {
+        verifyLocalizedCameraDenied(.english)
+    }
+
+    func testLocalizationCameraDeniedTurkish() {
+        verifyLocalizedCameraDenied(.turkish)
+    }
+
+    func testLocalizationCameraDeniedRomanian() {
+        verifyLocalizedCameraDenied(.romanian)
+    }
+
+    func testLocalizationCameraDeniedPolish() {
+        verifyLocalizedCameraDenied(.polish)
+    }
+
+    func testLocalizationCameraDeniedUkrainian() {
+        verifyLocalizedCameraDenied(.ukrainian)
+    }
+
+    func testLocalizationCameraDeniedGreek() {
+        verifyLocalizedCameraDenied(.greek)
+    }
+
+    func testLocalizationCameraDeniedCroatian() {
+        verifyLocalizedCameraDenied(.croatian)
+    }
+
     func testOnboardingMovesThroughWelcomePrivacyAndFirstCard() {
         let app = XCUIApplication()
         app.launchArguments = ["-ui-testing-reset", "-ui-testing-show-onboarding"]
@@ -101,10 +827,10 @@ final class CatLocalUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Welcome to CatLocal"].exists)
         XCTAssertTrue(app.staticTexts["A private place for the cats you meet."].exists)
         XCTAssertTrue(app.staticTexts["Capture or Import"].exists)
-        XCTAssertTrue(app.staticTexts["Lift On Device"].exists)
+        XCTAssertTrue(app.staticTexts["On-device cutout"].exists)
         XCTAssertTrue(app.staticTexts["Make It Yours"].exists)
-        XCTAssertTrue(app.staticTexts["Camera or private photo"].exists)
-        XCTAssertTrue(app.staticTexts["Looking for cats, then lifting the subject"].exists)
+        XCTAssertTrue(app.staticTexts["Take a photo or choose one"].exists)
+        XCTAssertTrue(app.staticTexts["Finds the cat and removes the background"].exists)
         XCTAssertTrue(app.staticTexts["Choose a design, notes, and typed place"].exists)
         XCTAssertLessThan(
             app.staticTexts["Saved here"].frame.maxY,
@@ -128,7 +854,7 @@ final class CatLocalUITests: XCTestCase {
         XCTAssertTrue(onDeviceVision.exists)
         XCTAssertGreaterThan(onDeviceVision.frame.height, 20)
         XCTAssertTrue(app.staticTexts["Location Data Stripped"].exists)
-        XCTAssertTrue(app.staticTexts["No Account No Cloud"].exists)
+        XCTAssertTrue(app.staticTexts["No Account. No Cloud."].exists)
         XCTAssertTrue(app.staticTexts["CatLocal looks for cats here."].exists)
         XCTAssertTrue(app.staticTexts["Saved images are GPS-free."].exists)
         XCTAssertTrue(app.staticTexts["Cards save to this iPhone."].exists)
@@ -140,30 +866,30 @@ final class CatLocalUITests: XCTestCase {
             privacyTitle.frame.maxY,
             onDeviceVision.frame.minY
         )
-        XCTAssertLessThanOrEqual(app.staticTexts["No Account No Cloud"].frame.maxY, onboardingPrimaryAction.frame.minY)
+        XCTAssertLessThanOrEqual(app.staticTexts["No Account. No Cloud."].frame.maxY, onboardingPrimaryAction.frame.minY)
         XCTAssertTrue(app.buttons["onboarding-skip-home"].exists)
         XCTAssertTrue(onboardingPrimaryAction.waitForExistence(timeout: 5))
         XCTAssertEqual(onboardingPrimaryAction.label, "Continue")
         tapWhenHittable(onboardingPrimaryAction)
 
-        XCTAssertTrue(app.staticTexts["Ready for Your First Local"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Ready for Your First Cat"].waitForExistence(timeout: 5))
         XCTAssertEqual(onboardingProgress.label, "Onboarding step 3 of 3")
         XCTAssertLessThanOrEqual(
             onboardingProgress.frame.maxY,
-            app.staticTexts["Ready for Your First Local"].frame.minY
+            app.staticTexts["Ready for Your First Cat"].frame.minY
         )
         XCTAssertTrue(app.staticTexts["Home opens next. Tap Camera when you meet a cat, or choose a private photo."].exists)
         XCTAssertTrue(app.descendants(matching: .any)["onboarding-first-card-anatomy"].exists)
-        XCTAssertTrue(app.staticTexts["Your first card keeps the lifted cutout, design, notes, and typed place together."].exists)
-        XCTAssertTrue(app.staticTexts["Lifted cutout"].exists)
+        XCTAssertTrue(app.staticTexts["Your first card keeps the cat cutout, design, notes, and typed place together."].exists)
+        XCTAssertTrue(app.staticTexts["Cat cutout"].exists)
         XCTAssertTrue(app.staticTexts["Card details"].exists)
         XCTAssertLessThan(
-            app.staticTexts["Saved to Home"].frame.maxY,
-            app.staticTexts["Ready for Your First Local"].frame.minY
+            app.staticTexts["Saved to Collection"].frame.maxY,
+            app.staticTexts["Ready for Your First Cat"].frame.minY
         )
         XCTAssertLessThan(
-            app.staticTexts["Ready for Your First Local"].frame.maxY,
-            app.staticTexts["Your first card keeps the lifted cutout, design, notes, and typed place together."].frame.minY
+            app.staticTexts["Ready for Your First Cat"].frame.maxY,
+            app.staticTexts["Your first card keeps the cat cutout, design, notes, and typed place together."].frame.minY
         )
         XCTAssertLessThanOrEqual(app.staticTexts["Card details"].frame.maxY, onboardingPrimaryAction.frame.minY)
 
@@ -172,7 +898,7 @@ final class CatLocalUITests: XCTestCase {
         XCTAssertFalse(app.buttons["onboarding-skip-home"].exists)
         tapWhenHittable(onboardingPrimaryAction)
 
-        XCTAssertTrue(app.staticTexts["Meet Your First Local"].waitForExistence(timeout: 8))
+        XCTAssertTrue(app.staticTexts["Meet Your First Cat"].waitForExistence(timeout: 8))
         XCTAssertTrue(app.tabBars.buttons["Camera"].exists)
         XCTAssertFalse(app.buttons["Open Home"].exists)
     }
@@ -189,15 +915,15 @@ final class CatLocalUITests: XCTestCase {
 
         tapWhenHittable(onboardingPrimaryAction)
         XCTAssertTrue(app.descendants(matching: .any)["onboarding-privacy-title"].waitForExistence(timeout: 5))
-        XCTAssertFalse(app.staticTexts["Meet Your First Local"].waitForExistence(timeout: 1))
+        XCTAssertFalse(app.staticTexts["Meet Your First Cat"].waitForExistence(timeout: 1))
         XCTAssertFalse(app.buttons["Open Home"].exists)
 
         tapWhenHittable(onboardingPrimaryAction)
         XCTAssertTrue(app.buttons["Open Home"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Ready for Your First Local"].exists)
+        XCTAssertTrue(app.staticTexts["Ready for Your First Cat"].exists)
 
         tapWhenHittable(onboardingPrimaryAction)
-        XCTAssertTrue(app.staticTexts["Meet Your First Local"].waitForExistence(timeout: 8))
+        XCTAssertTrue(app.staticTexts["Meet Your First Cat"].waitForExistence(timeout: 8))
         XCTAssertTrue(app.tabBars.buttons["Camera"].exists)
     }
 
@@ -211,7 +937,7 @@ final class CatLocalUITests: XCTestCase {
         XCTAssertEqual(skipButton.label, "Skip to Home")
         tapWhenHittable(skipButton)
 
-        XCTAssertTrue(app.staticTexts["Meet Your First Local"].waitForExistence(timeout: 8))
+        XCTAssertTrue(app.staticTexts["Meet Your First Cat"].waitForExistence(timeout: 8))
         XCTAssertTrue(app.tabBars.buttons["Camera"].exists)
         XCTAssertFalse(app.buttons["onboarding-primary-action"].exists)
     }
@@ -269,8 +995,8 @@ final class CatLocalUITests: XCTestCase {
         app.launch()
 
         XCTAssertTrue(app.staticTexts["CatLocal"].waitForExistence(timeout: 8))
-        XCTAssertTrue(app.staticTexts["Meet Your First Local"].exists)
-        XCTAssertTrue(app.staticTexts["Capture an encounter and turn it into a local card."].exists)
+        XCTAssertTrue(app.staticTexts["Meet Your First Cat"].exists)
+        XCTAssertTrue(app.staticTexts["Capture an encounter and turn it into a collectible card."].exists)
 
         let settingsButton = app.tabBars.buttons["Settings"]
         XCTAssertTrue(settingsButton.waitForExistence(timeout: 5))
@@ -290,7 +1016,7 @@ final class CatLocalUITests: XCTestCase {
         XCTAssertTrue(storageSummary.waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Local Storage"].exists)
         XCTAssertFalse(app.staticTexts["CatLocal Data"].exists)
-        XCTAssertTrue(app.staticTexts["No cats saved yet"].exists)
+        XCTAssertTrue(app.staticTexts["0 cats saved locally"].exists)
         XCTAssertTrue(
             app.staticTexts
                 .matching(NSPredicate(format: "label CONTAINS %@", "Zero KB"))
@@ -303,6 +1029,9 @@ final class CatLocalUITests: XCTestCase {
             app.swipeUp()
         }
         XCTAssertTrue(privacyReceipt.waitForExistence(timeout: 5))
+        if !privacyReceipt.isHittable {
+            app.swipeUp()
+        }
         tapWhenHittable(privacyReceipt)
 
         XCTAssertTrue(app.navigationBars["Privacy Receipt"].waitForExistence(timeout: 5))
@@ -338,6 +1067,71 @@ final class CatLocalUITests: XCTestCase {
             app.tabBars.buttons["Home"].tap()
             XCTAssertTrue(app.descendants(matching: .any)["empty-collection"].waitForExistence(timeout: 8))
         }
+    }
+
+    func testSettingsTurkishEnglishFallbackSwitchesImmediatelyAndPersists() {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "-ui-testing-reset",
+            "-ui-testing-open-settings",
+            "-AppleLanguages", "(tr)",
+            "-AppleLocale", "tr_TR",
+        ]
+        app.launch()
+
+        XCTAssertTrue(app.navigationBars["Ayarlar"].waitForExistence(timeout: 8))
+        XCTAssertFalse(app.descendants(matching: .any)["settings-language-picker"].exists)
+
+        let languageFallback = app.buttons["settings-language-fallback"]
+        XCTAssertTrue(languageFallback.waitForExistence(timeout: 5))
+        XCTAssertTrue(languageFallback.label.contains("İngilizce Kullan"))
+        tapWhenHittable(languageFallback)
+
+        XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.tabBars.buttons["Camera"].exists)
+        XCTAssertTrue(languageFallback.label.contains("Use System Language"))
+
+        app.terminate()
+        app.launchArguments = [
+            "-ui-testing-open-settings",
+            "-AppleLanguages", "(tr)",
+            "-AppleLocale", "tr_TR",
+        ]
+        app.launch()
+
+        XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 8))
+        XCTAssertTrue(languageFallback.waitForExistence(timeout: 5))
+        XCTAssertTrue(languageFallback.label.contains("Use System Language"))
+        tapWhenHittable(languageFallback)
+
+        XCTAssertTrue(app.navigationBars["Ayarlar"].waitForExistence(timeout: 5))
+        XCTAssertTrue(languageFallback.label.contains("İngilizce Kullan"))
+    }
+
+    func testSettingsUkrainianEnglishFallbackReturnsToSystemLanguage() {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "-ui-testing-reset",
+            "-ui-testing-open-settings",
+            "-AppleLanguages", "(uk)",
+            "-AppleLocale", "uk_UA",
+        ]
+        app.launch()
+
+        XCTAssertTrue(app.navigationBars["Налаштування"].waitForExistence(timeout: 8))
+        XCTAssertFalse(app.descendants(matching: .any)["settings-language-picker"].exists)
+
+        let languageFallback = app.buttons["settings-language-fallback"]
+        XCTAssertTrue(languageFallback.waitForExistence(timeout: 5))
+        XCTAssertTrue(languageFallback.label.contains("Використовувати англійську"))
+        tapWhenHittable(languageFallback)
+
+        XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 5))
+        XCTAssertTrue(languageFallback.label.contains("Use System Language"))
+        tapWhenHittable(languageFallback)
+
+        XCTAssertTrue(app.navigationBars["Налаштування"].waitForExistence(timeout: 5))
+        XCTAssertTrue(languageFallback.label.contains("Використовувати англійську"))
     }
 
     func testSettingsDeleteConfirmationExplainsStoredData() {
@@ -467,7 +1261,7 @@ final class CatLocalUITests: XCTestCase {
         XCTAssertFalse(selectableCard.isSelected)
         tapWhenHittable(selectableCard)
 
-        let selectedCount = app.staticTexts["1 selected"]
+        let selectedCount = app.staticTexts["1 card selected"]
         if !selectedCount.waitForExistence(timeout: 2) {
             tapWhenHittable(
                 app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Cat,")).firstMatch
@@ -783,7 +1577,7 @@ final class CatLocalUITests: XCTestCase {
         app.buttons["Discard Draft"].tap()
 
         XCTAssertTrue(app.staticTexts["CatLocal"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Meet Your First Local"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Meet Your First Cat"].waitForExistence(timeout: 5))
     }
 
     func testValidationImportLetsTheUserTapTheCatWhenDetectionMisses() {

@@ -34,6 +34,7 @@ struct FocusedCardView: View {
         }
         .navigationTitle(record.displayName)
         .navigationBarTitleDisplayMode(.inline)
+        .accessibilityIdentifier("focused-card-screen")
         .toolbar(.hidden, for: .tabBar)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -48,6 +49,7 @@ struct FocusedCardView: View {
                     transaction.disablesAnimations = true
                 }
                 .accessibilityLabel("Edit")
+                .accessibilityIdentifier("focused-card-edit")
             }
         }
         .safeAreaInset(edge: .bottom) {
@@ -302,11 +304,11 @@ private struct FocusedJournalEntryView: View {
                 .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(title)
+                Text(catLocalKey: title)
                     .font(CatTypography.fieldLabel)
                     .foregroundStyle(CatLocalTheme.secondaryText)
 
-                Text(value)
+                Text(isPlaceholder ? value.catLocalized : value)
                     .font(CatTypography.body)
                     .foregroundStyle(isPlaceholder ? CatLocalTheme.secondaryText : CatLocalTheme.primaryText)
                     .lineLimit(nil)
@@ -435,6 +437,7 @@ struct CatRecordEditSheet: View {
                         }
                         .buttonStyle(.catTactile)
                         .accessibilityHint("Deletes this cat and its local images from this iPhone")
+                        .accessibilityIdentifier("cat-edit-delete")
                     }
                     .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 20, trailing: 16))
                     .listRowBackground(Color.clear)
@@ -443,6 +446,7 @@ struct CatRecordEditSheet: View {
                     Color.clear
                         .frame(height: 46)
                 }
+                .accessibilityIdentifier("cat-edit-form")
                 .scrollContentBackground(.hidden)
                 .scrollDismissesKeyboard(.interactively)
 
@@ -538,7 +542,7 @@ struct CatRecordEditSheet: View {
     }
 
     private func editSectionHeader(_ title: String) -> some View {
-        Text(title)
+        Text(catLocalKey: title)
             .font(CatTypography.fieldLabel)
             .foregroundStyle(CatLocalTheme.secondaryText)
             .textCase(nil)

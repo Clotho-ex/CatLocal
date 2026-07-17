@@ -8,6 +8,7 @@ enum CatLocalUserDefaults {
     static let appearanceKey = "catlocal.appearance"
     static let cardMotionEnabledKey = "catlocal.cardMotionEnabled"
     static let hapticsEnabledKey = "catlocal.hapticsEnabled"
+    static let languageKey = "catlocal.language"
     static let homeViewKey = "catlocal.homeView"
     static let sortOrderKey = "catlocal.sortOrder"
 }
@@ -129,6 +130,20 @@ struct CatLocalApp: App {
         do {
             let container = try ModelContainer(for: schema, configurations: [configuration])
             let arguments = CommandLine.arguments
+#if DEBUG
+            let uiTestingLanguage: CatLocalLanguage? = {
+                guard let flagIndex = arguments.firstIndex(of: "-ui-testing-language") else {
+                    return nil
+                }
+                let valueIndex = arguments.index(after: flagIndex)
+                guard arguments.indices.contains(valueIndex) else {
+                    return nil
+                }
+                return CatLocalLanguage(rawValue: arguments[valueIndex])
+            }()
+#else
+            let uiTestingLanguage: CatLocalLanguage? = nil
+#endif
             if arguments.contains("-ui-testing-show-onboarding") {
                 UserDefaults.standard.set(false, forKey: CatLocalUserDefaults.hasCompletedOnboardingKey)
             }
@@ -138,6 +153,10 @@ struct CatLocalApp: App {
                     forKey: CatLocalUserDefaults.hasCompletedOnboardingKey
                 )
                 UserDefaults.standard.set(false, forKey: CatLocalUserDefaults.hasSeenFocusedCardGlintHintKey)
+                UserDefaults.standard.set(
+                    (uiTestingLanguage ?? .system).rawValue,
+                    forKey: CatLocalUserDefaults.languageKey
+                )
                 let context = ModelContext(container)
                 try context.delete(model: CatRecord.self)
                 if arguments.contains("-ui-testing-seed-atlas") {

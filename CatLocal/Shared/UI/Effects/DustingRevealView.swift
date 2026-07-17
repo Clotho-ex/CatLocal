@@ -807,7 +807,7 @@ struct FullScreenDustRevealView: View {
             HStack(spacing: 11) {
                 ProgressView()
                     .tint(.white)
-                Text("Lifting...")
+                Text("Removing background...")
                     .font(CatTypography.control)
                     .foregroundStyle(.white)
             }
@@ -816,7 +816,7 @@ struct FullScreenDustRevealView: View {
             .background(.ultraThinMaterial, in: Capsule())
             .environment(\.colorScheme, .dark)
             .accessibilityElement(children: .combine)
-            .accessibilityLabel("Lifting the subject")
+            .accessibilityLabel("Removing the background")
             .accessibilityIdentifier("lifting-status")
         }
         .padding(.horizontal, CatLocalTheme.screenHorizontalPadding)

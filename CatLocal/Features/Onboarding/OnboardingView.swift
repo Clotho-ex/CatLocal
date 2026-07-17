@@ -17,10 +17,14 @@ struct OnboardingView: View {
         ZStack {
             CatLocalBackground()
 
-            VStack(spacing: 0) {
-                progressHeader
-                onboardingContent
-                footer
+            GeometryReader { geometry in
+                VStack(spacing: 0) {
+                    progressHeader
+                    onboardingContent(
+                        usesScrolling: dynamicTypeSize.isAccessibilitySize || geometry.size.height < 760
+                    )
+                    footer
+                }
             }
         }
         .catSensoryFeedback(.impact(flexibility: .soft, intensity: 0.48), trigger: forwardFeedbackTrigger)
@@ -28,11 +32,25 @@ struct OnboardingView: View {
         .catSensoryFeedback(.success, trigger: completionFeedbackTrigger)
     }
 
-    private var onboardingContent: some View {
-        pageStage
-            .padding(.vertical, pageVerticalPadding)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .layoutPriority(1)
+    @ViewBuilder
+    private func onboardingContent(usesScrolling: Bool) -> some View {
+        if usesScrolling {
+            ScrollView {
+                pageStage
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.vertical, pageVerticalPadding)
+            }
+            .scrollIndicators(.hidden)
+            .scrollBounceBehavior(.basedOnSize)
+            .accessibilityIdentifier("onboarding-scroll")
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .layoutPriority(1)
+        } else {
+            pageStage
+                .padding(.vertical, pageVerticalPadding)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .layoutPriority(1)
+        }
     }
 
     private var pageStage: some View {
@@ -89,12 +107,24 @@ struct OnboardingView: View {
     }
 
     private var progressStepLabel: some View {
-        Text("Step \(selectedPage.stepNumber) of \(OnboardingPage.totalCount)")
+        Text(
+            CatLocalLocalization.format(
+                "Step %1$@ of %2$@",
+                selectedPage.stepNumber.formatted(),
+                OnboardingPage.totalCount.formatted()
+            )
+        )
             .font(CatTypography.metadata)
             .foregroundStyle(CatLocalTheme.secondaryText)
             .lineLimit(1)
             .fixedSize(horizontal: true, vertical: false)
-            .accessibilityLabel("Onboarding step \(selectedPage.stepNumber) of \(OnboardingPage.totalCount)")
+            .accessibilityLabel(
+                CatLocalLocalization.format(
+                    "Onboarding step %1$@ of %2$@",
+                    selectedPage.stepNumber.formatted(),
+                    OnboardingPage.totalCount.formatted()
+                )
+            )
             .accessibilityIdentifier("onboarding-step")
     }
 
@@ -143,7 +173,11 @@ struct OnboardingView: View {
             guard let previous = selectedPage.previous else { return }
             move(to: previous, direction: .backward)
         } label: {
-            Label("Back", systemImage: "chevron.left")
+            Label {
+                Text(catLocalKey: "Back")
+            } icon: {
+                Image(systemName: "chevron.left")
+            }
                 .font(CatTypography.compactControl)
                 .lineLimit(1)
                 .minimumScaleFactor(0.82)
@@ -166,8 +200,8 @@ struct OnboardingView: View {
         .buttonStyle(.catTactile)
         .matchedGeometryEffect(id: "onboarding-primary-action", in: actionNamespace)
         .disabled(isCompleting)
-        .accessibilityLabel(selectedPage.primaryActionTitle)
-        .accessibilityHint(selectedPage.footerNote)
+        .accessibilityLabel(Text(catLocalKey: selectedPage.primaryActionTitle))
+        .accessibilityHint(Text(catLocalKey: selectedPage.footerNote))
         .accessibilityIdentifier("onboarding-primary-action")
     }
 
@@ -309,9 +343,9 @@ private enum OnboardingPage: Int, CaseIterable, Identifiable {
         case .welcome:
             return "Welcome to CatLocal"
         case .privacy:
-            return "Your furry encounters are safe"
+            return "Your cat encounters stay private"
         case .firstCard:
-            return "Ready for Your First Local"
+            return "Ready for Your First Cat"
         }
     }
 
@@ -393,7 +427,7 @@ private enum OnboardingPage: Int, CaseIterable, Identifiable {
                 role: .info
             ),
             OnboardingPrivacyCue(
-                title: "No Account No Cloud",
+                title: "No Account. No Cloud.",
                 detail: "Cards save to this iPhone.",
                 systemImage: "person.crop.circle.badge.xmark",
                 role: .info
@@ -515,13 +549,13 @@ private struct OnboardingPageScreen: View {
     }
 
     private var detailText: some View {
-        Text(page.detail)
+        Text(catLocalKey: page.detail)
             .font(CatTypography.body)
             .foregroundStyle(CatLocalTheme.secondaryText.opacity(page.detailOpacity))
             .multilineTextAlignment(.leading)
             .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .accessibilityLabel(page.detailAccessibilityLabel)
+            .accessibilityLabel(Text(catLocalKey: page.detailAccessibilityLabel))
     }
 
     @ViewBuilder
@@ -621,14 +655,13 @@ private struct OnboardingPrivacyTitle: View {
         .fixedSize(horizontal: false, vertical: true)
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Your furry encounters are safe")
+        .accessibilityLabel("Your cat encounters stay private")
         .accessibilityIdentifier("onboarding-privacy-title")
         .accessibilityAddTraits(.isHeader)
     }
 
     private var privacyTitle: Text {
-        Text("Your furry encounters are ")
-            + Text("safe").foregroundStyle(CatAttentionRole.success.accent)
+        Text("Your cat encounters stay private")
     }
 }
 
@@ -643,21 +676,12 @@ private struct OnboardingEditorialTitle: View {
             .multilineTextAlignment(.leading)
             .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .accessibilityLabel(page.title)
+            .accessibilityLabel(Text(catLocalKey: page.title))
             .accessibilityAddTraits(.isHeader)
     }
 
     private var title: Text {
-        switch page {
-        case .welcome:
-            return Text("Welcome to\n")
-                + Text("CatLocal").foregroundStyle(CatAttentionRole.action.accent)
-        case .firstCard:
-            return Text("Ready for Your\n")
-                + Text("First Local").foregroundStyle(CatAttentionRole.action.accent)
-        case .privacy:
-            return Text(page.title)
-        }
+        Text(catLocalKey: page.title)
     }
 }
 
@@ -746,7 +770,7 @@ private struct OnboardingCollectionHero: View {
                         .frame(width: 58, height: 58)
                         .background(CatAttentionRole.action.wash, in: Circle())
 
-                    Text("Local Card")
+                    Text("Collectible Card")
                         .font(CatTypography.bodyEmphasized)
                         .foregroundStyle(CatLocalTheme.primaryText)
                         .multilineTextAlignment(.center)
@@ -959,11 +983,11 @@ private struct OnboardingFirstCardHero: View {
             )
             .overlay(alignment: .bottomLeading) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Local Card")
+                    Text("Collectible Card")
                         .font(CatTypography.metadata)
                         .foregroundStyle(CatLocalTheme.primaryText)
 
-                    Text("Saved to Home")
+                    Text("Saved to Collection")
                         .font(CatTypography.finePrint)
                         .foregroundStyle(CatLocalTheme.secondaryText)
                 }
@@ -1027,13 +1051,13 @@ private struct OnboardingActivationTrail: View {
     private let items = [
         OnboardingTrailItem(
             title: "Capture or Import",
-            detail: "Camera or private photo",
+            detail: "Take a photo or choose one",
             systemImage: "camera.viewfinder",
             role: .action
         ),
         OnboardingTrailItem(
-            title: "Lift On Device",
-            detail: "Looking for cats, then lifting the subject",
+            title: "On-device cutout",
+            detail: "Finds the cat and removes the background",
             systemImage: "viewfinder",
             role: .info
         ),
@@ -1053,7 +1077,7 @@ private struct OnboardingActivationTrail: View {
         }
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Capture or Import. Lift On Device. Make It Yours.")
+        .accessibilityLabel("Capture or Import. On-device cutout. Make It Yours.")
     }
 }
 
@@ -1070,12 +1094,12 @@ private struct OnboardingProcessStepRow: View {
                 .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(item.title)
+                Text(catLocalKey: item.title)
                     .font(CatTypography.supportingEmphasized)
                     .foregroundStyle(CatLocalTheme.primaryText)
 
                 if let detail = item.detail {
-                    Text(detail)
+                    Text(catLocalKey: detail)
                         .font(CatTypography.finePrint)
                         .foregroundStyle(CatLocalTheme.secondaryText)
                         .fixedSize(horizontal: false, vertical: true)
@@ -1086,7 +1110,11 @@ private struct OnboardingProcessStepRow: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel([item.title, item.detail].compactMap { $0 }.joined(separator: ". "))
+        .accessibilityLabel(
+            [item.title, item.detail]
+                .compactMap { $0?.catLocalized }
+                .joined(separator: ". ")
+        )
     }
 }
 
@@ -1119,7 +1147,7 @@ private struct OnboardingPrivacyCueRow: View {
                 .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(cue.title)
+                Text(catLocalKey: cue.title)
                     .font(CatTypography.supportingEmphasized)
                     .foregroundStyle(CatLocalTheme.primaryText)
                     .multilineTextAlignment(.leading)
@@ -1127,7 +1155,7 @@ private struct OnboardingPrivacyCueRow: View {
                     .frame(maxWidth: cue.titleMaxWidth ?? .infinity, alignment: .leading)
                     .fixedSize(horizontal: false, vertical: true)
 
-                Text(cue.detail)
+                Text(catLocalKey: cue.detail)
                     .font(CatTypography.finePrint)
                     .foregroundStyle(CatLocalTheme.secondaryText)
                     .fixedSize(horizontal: false, vertical: true)
@@ -1137,15 +1165,15 @@ private struct OnboardingPrivacyCueRow: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(cue.title). \(cue.detail)")
+        .accessibilityLabel("\(cue.title.catLocalized). \(cue.detail.catLocalized)")
     }
 }
 
 private struct OnboardingFinalPrompt: View {
     private let traits = [
         OnboardingTrailItem(
-            title: "Lifted cutout",
-            detail: "On-device lift",
+            title: "Cat cutout",
+            detail: "On-device cutout",
             systemImage: "scissors",
             role: .action
         ),
@@ -1159,7 +1187,7 @@ private struct OnboardingFinalPrompt: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Your first card keeps the lifted cutout, design, notes, and typed place together.")
+            Text("Your first card keeps the cat cutout, design, notes, and typed place together.")
                 .font(CatTypography.supporting)
                 .foregroundStyle(CatLocalTheme.secondaryText)
                 .multilineTextAlignment(.leading)
@@ -1201,7 +1229,7 @@ private struct OnboardingCardDetailItem: View {
 
     private func textStack(alignment: HorizontalAlignment, detailAlignment: TextAlignment) -> some View {
         VStack(alignment: alignment, spacing: 2) {
-            Text(item.title)
+            Text(catLocalKey: item.title)
                 .font(CatTypography.metadata)
                 .foregroundStyle(CatLocalTheme.primaryText)
                 .lineLimit(1)
@@ -1209,7 +1237,7 @@ private struct OnboardingCardDetailItem: View {
                 .multilineTextAlignment(detailAlignment)
 
             if let detail = item.detail {
-                Text(detail)
+                Text(catLocalKey: detail)
                     .font(CatTypography.finePrint)
                     .foregroundStyle(CatLocalTheme.secondaryText)
                     .lineLimit(2)
@@ -1237,7 +1265,13 @@ private struct OnboardingProgressBar: View {
         .frame(maxWidth: .infinity, minHeight: 7, maxHeight: 7)
         .animation(reduceMotion ? nil : .smooth(duration: 0.2, extraBounce: 0), value: selectedPage)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Onboarding step \(selectedPage.stepNumber) of \(OnboardingPage.totalCount)")
+        .accessibilityLabel(
+            CatLocalLocalization.format(
+                "Onboarding step %1$@ of %2$@",
+                selectedPage.stepNumber.formatted(),
+                OnboardingPage.totalCount.formatted()
+            )
+        )
         .accessibilityIdentifier("onboarding-progress")
     }
 
@@ -1258,7 +1292,7 @@ private struct OnboardingPrimaryActionLabel: View {
     var body: some View {
         Group {
             if dynamicTypeSize.isAccessibilitySize {
-                Text(title)
+                Text(catLocalKey: title)
                     .font(CatTypography.control)
                     .lineLimit(3)
                     .multilineTextAlignment(.center)
@@ -1266,7 +1300,7 @@ private struct OnboardingPrimaryActionLabel: View {
                     .frame(maxWidth: .infinity)
             } else {
                 HStack(spacing: 10) {
-                    Text(title)
+                    Text(catLocalKey: title)
                         .font(CatTypography.control)
                         .lineLimit(1)
                         .minimumScaleFactor(0.82)

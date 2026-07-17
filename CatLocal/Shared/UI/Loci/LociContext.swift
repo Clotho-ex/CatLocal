@@ -53,7 +53,7 @@ enum LociContext: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .emptyCollection:
-            return "Meet Your First Local"
+            return "Meet Your First Cat"
         case .cardSaved:
             return "Card ready"
         case .recoverableWarning:
@@ -74,7 +74,7 @@ enum LociContext: String, CaseIterable, Identifiable {
     var subtitle: String? {
         switch self {
         case .emptyCollection:
-            return "Capture an encounter and turn it into a local card."
+            return "Capture an encounter and turn it into a collectible card."
         case .cardSaved:
             return "Saved locally to your collection."
         case .recoverableWarning:

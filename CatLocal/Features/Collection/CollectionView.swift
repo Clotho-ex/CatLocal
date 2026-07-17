@@ -278,7 +278,7 @@ struct CollectionView: View {
                 .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
                 .minimumScaleFactor(dynamicTypeSize.isAccessibilitySize ? 1 : 0.82)
 
-            Text("A private field journal for local encounters.")
+            Text("A private field journal for the cats you meet.")
                 .font(CatTypography.screenSubtitle)
                 .foregroundStyle(CatLocalTheme.secondaryText)
                 .lineLimit(nil)
@@ -324,7 +324,7 @@ struct CollectionView: View {
     private var modePicker: some View {
         Picker("Home view", selection: collectionModeSelection) {
             ForEach(CatLocalHomeView.allCases) { mode in
-                Text(mode.title).tag(mode)
+                Text(catLocalKey: mode.title).tag(mode)
             }
         }
         .pickerStyle(.segmented)
@@ -487,7 +487,12 @@ struct CollectionView: View {
                 Label("Delete Card", systemImage: "trash")
             }
         }
-        .accessibilityHint(isSelectionMode ? "Double tap to select or deselect this card" : "Double tap to open this card")
+        .accessibilityIdentifier("collection-card-\(record.sequence)")
+        .accessibilityHint(
+            isSelectionMode
+                ? "Double tap to select or deselect this card".catLocalized
+                : "Double tap to open this card".catLocalized
+        )
         .accessibilityValue(selectionAccessibilityValue(isSelected: isSelected))
         .accessibilityAddTraits(isSelectionMode && isSelected ? .isSelected : [])
     }
@@ -611,11 +616,9 @@ struct CollectionView: View {
     private var atlasIntroText: String {
         switch atlasPlaceCount {
         case 0:
-            "Add a Memory Place to build Catlas."
-        case 1:
-            "1 place typed by you."
+            "Add a Memory Place to build Catlas.".catLocalized
         default:
-            "\(atlasPlaceCount) places typed by you."
+            CatLocalLocalization.plural("%lld places typed by you.", count: atlasPlaceCount)
         }
     }
 
@@ -624,14 +627,7 @@ struct CollectionView: View {
     }
 
     private var atlasPlaceCountText: String {
-        switch atlasPlaceCount {
-        case 0:
-            "No places yet"
-        case 1:
-            "1 place"
-        default:
-            "\(atlasPlaceCount) places"
-        }
+        CatLocalLocalization.plural("%lld places", count: atlasPlaceCount)
     }
 
     private var atlasGroups: [MemoryAtlasGroup] {
@@ -703,7 +699,7 @@ struct CollectionView: View {
     }
 
     private func sectionTitle(_ title: String) -> some View {
-        Text(title)
+        Text(catLocalKey: title)
             .font(CatTypography.sectionTitle)
             .foregroundStyle(CatLocalTheme.primaryText)
             .lineLimit(nil)
@@ -750,7 +746,12 @@ struct CollectionView: View {
             headerActionLabel(title: "Sort", systemImage: "line.3.horizontal.decrease.circle")
         }
         .accessibilityLabel("Sort places")
-        .accessibilityValue("Sorted by \(sortOption.title)")
+        .accessibilityValue(
+            CatLocalLocalization.format(
+                "Sorted by %1$@",
+                CatLocalLocalization.string(sortOption.title)
+            )
+        )
         .accessibilityHint("Sorts Catlas places")
     }
 
@@ -774,7 +775,12 @@ struct CollectionView: View {
             headerActionLabel(title: "Sort", systemImage: "line.3.horizontal.decrease.circle")
         }
         .accessibilityLabel("Sort saved cards")
-        .accessibilityValue("Sorted by \(sortOption.title)")
+        .accessibilityValue(
+            CatLocalLocalization.format(
+                "Sorted by %1$@",
+                CatLocalLocalization.string(sortOption.title)
+            )
+        )
         .accessibilityHint("Changes the card order")
     }
 
@@ -789,9 +795,18 @@ struct CollectionView: View {
             selectionModeButtonLabel
         }
         .buttonStyle(.catTactile)
-        .accessibilityLabel(isSelectionMode ? "Done selecting cards" : "Select cards for deletion")
+        .accessibilityIdentifier("collection-selection-toggle")
+        .accessibilityLabel(
+            isSelectionMode
+                ? "Done selecting cards".catLocalized
+                : "Select cards for deletion".catLocalized
+        )
         .accessibilityValue(isSelectionMode ? selectedSelectionText : "")
-        .accessibilityHint(isSelectionMode ? "Leaves selection mode" : "Shows selection controls before deleting cards")
+        .accessibilityHint(
+            isSelectionMode
+                ? "Leaves selection mode".catLocalized
+                : "Shows selection controls before deleting cards".catLocalized
+        )
     }
 
     private var selectionModeButtonLabel: some View {
@@ -825,7 +840,7 @@ struct CollectionView: View {
                 .imageScale(.medium)
                 .accessibilityHidden(true)
 
-            Text(title)
+            Text(catLocalKey: title)
                 .font(CatTypography.compactControl)
         }
         .foregroundStyle(CatLocalTheme.secondaryText)
@@ -837,7 +852,12 @@ struct CollectionView: View {
     private func sortPicker(title: String) -> some View {
         Picker(title, selection: sortSelection) {
             ForEach(CatLocalSortOrder.allCases) { option in
-                Label(option.title, systemImage: option.systemImage).tag(option)
+                Label {
+                    Text(catLocalKey: option.title)
+                } icon: {
+                    Image(systemName: option.systemImage)
+                }
+                .tag(option)
             }
         }
     }
@@ -911,7 +931,11 @@ struct CollectionView: View {
             guard !selectedRecordIDs.isEmpty, !isBulkDeleting else { return }
             showingBulkDeleteConfirmation = true
         } label: {
-            Label(isBulkDeleting ? "Deleting" : "Delete", systemImage: "trash.fill")
+            Label {
+                Text(catLocalKey: isBulkDeleting ? "Deleting" : "Delete")
+            } icon: {
+                Image(systemName: "trash.fill")
+            }
                 .font(CatTypography.compactControl)
                 .padding(.horizontal, 16)
                 .frame(maxWidth: dynamicTypeSize.isAccessibilitySize ? .infinity : nil)
@@ -925,6 +949,7 @@ struct CollectionView: View {
         .buttonStyle(.catTactile)
         .disabled(selectedRecordIDs.isEmpty || isBulkDeleting)
         .accessibilityLabel(bulkDeleteTitle)
+        .accessibilityIdentifier("collection-delete-selected")
     }
 
     private var sortedRecords: [CatRecord] {
@@ -953,18 +978,18 @@ struct CollectionView: View {
 
     private var selectedSelectionText: String {
         if selectedRecordIDs.isEmpty {
-            return "Choose cards to delete"
+            return "Choose cards to delete".catLocalized
         }
-        return selectedRecordIDs.count == 1 ? "1 selected" : "\(selectedRecordIDs.count) selected"
+        return CatLocalLocalization.plural("%lld cards selected", count: selectedRecordIDs.count)
     }
 
     private var bulkDeleteTitle: String {
-        selectedRecordIDs.count == 1 ? "Delete 1 Card" : "Delete \(selectedRecordIDs.count) Cards"
+        CatLocalLocalization.plural("Delete %lld Cards", count: selectedRecordIDs.count)
     }
 
     private var removalErrorMessage: String {
         guard let errorMessage else { return "" }
-        return "The card was not deleted. Please try again.\n\n\(errorMessage)"
+        return "\("The card was not deleted. Please try again.".catLocalized)\n\n\(errorMessage)"
     }
 
     private var homeCardQuietingOverlay: some View {
@@ -1156,14 +1181,16 @@ struct CollectionView: View {
 
     private func selectionContextTitle(isSelected: Bool) -> String {
         if isSelectionMode {
-            return isSelected ? "Remove from Selection" : "Add to Selection"
+            return isSelected
+                ? "Remove from Selection".catLocalized
+                : "Add to Selection".catLocalized
         }
-        return "Select Card"
+        return "Select Card".catLocalized
     }
 
     private func selectionAccessibilityValue(isSelected: Bool) -> String {
         guard isSelectionMode else { return "" }
-        return isSelected ? "Selected for deletion" : "Not selected"
+        return isSelected ? "Selected for deletion".catLocalized : "Not selected".catLocalized
     }
 
     private func reconcileSelection(with recordIDs: [UUID]) {
@@ -1283,11 +1310,11 @@ struct CollectionView: View {
     }
 
     private func catCountText(_ count: Int) -> String {
-        count == 1 ? "1 cat" : "\(count) cats"
+        CatLocalLocalization.plural("%lld cats", count: count)
     }
 
     private func savedCountText(_ count: Int) -> String {
-        count == 1 ? "1 saved" : "\(count) saved"
+        CatLocalLocalization.plural("%lld saved cards", count: count)
     }
 
     private var emptyState: some View {
@@ -1382,7 +1409,7 @@ private struct AtlasFolderButton: View {
                         .foregroundStyle(group.isUnplaced ? CatLocalTheme.secondaryText : CatAttentionRole.info.accent)
                         .accessibilityHidden(true)
 
-                    Text(group.displayTitle)
+                    Text(catLocalKey: group.displayTitle)
                         .font(CatTypography.supportingEmphasized)
                         .foregroundStyle(CatLocalTheme.ink)
                         .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
@@ -1414,7 +1441,7 @@ private struct AtlasFolderButton: View {
                 .background(CatLocalTheme.elevatedSurface, in: Circle())
                 .accessibilityHidden(true)
 
-            Text("\(hiddenRecordCount) more \(hiddenRecordCount == 1 ? "cat" : "cats")")
+            Text(CatLocalLocalization.plural("%lld more cats", count: hiddenRecordCount))
                 .font(CatTypography.metadata)
                 .foregroundStyle(CatLocalTheme.secondaryText)
 
@@ -1459,7 +1486,12 @@ private struct AtlasCatRecordRow: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(
-            "\(record.displayName), cat number \(record.sequence.formatted()), captured \(record.capturedAt.formatted(date: .abbreviated, time: .omitted))"
+            CatLocalLocalization.format(
+                "%1$@, cat number %2$lld, captured %3$@.",
+                record.displayName,
+                Int64(record.sequence),
+                record.capturedAt.formatted(date: .abbreviated, time: .omitted)
+            )
         )
         .accessibilityIdentifier("catlas-cat-row-\(record.displayName)")
     }
