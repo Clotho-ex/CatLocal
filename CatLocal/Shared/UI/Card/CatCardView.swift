@@ -149,7 +149,7 @@ struct DraftCatCardView: View {
                     .renderingMode(.template)
                     .resizable()
                     .scaledToFit()
-                    .foregroundStyle(CatLocalTheme.cardSurface)
+                    .foregroundStyle(CatLocalTheme.cutoutOutline)
 
                 Image(uiImage: image)
                     .resizable()

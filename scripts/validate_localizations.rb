@@ -59,34 +59,36 @@ preserved_keys = [
   "Take a photo or choose one", "Try the center"
 ]
 reviewed_direct_values = {
-  ["Built Without", "tr"] => "İçermediklerimiz",
+  ["Built Without", "tr"] => "İçermez",
   ["A New Cat", "tr"] => "Yeni Bir Kedi",
   ["About CatLocal", "tr"] => "CatLocal Hakkında",
-  ["Add a Memory Place to build Catlas.", "tr"] => "Catlas'ı oluşturmak için bir anı konumu ekleyin.",
+  ["Add a Memory Place to build Catlas.", "tr"] => "Catlas'ı büyütmek için bir Anı Yeri ekleyin.",
   ["App Information", "tr"] => "Uygulama Bilgileri",
   ["Capture or Import", "tr"] => "Çek veya İçe Aktar",
+  ["Card details", "tr"] => "Kart Ayrıntıları",
   ["Card Motion", "tr"] => "Kart Hareketi",
+  ["Collectible Card", "tr"] => "Koleksiyon Kartı",
   ["Delete All", "tr"] => "Tümünü Sil",
   ["Delete All Cats", "tr"] => "Tüm Kedileri Sil",
   ["Delete Cat", "tr"] => "Kediyi Sil",
-  ["Double-tap to try the center of the photo. Use Retake or Choose private photo if the cat is elsewhere.", "tr"] => "Fotoğrafın ortasını denemek için çift dokunun. Kedi başka yerdeyse yeniden çek veya özel fotoğraf seç seçeneklerini kullanın.",
+  ["Double-tap to try the center of the photo. Use Retake or Choose private photo if the cat is elsewhere.", "tr"] => "Ortayı denemek için çift dokunun. Kedi başka bir yerdeyse Yeniden Çek'e veya Fotoğraflardan Seç'e dokunun.",
   ["Haptic Feedback", "tr"] => "Dokunsal Geri Bildirim",
   ["Home", "tr"] => "Ana Sayfa",
-  ["Home opens next. Tap Camera when you meet a cat, or choose a private photo.", "tr"] => "Sırada Ana Sayfa var. Bir kediyle karşılaştığınızda Kamera'ya dokunun veya özel bir fotoğraf seçin.",
+  ["Home opens next. Tap Camera when you meet a cat, or choose a private photo.", "tr"] => "Sırada Ana Sayfa var. Bir kediyle karşılaşınca Kamera'ya dokunun ya da Fotoğraflar'dan seçin.",
   ["Image Storage", "tr"] => "Görsel Depolama",
   ["Journal Entry", "tr"] => "Günlük Kaydı",
   ["Local Storage", "tr"] => "Yerel Depolama",
-  ["Location Data Stripped", "tr"] => "Konum Verileri Kaldırılır",
-  ["Make It Yours", "tr"] => "Kendinize Göre Yapın",
-  ["Memory Place", "tr"] => "Anı Konumu",
-  ["Memory Place, %1$@", "tr"] => "Anı konumu: %1$@",
-  ["Memory Place, %1$@, %2$@", "tr"] => "Anı konumu: %1$@, %2$@",
+  ["Location Data Stripped", "tr"] => "Konum Bilgileri Silinir",
+  ["Make It Yours", "tr"] => "Kendi Dokunuşunuzu Katın",
+  ["Memory Place", "tr"] => "Anı Yeri",
+  ["Memory Place, %1$@", "tr"] => "Anı yeri: %1$@",
+  ["Memory Place, %1$@, %2$@", "tr"] => "Anı yeri: %1$@, %2$@",
   ["New Cat", "tr"] => "Yeni Kedi",
   ["Nickname", "tr"] => "Takma Ad",
-  ["No Memory Place yet.", "tr"] => "Henüz anı konumu yok.",
+  ["No Memory Place yet.", "tr"] => "Henüz anı yeri yok.",
   ["Open Home", "tr"] => "Ana Sayfayı Aç",
   ["Open Settings", "tr"] => "Ayarları Aç",
-  ["Place Detail", "tr"] => "Konum Ayrıntısı",
+  ["Place Detail", "tr"] => "Anı Yeri Ayrıntısı",
   ["Privacy & About", "tr"] => "Gizlilik ve Hakkında",
   ["Privacy Receipt", "tr"] => "Gizlilik Özeti",
   ["Save to Collection", "tr"] => "Koleksiyona Kaydet",
@@ -94,7 +96,16 @@ reviewed_direct_values = {
   ["Use English", "tr"] => "İngilizce Kullan",
   ["Use System Language", "tr"] => "Sistem Dilini Kullan",
   ["Welcome to CatLocal", "tr"] => "CatLocal'a Hoş Geldiniz",
-  ["iOS Reduce Motion always takes priority over Card Motion.", "tr"] => "iOS Hareketi Azalt ayarı her zaman Kart Hareketi ayarına göre önceliklidir."
+  ["iOS Reduce Motion always takes priority over Card Motion.", "tr"] => "iOS'taki Hareketi Azalt ayarı, Kart Hareketi'nden her zaman önceliklidir.",
+  ["Give them a little room", "tr"] => "Ona biraz alan bırakın",
+  ["Cat cutout", "tr"] => "Arka Plansız Kedi",
+  ["On this iPhone", "tr"] => "Yalnızca bu iPhone'da",
+  ["On this iPhone, by design", "tr"] => "Gizliliğiniz için yalnızca bu iPhone'da",
+  ["Nothing leaves your phone", "tr"] => "Her şey iPhone'unuzda kalır",
+  ["Your cat encounters stay private", "tr"] => "Kedi karşılaşmalarınız size özel kalır",
+  ["Photos stay on this iPhone.", "tr"] => "Fotoğraflarınız yalnızca bu iPhone'da kalır.",
+  ["A brighter, sharper photo will make a better card.", "tr"] => "Daha aydınlık ve net bir fotoğrafla kart çok daha güzel olur.",
+  ["CatLocal processes your cat images on-device.", "tr"] => "CatLocal, kedi fotoğraflarını yalnızca iPhone'unuzda işler."
 }
 reviewed_plural_values = {}
 
@@ -182,7 +193,7 @@ end
 
 privacy_key = "Sanitized originals, cutouts, and thumbnails stay in CatLocal's private app container. Their folders use iOS file protection until the first unlock after restart, are excluded from backups, and are removed with their cat."
 privacy_fragments = {
-  "tr" => ["özel uygulama kapsayıcısında", "yeniden başlatmanın ardından ilk kilit", "yedeklemelere dahil edilmez", "kediyle birlikte silinir"]
+  "tr" => ["özel uygulama alanında", "iPhone yeniden başlatıldıktan sonraki ilk kilit açmaya kadar", "yedeklenmez", "ilgili kedi silindiğinde onlar da silinir"]
 }
 privacy_fragments.each do |locale, fragments|
   value = strings.dig(privacy_key, "localizations", locale, "stringUnit", "value").to_s
@@ -191,7 +202,7 @@ end
 
 gps_key = "Typed labels only. No GPS is requested."
 gps_access_terms = {
-  "tr" => "GPS erişimi istemez"
+  "tr" => "GPS erişimi istenmez"
 }
 gps_access_terms.each do |locale, fragment|
   value = strings.dig(gps_key, "localizations", locale, "stringUnit", "value").to_s

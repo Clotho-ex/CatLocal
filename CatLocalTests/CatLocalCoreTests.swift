@@ -55,7 +55,7 @@ struct CatLocalCoreTests {
                 styleCount: 20,
                 familyCount: 4,
                 language: .turkish,
-            ) == "4 ailede 20"
+            ) == "20 stil, 4 aile"
         )
     }
 
@@ -107,7 +107,7 @@ struct CatLocalCoreTests {
 
     @Test(arguments: [
         (CatLocalLanguage.english, ["37 in 0 families", "37 in 1 family", "37 in 2 families", "37 in 3 families", "37 in 4 families", "37 in 5 families", "37 in 11 families", "37 in 12 families", "37 in 21 families", "37 in 22 families", "37 in 25 families", "37 in 101 families"]),
-        (CatLocalLanguage.turkish, ["0 ailede 37", "1 ailede 37", "2 ailede 37", "3 ailede 37", "4 ailede 37", "5 ailede 37", "11 ailede 37", "12 ailede 37", "21 ailede 37", "22 ailede 37", "25 ailede 37", "101 ailede 37"]),
+        (CatLocalLanguage.turkish, ["37 stil, 0 aile", "37 stil, 1 aile", "37 stil, 2 aile", "37 stil, 3 aile", "37 stil, 4 aile", "37 stil, 5 aile", "37 stil, 11 aile", "37 stil, 12 aile", "37 stil, 21 aile", "37 stil, 22 aile", "37 stil, 25 aile", "37 stil, 101 aile"]),
     ])
     func cardStyleFamilyCountUsesTheSecondArgumentPluralRule(
         language: CatLocalLanguage,
@@ -161,23 +161,25 @@ struct CatLocalCoreTests {
 
     @Test
     func localizationFinalCleanupUsesCanonicalKeysAndReviewedTranslations() {
-        #expect(CatLocalLocalization.string("Edit Before Saving", language: .turkish) == "Kaydetmeden önce düzenle")
-        #expect(CatLocalLocalization.string("Built Without", language: .turkish) == "İçermediklerimiz")
+        #expect(CatLocalLocalization.string("Edit Before Saving", language: .turkish) == "Kaydetmeden Önce Düzenle")
+        #expect(CatLocalLocalization.string("Built Without", language: .turkish) == "İçermez")
 
         let turkishHeadingTranslations = [
             "A New Cat": "Yeni Bir Kedi",
             "About CatLocal": "CatLocal Hakkında",
             "App Information": "Uygulama Bilgileri",
             "Capture or Import": "Çek veya İçe Aktar",
+            "Card details": "Kart Ayrıntıları",
             "Card Motion": "Kart Hareketi",
+            "Collectible Card": "Koleksiyon Kartı",
             "Delete Cat": "Kediyi Sil",
             "Haptic Feedback": "Dokunsal Geri Bildirim",
             "Home": "Ana Sayfa",
             "Image Storage": "Görsel Depolama",
             "Local Storage": "Yerel Depolama",
-            "Make It Yours": "Kendinize Göre Yapın",
-            "Memory Place": "Anı Konumu",
-            "Place Detail": "Konum Ayrıntısı",
+            "Make It Yours": "Kendi Dokunuşunuzu Katın",
+            "Memory Place": "Anı Yeri",
+            "Place Detail": "Anı Yeri Ayrıntısı",
             "Privacy Receipt": "Gizlilik Özeti",
             "Welcome to CatLocal": "CatLocal'a Hoş Geldiniz",
         ]
@@ -189,6 +191,27 @@ struct CatLocalCoreTests {
         #expect(CatLocalLocalization.string("On This iPhone", language: .turkish) == "On This iPhone")
         #expect(CatLocalLocalization.string("Preparing Cat Card", language: .turkish) == "Preparing Cat Card")
         #expect(CatLocalLocalization.string("Storage used", language: .turkish) == "Storage used")
+    }
+
+    @Test
+    func turkishTranscreationPreservesCatLocalVoiceAndRecoveryIntent() {
+        let reviewedTranslations = [
+            "A private field journal for the cats you meet.": "Karşılaştığınız kediler için size özel bir günlük.",
+            "Cat cutout": "Arka Plansız Kedi",
+            "Give them a little room": "Ona biraz alan bırakın",
+            "On this iPhone": "Yalnızca bu iPhone'da",
+            "On this iPhone, by design": "Gizliliğiniz için yalnızca bu iPhone'da",
+            "Nothing leaves your phone": "Her şey iPhone'unuzda kalır",
+            "Your cat encounters stay private": "Kedi karşılaşmalarınız size özel kalır",
+            "Photos stay on this iPhone.": "Fotoğraflarınız yalnızca bu iPhone'da kalır.",
+            "This photo may need another try": "Bu fotoğrafla biraz zorlanabilirim",
+            "A brighter, sharper photo will make a better card.": "Daha aydınlık ve net bir fotoğrafla kart çok daha güzel olur.",
+            "CatLocal processes your cat images on-device.": "CatLocal, kedi fotoğraflarını yalnızca iPhone'unuzda işler.",
+        ]
+
+        for (key, expected) in reviewedTranslations {
+            #expect(CatLocalLocalization.string(key, language: .turkish) == expected)
+        }
     }
 
     @Test
@@ -1446,6 +1469,38 @@ struct CatLocalCoreTests {
             #expect(!text.contains("import CoreLocation"))
             #expect(!text.contains("import MapKit"))
         }
+    }
+
+    @Test
+    func newCatCutoutOutlineUsesSemanticGreenAcrossEveryRenderer() throws {
+        let repository = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let theme = try String(
+            contentsOf: repository
+                .appendingPathComponent("CatLocal/Shared/DesignSystem/CatLocalTheme.swift"),
+            encoding: .utf8
+        )
+        let rendererPaths = [
+            "CatLocal/Shared/UI/Card/CatCardView.swift",
+            "CatLocal/Features/Capture/CaptureView.swift",
+            "CatLocal/Shared/UI/Effects/DustingRevealView.swift",
+        ]
+        let renderers = try rendererPaths.map {
+            try String(
+                contentsOf: repository.appendingPathComponent($0),
+                encoding: .utf8
+            )
+        }
+
+        #expect(theme.contains("static let cutoutOutline = Color("))
+        #expect(theme.contains("light: UIColor(hex: 0x236F45)"))
+        #expect(theme.contains("dark: UIColor(hex: 0xA5E4B0)"))
+        #expect(
+            renderers.reduce(0) {
+                $0 + $1.components(separatedBy: ".foregroundStyle(CatLocalTheme.cutoutOutline)").count - 1
+            } == 3
+        )
     }
 
     @Test @MainActor

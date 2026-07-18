@@ -29,7 +29,7 @@ final class CatLocalUITests: XCTestCase {
             appleLocale: "tr_TR",
             welcomeTitle: "CatLocal'a Hoş Geldiniz",
             backTitle: "Geri",
-            readyTitle: "İlk kediniz için hazırsınız",
+            readyTitle: "İlk kediniz için her şey hazır",
             firstCatTitle: "İlk kedinizle tanışın",
             settingsTitle: "Ayarlar",
             cameraTitle: "Kamera"

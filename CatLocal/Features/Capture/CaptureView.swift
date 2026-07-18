@@ -2960,7 +2960,7 @@ private struct SubjectToCardTransitionView<Destination: View>: View {
                 .renderingMode(.template)
                 .resizable()
                 .scaledToFit()
-                .foregroundStyle(CatLocalTheme.cardSurface)
+                .foregroundStyle(CatLocalTheme.cutoutOutline)
                 .opacity(SubjectToCardTransitionTimeline.outlineOpacity(elapsed: elapsed))
 
             Image(decorative: transition.sticker, scale: 1, orientation: .up)

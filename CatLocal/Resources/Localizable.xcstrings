@@ -14,7 +14,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ stil ailesi"
+            "value": "%1$@ stilleri"
           }
         }
       }
@@ -32,7 +32,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@, kedi numarası %2$lld, çekim tarihi %3$@."
+            "value": "%1$@. %2$lld numaralı kedi. %3$@ tarihinde çekildi."
           }
         }
       }
@@ -50,7 +50,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%2$@ %1$lld"
+            "value": "%1$lld stil, %2$@"
           }
         }
       }
@@ -201,7 +201,7 @@
               "other": {
                 "stringUnit": {
                   "state": "translated",
-                  "value": "%lld kedi yerel olarak kayıtlı"
+                  "value": "%lld kedi bu iPhone'da kayıtlı"
                 }
               }
             }
@@ -237,7 +237,7 @@
               "other": {
                 "stringUnit": {
                   "state": "translated",
-                  "value": "%lld ailede"
+                  "value": "%lld aile"
                 }
               }
             }
@@ -309,7 +309,7 @@
               "other": {
                 "stringUnit": {
                   "state": "translated",
-                  "value": "%lld yer"
+                  "value": "%lld anı yeri"
                 }
               }
             }
@@ -345,7 +345,7 @@
               "other": {
                 "stringUnit": {
                   "state": "translated",
-                  "value": "Yazdığınız %lld yer."
+                  "value": "Eklediğiniz %lld anı yeri."
                 }
               }
             }
@@ -381,7 +381,7 @@
               "other": {
                 "stringUnit": {
                   "state": "translated",
-                  "value": "%lld kart kayıtlı"
+                  "value": "%lld kayıtlı kart"
                 }
               }
             }
@@ -441,7 +441,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Bu karşılaşma hakkında bir not"
+            "value": "Bu karşılaşmadan bir not"
           }
         }
       }
@@ -452,7 +452,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tanıştığınız kediler için özel bir saha günlüğü."
+            "value": "Karşılaştığınız kediler için size özel bir günlük."
           }
         }
       },
@@ -463,7 +463,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tanıştığınız kediler için özel bir saha günlüğü. CatLocal gerçek karşılaşmaları aygıtta işleme ve yerel depolamayla dokunsal koleksiyon kartlarına dönüştürür."
+            "value": "Karşılaştığınız kediler için size özel bir günlük. CatLocal, gerçek karşılaşmaları iPhone'unuzda işleyip koleksiyon kartlarına dönüştürür ve yine burada saklar."
           }
         }
       }
@@ -474,7 +474,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tanıştığınız kediler için özel bir yer."
+            "value": "Karşılaştığınız kedilere ayrılmış, size özel bir yer."
           }
         }
       }
@@ -514,7 +514,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Catlas'ı oluşturmak için bir anı konumu ekleyin."
+            "value": "Catlas'ı büyütmek için bir Anı Yeri ekleyin."
           }
         }
       }
@@ -554,7 +554,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Son dokunuşlar ekleniyor"
+            "value": "Son dokunuşlar yapılıyor"
           }
         }
       },
@@ -573,7 +573,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Özel Catlas'a elle bir yer etiketi ekler"
+            "value": "Catlas'ınıza yazdığınız anı yerini ekler"
           }
         }
       }
@@ -627,7 +627,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Apple Vision kedileri tamamen aygıt üzerinde bulur ve ayırır."
+            "value": "Apple Vision, kedileri yalnızca iPhone'unuzda bulup arka plandan ayırır."
           }
         }
       }
@@ -714,7 +714,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "CatLocal depolamadan önce seçilen fotoğrafı yeniden çizer ve kaynak EXIF, GPS, kamera/aygıt ya da yön verileri olmadan yeniden kodlar."
+            "value": "CatLocal, seçtiğiniz fotoğrafı kaydetmeden önce yeniden oluşturup kodlar; kaynak EXIF, GPS, kamera, aygıt ve yön bilgilerini aktarmaz."
           }
         }
       }
@@ -769,7 +769,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "İçermediklerimiz"
+            "value": "İçermez"
           }
         }
       }
@@ -865,7 +865,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aygıttaki işlemi iptal eder ve kameraya döner"
+            "value": "iPhone'daki işlemi durdurup kameraya döner"
           }
         }
       }
@@ -876,7 +876,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Bir kedi karşılaşmasını fotoğraflayın ve koleksiyon kartına dönüştürün."
+            "value": "Karşılaştığınız bir kediyi fotoğraflayın, kartını koleksiyonunuza ekleyin."
           }
         }
       },
@@ -906,7 +906,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Çekin veya içe aktarın. Aygıtta kedi kesiti oluşturun. Kartınızı kişiselleştirin."
+            "value": "Fotoğraf çekin veya içe aktarın. Kediyi iPhone'da arka plandan ayırın. Kendi dokunuşunuzu katın."
           }
         }
       }
@@ -938,7 +938,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Kart tasarımı"
+            "value": "Kart Tasarımı"
           }
         }
       }
@@ -949,7 +949,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Kart ayrıntıları"
+            "value": "Kart Ayrıntıları"
           }
         }
       },
@@ -1036,7 +1036,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Kartlar bu iPhone'a kaydedilir."
+            "value": "Kartlar yalnızca bu iPhone'a kaydedilir."
           }
         }
       }
@@ -1047,7 +1047,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Kedi %1$lld, fotoğrafta %2$lld olarak işaretlendi"
+            "value": "%1$lld. kedi; fotoğrafta %2$lld ile işaretli"
           }
         }
       },
@@ -1059,7 +1059,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Kedi %lld"
+            "value": "%lld. kedi"
           }
         }
       },
@@ -1089,7 +1089,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Kedi kesiti"
+            "value": "Arka Plansız Kedi"
           }
         }
       },
@@ -1108,7 +1108,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Kedi: %1$@. Kedi numarası: %2$lld. Çekim tarihi: %3$@."
+            "value": "%1$@. %2$lld numaralı kedi. %3$@ tarihinde çekildi."
           }
         }
       }
@@ -1140,7 +1140,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "CatLocal GPS istemez veya koordinat kaydetmez. Catlas etiketlerini siz yazarsınız."
+            "value": "CatLocal GPS erişimi istemez, koordinat kaydetmez. Catlas'a anı yerlerini siz yazarsınız."
           }
         }
       }
@@ -1219,7 +1219,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Şimdi bir kart tasarımı seçin veya önce kaydedip sonra düzenleyin."
+            "value": "Kart tasarımını şimdi seçin; isterseniz önce kaydedip sonra düzenleyin."
           }
         }
       }
@@ -1230,7 +1230,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tasarım, notlar ve yazılı konum seçin"
+            "value": "Tasarım, not ve anı yeri ekleyin"
           }
         }
       }
@@ -1252,7 +1252,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Özel fotoğraf seç"
+            "value": "Fotoğraflardan Seç"
           }
         }
       },
@@ -1263,7 +1263,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Bu kartın son ayrıntılarını seçin."
+            "value": "Kartınıza son dokunuşunuzu yapın."
           }
         }
       }
@@ -1339,11 +1339,10 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Koleksiyon kartı"
+            "value": "Koleksiyon Kartı"
           }
         }
-      },
-      "extractionState": "manual"
+      }
     },
     "Completed": {
       "comment": "Accessibility and VoiceOver copy. Keep the meaning concise and natural when spoken aloud.",
@@ -1438,7 +1437,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Kedi kesiti oluşturuluyor"
+            "value": "Kedi arka plandan ayrılıyor"
           }
         }
       }
@@ -1611,7 +1610,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tasarım %1$lld, %2$@ kart tasarımı"
+            "value": "%1$lld. tasarım: %2$@"
           }
         }
       },
@@ -1622,7 +1621,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tasarım, ad ve Catlas etiketleri"
+            "value": "Tasarım, ad ve Catlas bilgileri"
           }
         }
       }
@@ -1633,7 +1632,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tasarım, notlar, konum"
+            "value": "Tasarım, notlar ve anı yeri"
           }
         }
       }
@@ -1751,7 +1750,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Fotoğrafın ortasını denemek için çift dokunun. Kedi başka yerdeyse yeniden çek veya özel fotoğraf seç seçeneklerini kullanın."
+            "value": "Ortayı denemek için çift dokunun. Kedi başka bir yerdeyse Yeniden Çek'e veya Fotoğraflardan Seç'e dokunun."
           }
         }
       }
@@ -1787,7 +1786,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Işığı kaydırmak için kediyi sürükleyin"
+            "value": "Işığın yönünü değiştirmek için kediyi sürükleyin"
           }
         }
       }
@@ -1837,7 +1836,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Kaydetmeden önce düzenle"
+            "value": "Kaydetmeden Önce Düzenle"
           }
         }
       },
@@ -1896,7 +1895,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tanıtımı bitirir. Gizlilik ayrıntıları Ayarlar'da kalır."
+            "value": "Tanıtımı bitirir. Gizlilik bilgileri Ayarlar'da kalır."
           }
         }
       }
@@ -1943,7 +1942,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Kediyi bulur ve arka planı kaldırır"
+            "value": "Kediyi bulup arka plandan ayırır"
           }
         }
       },
@@ -1955,7 +1954,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "CatLocal her kedi için temizlenip yeniden kodlanmış bir orijinali, kesiti ve küçük resmi saklar."
+            "value": "CatLocal her kedi için verilerden arındırıp yeniden kodladığı asıl fotoğrafı, arka plansız görseli ve küçük resmi saklar."
           }
         }
       }
@@ -1983,7 +1982,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Biraz alan bırakın"
+            "value": "Ona biraz alan bırakın"
           }
         }
       }
@@ -2035,7 +2034,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sırada Ana Sayfa var. Bir kediyle karşılaştığınızda Kamera'ya dokunun veya özel bir fotoğraf seçin."
+            "value": "Sırada Ana Sayfa var. Bir kediyle karşılaşınca Kamera'ya dokunun ya da Fotoğraflar'dan seçin."
           }
         }
       }
@@ -2046,7 +2045,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Kediyi net olarak bulamadım"
+            "value": "Kediyi net göremedim"
           }
         }
       }
@@ -2068,7 +2067,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Kart ayrıntıları, notlar, yazılan Catlas etiketleri, orijinaller, kesitler ve küçük resimler dahildir."
+            "value": "Kart bilgileri, notlar, yazdığınız Catlas yerleri, asıl fotoğraflar, arka plansız görseller ve küçük resimler dâhildir."
           }
         }
       }
@@ -2088,7 +2087,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "En temiz kesit için kedinin tamamını görünür tutun."
+            "value": "En temiz sonuç için kedinin tamamı kadrajda kalsın."
           }
         }
       }
@@ -2239,7 +2238,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Konum Verileri Kaldırılır"
+            "value": "Konum Bilgileri Silinir"
           }
         }
       }
@@ -2260,7 +2259,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Kendinize Göre Yapın"
+            "value": "Kendi Dokunuşunuzu Katın"
           }
         }
       }
@@ -2282,7 +2281,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Fotoğraftaki numarayı eşleştirin, sonra o kediyi seçin."
+            "value": "Fotoğraftaki numaraya bakın, ardından o kediyi seçin."
           }
         }
       }
@@ -2305,7 +2304,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Anı Konumu"
+            "value": "Anı Yeri"
           }
         }
       },
@@ -2324,7 +2323,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Anı konumu: %1$@"
+            "value": "Anı yeri: %1$@"
           }
         }
       }
@@ -2342,7 +2341,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Anı konumu: %1$@, %2$@"
+            "value": "Anı yeri: %1$@, %2$@"
           }
         }
       }
@@ -2498,7 +2497,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Hesap yok. Bulut yok."
+            "value": "Hesap Yok. Bulut Yok."
           }
         }
       },
@@ -2517,7 +2516,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Henüz anı konumu yok."
+            "value": "Henüz anı yeri yok."
           }
         }
       }
@@ -2527,7 +2526,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Hesap, herkese açık harita, reklam tanımlayıcı, GPS takibi, bulut yapay zekâsı veya model eğitimi yüklemesi yoktur."
+            "value": "Hesap, herkese açık harita, reklam kimliği, GPS takibi, bulut yapay zekâsı veya model eğitimi için veri aktarımı yoktur."
           }
         }
       }
@@ -2597,7 +2596,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Hiçbir şey telefonunuzdan çıkmaz"
+            "value": "Her şey iPhone'unuzda kalır"
           }
         }
       }
@@ -2636,7 +2635,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Bu iPhone'da"
+            "value": "Yalnızca bu iPhone'da"
           }
         }
       },
@@ -2647,7 +2646,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Verileriniz, tasarımı gereği bu iPhone'da kalır"
+            "value": "Gizliliğiniz için yalnızca bu iPhone'da"
           }
         }
       },
@@ -2659,7 +2658,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aygıtta Vision"
+            "value": "iPhone'da Tanıma"
           }
         }
       }
@@ -2670,7 +2669,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aygıtta kedi kesiti"
+            "value": "iPhone'da Arka Plan Ayırma"
           }
         }
       },
@@ -2723,7 +2722,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Filtrelenmiş bir Catlas ızgarası açar"
+            "value": "Bu anı yerindeki Catlas kartlarını açar"
           }
         }
       }
@@ -2759,7 +2758,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tam konuma dokunmadan kediyi seçmek için dokuz adlandırılmış bölge açar"
+            "value": "Kediye tam olarak dokunmadan seçim yapabilmeniz için adlandırılmış dokuz bölge açar"
           }
         }
       }
@@ -2777,7 +2776,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Kamerayı ve özel fotoğraf içe aktarmayı açar."
+            "value": "Kamerayı ve Fotoğraflar'dan seçimi açar."
           }
         }
       }
@@ -2856,7 +2855,7 @@
               "other": {
                 "stringUnit": {
                   "state": "translated",
-                  "value": "Numarayla işaretlenmiş %lld kedinin bulunduğu fotoğraf"
+                  "value": "%lld kedinin numarayla işaretlendiği fotoğraf"
                 }
               }
             }
@@ -2881,7 +2880,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Fotoğraflar bu iPhone'da kalır."
+            "value": "Fotoğraflarınız yalnızca bu iPhone'da kalır."
           }
         }
       }
@@ -2928,7 +2927,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Konum Ayrıntısı"
+            "value": "Anı Yeri Ayrıntısı"
           }
         }
       }
@@ -2938,7 +2937,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Konumlar"
+            "value": "Anı Yerleri"
           }
         }
       }
@@ -2956,7 +2955,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Kedi kesiti yerleştiriliyor"
+            "value": "Kedi karta yerleştiriliyor"
           }
         }
       }
@@ -3056,7 +3055,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Özel tarama"
+            "value": "Yerel İşleme"
           }
         }
       },
@@ -3068,7 +3067,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Bu iPhone'da özel tarama"
+            "value": "Fotoğraf yalnızca bu iPhone'da işlenir"
           }
         }
       }
@@ -3079,7 +3078,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "İlk kediniz için hazırsınız"
+            "value": "İlk kediniz için her şey hazır"
           }
         }
       },
@@ -3202,7 +3201,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "iOS dilinize geri döner."
+            "value": "Yeniden iOS dilinizi kullanır."
           }
         }
       }
@@ -3212,7 +3211,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Temizlenmiş orijinaller, kesitler ve küçük resimler CatLocal'ın özel uygulama kapsayıcısında kalır. Klasörleri, yeniden başlatmanın ardından ilk kilit açılana kadar iOS dosya koruması altındadır; yedeklemelere dahil edilmez ve ilgili kediyle birlikte silinir."
+            "value": "Verilerden arındırılmış asıl fotoğraflar, arka plansız görseller ve küçük resimler CatLocal'ın özel uygulama alanında kalır. Dosyalar, iPhone yeniden başlatıldıktan sonraki ilk kilit açmaya kadar iOS korumasındadır; yedeklenmez ve ilgili kedi silindiğinde onlar da silinir."
           }
         }
       },
@@ -3245,7 +3244,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Buraya kaydedilir"
+            "value": "Burada Saklanır"
           }
         }
       }
@@ -3256,7 +3255,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Kaydedilen görsellerde GPS verisi bulunmaz."
+            "value": "Kaydedilen görsellerde GPS bilgisi bulunmaz."
           }
         }
       }
@@ -3286,7 +3285,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Bu kartı şimdi kaydeder. Adı, tasarımı ve Catlas ayrıntılarını daha sonra düzenleyebilirsiniz."
+            "value": "Kartı şimdi kaydeder. Adını, tasarımını ve Catlas bilgilerini daha sonra düzenleyebilirsiniz."
           }
         }
       }
@@ -3297,7 +3296,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aygıtta tam olarak nelerin kaldığını görün."
+            "value": "iPhone'unuzda nelerin kaldığını görün."
           }
         }
       }
@@ -3437,7 +3436,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Kart son hâline getiriliyor"
+            "value": "Kart yerine oturuyor"
           }
         }
       }
@@ -3599,7 +3598,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Özel çekim ve fotoğraf içe aktarma akışını başlatır"
+            "value": "Kamera ve Fotoğraflar'dan seçim akışını başlatır"
           }
         }
       }
@@ -3756,7 +3755,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Çekim, kartlar ve eylemler için dokunsal ipuçları."
+            "value": "Çekim, kartlar ve işlemler için hafif dokunsal geri bildirimler."
           }
         }
       }
@@ -3767,7 +3766,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Fotoğraf çekin veya bir fotoğraf seçin"
+            "value": "Fotoğraf çekin veya Fotoğraflar'dan seçin"
           }
         }
       },
@@ -3789,7 +3788,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Doğrudan kediye dokunun veya aşağıdan adlandırılmış bir fotoğraf alanı seçin."
+            "value": "Kediye dokunun ya da aşağıdaki fotoğraf alanlarından birini seçin."
           }
         }
       }
@@ -3831,7 +3830,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Koleksiyon için hesap, yükleme, bulut yapay zekâsı veya model eğitimi gerekmez."
+            "value": "Koleksiyonunuz için hesap, yükleme, bulut yapay zekâsı veya model eğitimi gerekmez."
           }
         }
       }
@@ -3849,7 +3848,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Seçilen fotoğraf bu iPhone'da kalır"
+            "value": "Seçtiğiniz fotoğraf yalnızca bu iPhone'da kalır"
           }
         }
       }
@@ -3869,7 +3868,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Bu işlem tamamen iPhone'unuzda gerçekleşir."
+            "value": "Her şey iPhone'unuzda gerçekleşir."
           }
         }
       }
@@ -3891,7 +3890,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Bu fotoğraf biraz belirsiz görünüyor"
+            "value": "Bu fotoğrafı okumakta zorlandım"
           }
         }
       }
@@ -3902,7 +3901,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Bu fotoğrafı yeniden denemek gerekebilir"
+            "value": "Bu fotoğrafla biraz zorlanabilirim"
           }
         }
       }
@@ -3913,7 +3912,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Eğim, folyo ışığı ve ortaya çıkma hareketi."
+            "value": "Kart eğimi, ışık parıltısı ve ortaya çıkış hareketi."
           }
         }
       }
@@ -3979,7 +3978,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Yalnızca elle girdiğiniz etiketler. CatLocal GPS erişimi istemez."
+            "value": "Yalnızca sizin yazdığınız yerler kullanılır. GPS erişimi istenmez."
           }
         }
       },
@@ -4001,7 +4000,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Şimdilik konumsuz"
+            "value": "Henüz bir anı yeri yok"
           }
         }
       }
@@ -4075,7 +4074,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Kart hangi kedinin olacak?"
+            "value": "Kart hangi kedinin olsun?"
           }
         }
       }
@@ -4096,7 +4095,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Kedi karşılaşmalarınız gizli kalır"
+            "value": "Kedi karşılaşmalarınız size özel kalır"
           }
         }
       },
@@ -4108,7 +4107,427 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "İlk kartınız kedi kesitini, tasarımı, notları ve yazılan konumu bir arada tutar."
+            "value": "İlk kartınız; kediyi, tasarımını, notlarınızı ve yazdığınız anı yerini bir arada tutar."
+          }
+        }
+      }
+    },
+    "Add Memory Place": {
+      "comment": "Context-menu action that adds a manually typed place to a saved cat.",
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anı Yeri Ekle"
+          }
+        }
+      }
+    },
+    "A brighter, sharper photo will make a better card.": {
+      "comment": "Warm recovery guidance after foreground separation fails.",
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Daha aydınlık ve net bir fotoğrafla kart çok daha güzel olur."
+          }
+        }
+      }
+    },
+    "Bottom": {
+      "comment": "Section title for the bottom row of accessible photo-selection regions.",
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alt"
+          }
+        }
+      }
+    },
+    "CatLocal could not confidently find a cat in this photo.": {
+      "comment": "Recoverable Vision error shown when no cat is detected.",
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu fotoğrafta bir kediyi net olarak bulamadım."
+          }
+        }
+      }
+    },
+    "CatLocal could not create a clean cutout from this photo. Try a photo with the whole cat in view.": {
+      "comment": "Fallback recovery message when foreground separation fails.",
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kediyi bu fotoğrafta arka plandan temizce ayıramadım. Kedinin tamamının göründüğü başka bir fotoğraf deneyin."
+          }
+        }
+      }
+    },
+    "CatLocal could not configure the camera.": {
+      "comment": "Camera error shown when CatLocal cannot prepare the capture session.",
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CatLocal kamerayı hazırlayamadı."
+          }
+        }
+      }
+    },
+    "CatLocal could not process this photo on this device right now. Try another photo or try again later.": {
+      "comment": "Recoverable Vision error shown when on-device processing is temporarily unavailable.",
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu fotoğrafı şu anda iPhone'unuzda işleyemedim. Başka bir fotoğraf seçin veya daha sonra yeniden deneyin."
+          }
+        }
+      }
+    },
+    "CatLocal processes your cat images on-device.": {
+      "comment": "Privacy education subtitle spoken by the Loci state view.",
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CatLocal, kedi fotoğraflarını yalnızca iPhone'unuzda işler."
+          }
+        }
+      }
+    },
+    "Choose photo area": {
+      "comment": "Button that opens named regions for accessible cat selection.",
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fotoğraf Alanı Seç"
+          }
+        }
+      }
+    },
+    "Delete Card": {
+      "comment": "Destructive context-menu action for one saved cat card.",
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kartı Sil"
+          }
+        }
+      }
+    },
+    "Discard and Retake": {
+      "comment": "Destructive action that discards the current draft and returns to the camera.",
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Taslağı Sil ve Yeniden Çek"
+          }
+        }
+      }
+    },
+    "Discard Draft": {
+      "comment": "Destructive action that closes and discards the current unsaved cat card.",
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Taslağı Sil"
+          }
+        }
+      }
+    },
+    "Discard this draft?": {
+      "comment": "Confirmation title before an unsaved cat-card draft is discarded.",
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu taslak silinsin mi?"
+          }
+        }
+      }
+    },
+    "Explains local privacy before you start collecting.": {
+      "comment": "VoiceOver hint for the onboarding privacy step.",
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Koleksiyona başlamadan önce yerel gizliliği açıklar."
+          }
+        }
+      }
+    },
+    "Finishes onboarding and opens Home. Camera and private photo import remain available when you are ready.": {
+      "comment": "VoiceOver hint for the final onboarding action.",
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tanıtımı bitirip Ana Sayfa'yı açar. Hazır olduğunuzda Kamera'yı veya Fotoğraflar'dan seçimi kullanabilirsiniz."
+          }
+        }
+      }
+    },
+    "Good lighting helps CatLocal make a cleaner cutout.": {
+      "comment": "Warm image-quality guidance spoken by the Loci state view.",
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İyi ışık, kediyi arka plandan daha temiz ayırmama yardımcı olur."
+          }
+        }
+      }
+    },
+    "Image folders use iOS file protection until the first unlock after restart, are excluded from backups, and are deleted with their cat.": {
+      "comment": "Privacy receipt detail. Preserve file protection, backup exclusion, and deletion with the corresponding cat.",
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Görsel klasörleri, iPhone yeniden başlatıldıktan sonraki ilk kilit açmaya kadar iOS korumasındadır; yedeklenmez ve ilgili kediyle birlikte silinir."
+          }
+        }
+      }
+    },
+    "Keep Draft": {
+      "comment": "Safe action that closes the discard confirmation and preserves the current draft.",
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Taslağı Koru"
+          }
+        }
+      }
+    },
+    "Middle": {
+      "comment": "Section title for the middle row of accessible photo-selection regions.",
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Orta"
+          }
+        }
+      }
+    },
+    "No camera is available on this device.": {
+      "comment": "Camera error shown when no camera is available, including on Simulator.",
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu iPhone'da kullanılabilir bir kamera yok."
+          }
+        }
+      }
+    },
+    "No clear foreground subject could be separated from the background.": {
+      "comment": "Recoverable Vision error shown when foreground separation finds no usable subject.",
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kediyi arka plandan net biçimde ayıramadım."
+          }
+        }
+      }
+    },
+    "Saved locally to your collection.": {
+      "comment": "Brief confirmation shown after a cat card is saved.",
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Koleksiyonunuza, yalnızca bu iPhone'a kaydedildi."
+          }
+        }
+      }
+    },
+    "Shows how CatLocal turns encounters into a private collection.": {
+      "comment": "VoiceOver hint for the first onboarding action.",
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CatLocal'ın karşılaşmaları size özel bir koleksiyona nasıl dönüştürdüğünü gösterir."
+          }
+        }
+      }
+    },
+    "The camera is already taking a photo.": {
+      "comment": "Camera error shown when capture is already in progress.",
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kamera şu anda bir fotoğraf çekiyor."
+          }
+        }
+      }
+    },
+    "The camera is not ready yet.": {
+      "comment": "Camera error shown while the camera is still preparing.",
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kamera henüz hazır değil."
+          }
+        }
+      }
+    },
+    "The captured photo could not be opened.": {
+      "comment": "Camera error shown when captured image data cannot be opened.",
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Çekilen fotoğraf açılamadı."
+          }
+        }
+      }
+    },
+    "The cat was found, but the cutout could not be created.": {
+      "comment": "Recoverable Vision error shown after detection succeeds but foreground separation fails.",
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kediyi buldum ama arka plandan ayıramadım."
+          }
+        }
+      }
+    },
+    "The selected cat could not be separated cleanly. Try a photo with more space around them.": {
+      "comment": "Warm recovery guidance when the selected cat cannot be separated from the background.",
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seçtiğiniz kediyi arka plandan temizce ayıramadım. Kedinin kadrajda biraz daha rahat olduğu bir fotoğraf deneyin."
+          }
+        }
+      }
+    },
+    "This photo could not be read. Try another one.": {
+      "comment": "Recoverable image error shown when the selected photo cannot be decoded.",
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu fotoğrafı okuyamadım. Başka bir fotoğraf deneyin."
+          }
+        }
+      }
+    },
+    "Top": {
+      "comment": "Section title for the top row of accessible photo-selection regions.",
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Üst"
+          }
+        }
+      }
+    },
+    "Try a brighter photo where your cat is fully visible.": {
+      "comment": "Warm recovery guidance shown when no cat can be detected.",
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kedinin tamamının göründüğü daha aydınlık bir fotoğraf deneyin."
+          }
+        }
+      }
+    },
+    "Try again in a moment.": {
+      "comment": "Brief recovery guidance after an unexpected processing failure.",
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Birazdan yeniden deneyin."
+          }
+        }
+      }
+    },
+    "Your cards react to touch.": {
+      "comment": "Brief hint explaining focused-card interaction.",
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kartlarınız dokunuşunuza karşılık verir."
+          }
+        }
+      }
+    },
+    "Your cutout and unsaved details will be lost. Saved cats stay in your collection.": {
+      "comment": "Confirmation detail before closing an unsaved cat-card draft.",
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arka plansız görsel ve kaydedilmemiş bilgiler silinir. Koleksiyonunuzdaki kediler etkilenmez."
+          }
+        }
+      }
+    },
+    "Your cutout and unsaved details will be lost before the camera opens.": {
+      "comment": "Confirmation detail before discarding a draft and reopening the camera.",
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kamera açılmadan önce arka plansız görsel ve kaydedilmemiş bilgiler silinir."
           }
         }
       }
@@ -4118,7 +4537,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "iOS Hareketi Azalt ayarı her zaman Kart Hareketi ayarına göre önceliklidir."
+            "value": "iOS'taki Hareketi Azalt ayarı, Kart Hareketi'nden her zaman önceliklidir."
           }
         }
       }
