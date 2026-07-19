@@ -273,7 +273,10 @@ final class CatLocalUITests: XCTestCase {
     ) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = arguments
-            + ["-ui-testing-language", locale.languageCode]
+            + [
+                "-AppleLanguages", "(\(locale.languageCode))",
+                "-AppleLocale", locale.appleLocale
+            ]
             + localizedRuntimeLaneArguments
         return app
     }

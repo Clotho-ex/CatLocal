@@ -34,10 +34,6 @@ enum CatLocalTheme {
         light: UIColor(hex: 0x12211E, alpha: 0.22),
         dark: UIColor(hex: 0xF4FFF7, alpha: 0.24)
     )
-    static let cutoutOutline = Color(
-        light: UIColor(hex: 0x236F45),
-        dark: UIColor(hex: 0xA5E4B0)
-    )
     static let shadow = Color(
         light: UIColor(hex: 0x12211E, alpha: 0.22),
         dark: UIColor.black.withAlphaComponent(0.78)

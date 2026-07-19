@@ -786,8 +786,6 @@ struct FullScreenDustRevealView: View {
         return ZStack {
             Image(decorative: transition.outlineMask, scale: 1, orientation: .up)
                 .resizable()
-                .renderingMode(.template)
-                .foregroundStyle(CatLocalTheme.cutoutOutline)
                 .frame(width: outlineRect.width, height: outlineRect.height)
                 .position(x: outlineRect.midX, y: outlineRect.midY)
 

@@ -130,32 +130,32 @@ struct CatLocalApp: App {
         do {
             let container = try ModelContainer(for: schema, configurations: [configuration])
             let arguments = CommandLine.arguments
-#if DEBUG
-            let uiTestingLanguage: CatLocalLanguage? = {
-                guard let flagIndex = arguments.firstIndex(of: "-ui-testing-language") else {
-                    return nil
-                }
-                let valueIndex = arguments.index(after: flagIndex)
-                guard arguments.indices.contains(valueIndex) else {
-                    return nil
-                }
-                return CatLocalLanguage(rawValue: arguments[valueIndex])
-            }()
-#else
-            let uiTestingLanguage: CatLocalLanguage? = nil
-#endif
+            let defaults = UserDefaults.standard
+            let storedLanguage = defaults.string(forKey: CatLocalUserDefaults.languageKey)
+            let userLanguage = CatLocalLanguage.userPreference(storedLanguage)
+            if let storedLanguage, storedLanguage != userLanguage.rawValue {
+                defaults.set(userLanguage.rawValue, forKey: CatLocalUserDefaults.languageKey)
+            }
             if arguments.contains("-ui-testing-show-onboarding") {
-                UserDefaults.standard.set(false, forKey: CatLocalUserDefaults.hasCompletedOnboardingKey)
+                defaults.set(false, forKey: CatLocalUserDefaults.hasCompletedOnboardingKey)
             }
             if arguments.contains("-ui-testing-reset") {
-                UserDefaults.standard.set(
+                defaults.set(
                     !arguments.contains("-ui-testing-show-onboarding"),
                     forKey: CatLocalUserDefaults.hasCompletedOnboardingKey
                 )
-                UserDefaults.standard.set(false, forKey: CatLocalUserDefaults.hasSeenFocusedCardGlintHintKey)
-                UserDefaults.standard.set(
-                    (uiTestingLanguage ?? .system).rawValue,
+                defaults.set(false, forKey: CatLocalUserDefaults.hasSeenFocusedCardGlintHintKey)
+                defaults.set(
+                    CatLocalLanguage.system.rawValue,
                     forKey: CatLocalUserDefaults.languageKey
+                )
+                defaults.set(
+                    CatLocalHomeView.cards.rawValue,
+                    forKey: CatLocalUserDefaults.homeViewKey
+                )
+                defaults.set(
+                    CatLocalSortOrder.number.rawValue,
+                    forKey: CatLocalUserDefaults.sortOrderKey
                 )
                 let context = ModelContext(container)
                 try context.delete(model: CatRecord.self)

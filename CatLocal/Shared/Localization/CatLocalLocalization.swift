@@ -16,6 +16,10 @@ enum CatLocalLanguage: String, CaseIterable, Identifiable {
         rawValue.flatMap(Self.init(rawValue:)) ?? .system
     }
 
+    static func userPreference(_ rawValue: String?) -> Self {
+        rawValue == Self.english.rawValue ? .english : .system
+    }
+
     static func shouldOfferEnglishFallback(
         preferredLanguages: [String] = Locale.preferredLanguages
     ) -> Bool {
@@ -52,7 +56,7 @@ enum CatLocalLocalization {
     }
 
     static var selectedLanguage: CatLocalLanguage {
-        CatLocalLanguage.resolved(
+        CatLocalLanguage.userPreference(
             UserDefaults.standard.string(forKey: CatLocalUserDefaults.languageKey)
         )
     }

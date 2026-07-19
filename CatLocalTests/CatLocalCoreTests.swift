@@ -23,6 +23,15 @@ struct CatLocalCoreTests {
     }
 
     @Test
+    func persistedLanguagePreferenceRejectsStaleNonEnglishOverrides() {
+        #expect(CatLocalLanguage.userPreference(nil) == .system)
+        #expect(CatLocalLanguage.userPreference("system") == .system)
+        #expect(CatLocalLanguage.userPreference("en") == .english)
+        #expect(CatLocalLanguage.userPreference("tr") == .system)
+        #expect(CatLocalLanguage.userPreference("not-a-language") == .system)
+    }
+
+    @Test
     func englishFallbackIsOfferedForEverySupportedNonEnglishPreferredLanguage() {
         #expect(CatLocalLanguage.shouldOfferEnglishFallback(preferredLanguages: ["tr-TR"]))
         #expect(!CatLocalLanguage.shouldOfferEnglishFallback(preferredLanguages: ["bg-BG"]))
@@ -1265,6 +1274,30 @@ struct CatLocalCoreTests {
     }
 
     @Test
+    func contourSamplesRemainIrregularCirclesOnPortraitCards() {
+        let rect = CGRect(x: 0, y: 0, width: 640, height: 1_000)
+        let points = CatCardContourMath.samplePoints(
+            index: 10,
+            total: 15,
+            patternSeed: 73,
+            in: rect
+        )
+        let center = CGPoint(
+            x: points.map(\.x).reduce(0, +) / CGFloat(points.count),
+            y: points.map(\.y).reduce(0, +) / CGFloat(points.count)
+        )
+        let radii = points.map { point in
+            hypot(point.x - center.x, point.y - center.y)
+        }
+        let minimumRadius = radii.min() ?? 0
+        let maximumRadius = radii.max() ?? 0
+
+        #expect(minimumRadius > 0)
+        #expect(maximumRadius / minimumRadius < 1.18)
+        #expect(maximumRadius - minimumRadius > rect.width * 0.02)
+    }
+
+    @Test
     func botanicalPatternsAreDeterministicAndSeeded() {
         let first = CatCardBotanicalPattern.signature(style: .pineShadow, patternSeed: 41)
         let repeated = CatCardBotanicalPattern.signature(style: .pineShadow, patternSeed: 41)
@@ -1472,7 +1505,7 @@ struct CatLocalCoreTests {
     }
 
     @Test
-    func newCatCutoutOutlineUsesSemanticGreenAcrossEveryRenderer() throws {
+    func newCatCutoutOutlinePreservesGeneratedMaskColorAcrossEveryRenderer() throws {
         let repository = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
             .deletingLastPathComponent()
@@ -1493,13 +1526,16 @@ struct CatLocalCoreTests {
             )
         }
 
-        #expect(theme.contains("static let cutoutOutline = Color("))
-        #expect(theme.contains("light: UIColor(hex: 0x236F45)"))
-        #expect(theme.contains("dark: UIColor(hex: 0xA5E4B0)"))
+        #expect(!theme.contains("static let cutoutOutline = Color("))
         #expect(
             renderers.reduce(0) {
                 $0 + $1.components(separatedBy: ".foregroundStyle(CatLocalTheme.cutoutOutline)").count - 1
-            } == 3
+            } == 0
+        )
+        #expect(
+            renderers.reduce(0) {
+                $0 + $1.components(separatedBy: ".renderingMode(.template)").count - 1
+            } == 0
         )
     }
 

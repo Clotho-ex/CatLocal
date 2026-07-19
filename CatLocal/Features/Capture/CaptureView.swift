@@ -2957,10 +2957,8 @@ private struct SubjectToCardTransitionView<Destination: View>: View {
 
         return ZStack {
             Image(decorative: transition.outlineMask, scale: 1, orientation: .up)
-                .renderingMode(.template)
                 .resizable()
                 .scaledToFit()
-                .foregroundStyle(CatLocalTheme.cutoutOutline)
                 .opacity(SubjectToCardTransitionTimeline.outlineOpacity(elapsed: elapsed))
 
             Image(decorative: transition.sticker, scale: 1, orientation: .up)

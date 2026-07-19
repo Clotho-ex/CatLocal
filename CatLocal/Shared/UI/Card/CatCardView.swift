@@ -146,10 +146,8 @@ struct DraftCatCardView: View {
         if appliesStickerEffect, let outlineMask {
             ZStack {
                 Image(decorative: outlineMask, scale: 1, orientation: .up)
-                    .renderingMode(.template)
                     .resizable()
                     .scaledToFit()
-                    .foregroundStyle(CatLocalTheme.cutoutOutline)
 
                 Image(uiImage: image)
                     .resizable()
@@ -2164,53 +2162,32 @@ enum CatCardContourMath {
         )
         let denominator = CGFloat(max(total - 1, 1))
         let contourProgress = min(max(CGFloat(index) / denominator, 0), 1)
-        let contourScale = 0.08 + contourProgress * 1.10
+        let maximumRadius = hypot(
+            max(abs(rect.minX - center.x), abs(rect.maxX - center.x)),
+            max(abs(rect.minY - center.y), abs(rect.maxY - center.y))
+        ) * 1.03
+        let contourScale = 0.06 + contourProgress * 0.94
+        let baseRadius = maximumRadius * contourScale
         let phase = Double(CatCardPatternRandom.unit(patternSeed: patternSeed, salt: 0xC013)) * .pi * 2
         let contourIndex = Double(index)
+        let distortionScale = min(rect.width, rect.height) / 400
 
         return stride(from: 0.0, through: 360.0, by: 4.0).map { angleDegrees in
             let angle = angleDegrees * .pi / 180
             let directionX = CGFloat(cos(angle))
             let directionY = CGFloat(sin(angle))
-            let boundaryRadius = directionalRadius(
-                from: center,
-                directionX: directionX,
-                directionY: directionY,
-                in: rect
-            )
-            let wave = 1
-                + CGFloat(sin(angle * 3 + contourIndex * 0.47 + phase)) * 0.035
-                + CGFloat(cos(angle * 5 - contourIndex * 0.31 + phase * 0.7)) * 0.025
-            let radius = boundaryRadius * contourScale * wave
+            let waveA = sin(angle * 3 + contourIndex * 0.47 + phase)
+            let waveB = cos(angle * 5 - contourIndex * 0.31 + phase * 0.7)
+            let waveC = sin(angle * 2 + contourIndex * 1.09 - phase * 0.4)
+            let distortion = CGFloat(waveA * 7.5 + waveB * 4.8 + waveC * 3.2)
+                * distortionScale
+            let radius = max(baseRadius + distortion, min(rect.width, rect.height) * 0.025)
 
             return CGPoint(
                 x: center.x + directionX * radius,
                 y: center.y + directionY * radius
             )
         }
-    }
-
-    private static func directionalRadius(
-        from center: CGPoint,
-        directionX: CGFloat,
-        directionY: CGFloat,
-        in rect: CGRect
-    ) -> CGFloat {
-        var radius = CGFloat.greatestFiniteMagnitude
-
-        if directionX > 0.0001 {
-            radius = min(radius, (rect.maxX - center.x) / directionX)
-        } else if directionX < -0.0001 {
-            radius = min(radius, (rect.minX - center.x) / directionX)
-        }
-
-        if directionY > 0.0001 {
-            radius = min(radius, (rect.maxY - center.y) / directionY)
-        } else if directionY < -0.0001 {
-            radius = min(radius, (rect.minY - center.y) / directionY)
-        }
-
-        return max(radius, 1)
     }
 }
 
