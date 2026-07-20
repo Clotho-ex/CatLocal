@@ -933,6 +933,18 @@
         }
       }
     },
+    "Card Design": {
+      "comment": "Section heading for choosing the collectible cat card's visual design.",
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kart Tasarımı"
+          }
+        }
+      }
+    },
     "Card design": {
       "localizations": {
         "tr": {
@@ -1864,6 +1876,18 @@
         }
       }
     },
+    "Encounter Note": {
+      "comment": "Section heading for the user's optional private note about meeting the cat.",
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Karşılaşma Notu"
+          }
+        }
+      }
+    },
     "Ember Lines": {
       "comment": "Accessibility and VoiceOver copy. Keep the meaning concise and natural when spoken aloud.",
       "extractionState": "manual",
@@ -2476,6 +2500,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "Yeni Kedi"
+          }
+        }
+      }
+    },
+    "Name the Cat": {
+      "comment": "Section heading above the optional cat nickname field.",
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kedinin Adı"
           }
         }
       }
@@ -4047,6 +4083,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "Kullanılamıyor"
+          }
+        }
+      }
+    },
+    "Unplaced": {
+      "comment": "Catlas group title for cats that do not yet have a user-typed Memory Place.",
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anı Yeri Olmayanlar"
           }
         }
       }

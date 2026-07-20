@@ -223,12 +223,28 @@ released.
   contains only build `1.0 (2)` and retains its existing invited tester.
   Automatic distribution remains disabled so later builds must be added
   deliberately.
+- Yusufcan Var completed a physical-device check of build `1.0 (2)`. The
+  strengthened failure path correctly rejected images without cats. Turkish
+  review found four untranslated live labels: `Unplaced`, `Card Design`,
+  `Name the Cat`, and `Encounter Note`. Their missing case-sensitive catalog
+  entries were corrected in source, so build `1.0 (2)` must not be selected for
+  the public release; the corrected source requires a new build.
 
 ### 1. Complete and record native Turkish review
 
-Engineering localization is complete, but
-`docs/localization-correction-report.md` still records native-speaker review as
-a release gate.
+Yusufcan Var began the physical-device Turkish review on July 20, 2026. Four
+English labels were found and corrected in the String Catalog:
+
+- `Unplaced` -> `Anı Yeri Olmayanlar`;
+- `Card Design` and `Card design` -> `Kart Tasarımı`;
+- `Name the Cat` -> `Kedinin Adı`;
+- `Encounter Note` -> `Karşılaşma Notu`.
+
+The corrected catalog validates with 332 keys, two languages, 13 plural
+entries, and zero stale entries. All 155 unit tests passed and a Release
+simulator build completed without warnings or errors. Native-speaker approval
+remains open until these corrections are confirmed on the next physical-device
+build.
 
 Yusufcan Var can perform and approve this review. Review:
 
@@ -262,7 +278,7 @@ Confirmed in the current record:
 
 - permanent bundle ID: `app.catlocal.ios`;
 - public version: `1.0`;
-- planned first build number: `1`;
+- current uploaded build number: `2`;
 - app name: `CatLocal`;
 - SKU: `catlocal-ios`;
 - primary category: Lifestyle;
@@ -271,12 +287,10 @@ Confirmed in the current record:
 - copyright: `2026 Yusufcan Var`;
 - App Review contact information.
 
-Still required:
-
-- Content Rights;
-
-The repository is prepared as `1.0 (1)`. Verify the release-preparation commit
-on `main` before archiving.
+The operator completed App Store Connect's Content Rights answer. The public
+version remains `1.0`; build `2` contains the corrected cat-detection fallback
+but not the Turkish catalog corrections, so the next archive must use a new
+build number.
 
 Entered:
 
@@ -320,9 +334,9 @@ non-transparent. The lead direction uses the device-framed card:
 Completed:
 
 1. The operator chose to proceed before the deferred native Turkish review.
-2. Photograph-rights verification remains deferred at the operator's direction;
-   keep Content Rights unanswered unless the operator supplies a defensible
-   declaration.
+2. The operator completed the App Store Connect Content Rights answer.
+   Photograph-rights evidence remains outside the repository and was not
+   independently verified during this handoff.
 3. All ten upload files passed dimension and alpha validation.
 4. The sets preserve the focused story:
    - private field journal;

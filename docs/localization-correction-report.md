@@ -4,7 +4,32 @@ Date: 2026-07-17
 
 ## Status
 
-The engineering correction is complete for English and Turkish. CatLocal follows the iOS preferred language automatically when it resolves to Turkish; every other unsupported language falls back to English. The former all-language Settings picker is removed. Turkish configurations receive one English fallback button that becomes `Use System Language` while English is active. Native-speaker approval of the Turkish translation remains a release gate before App Store submission.
+The engineering correction is complete for English and Turkish. CatLocal follows the iOS preferred language automatically when it resolves to Turkish; every other unsupported language falls back to English. The former all-language Settings picker is removed. Turkish configurations receive one English fallback button that becomes `Use System Language` while English is active. Yusufcan Var began the native-speaker physical-device review on July 20, 2026. Approval remains open until the corrections below are confirmed in the next TestFlight build.
+
+## Release Review Update — July 20, 2026
+
+Yusufcan Var tested TestFlight build `1.0 (2)` on a physical iOS 26 device. The
+manual foreground fallback correctly rejected images without cats. During the
+Turkish review, four live labels still appeared in English because their exact
+case-sensitive dynamic lookup keys were absent from the String Catalog:
+
+- Catlas `Unplaced` group and route title -> `Anı Yeri Olmayanlar`;
+- `Card Design` and `Card design` -> `Kart Tasarımı`;
+- `Name the Cat` -> `Kedinin Adı`;
+- `Encounter Note` -> `Karşılaşma Notu`.
+
+The missing keys were added with translator context and locked by unit and
+catalog-validator expectations. Current verification:
+
+- Catalog validator: 332 keys, 2 languages, 13 plural entries, 0 stale entries.
+- Unit target: 155 tests passed on an iOS 26 simulator.
+- Release simulator build: succeeded with zero warnings and errors.
+- Compiled Turkish `Localizable.strings`: all five exact lookup variants resolve
+  to the reviewed Turkish values above.
+
+Build `1.0 (2)` predates these catalog corrections. The native review remains
+open until the corrected next build is installed and the Catlas, new-cat
+editor, and existing-cat editor surfaces are confirmed on the physical device.
 
 ## Catalog Correction
 
