@@ -68,6 +68,101 @@ struct CatLocalCoreTests {
         )
     }
 
+    @Test
+    func websiteURLsFollowTheResolvedInterfaceLanguage() {
+        #expect(
+            CatLocalPrivacyPolicy.url(for: Locale(identifier: "en_US"))?.absoluteString
+                == "https://catlocal.app/privacy/"
+        )
+        #expect(
+            CatLocalPrivacyPolicy.url(for: Locale(identifier: "tr_TR"))?.absoluteString
+                == "https://catlocal.app/tr/privacy/"
+        )
+        #expect(
+            CatLocalPrivacyPolicy.url(for: Locale(identifier: "de_DE"))?.absoluteString
+                == "https://catlocal.app/privacy/"
+        )
+        #expect(
+            CatLocalSupport.url(for: Locale(identifier: "en_US"))?.absoluteString
+                == "https://catlocal.app/support/"
+        )
+        #expect(
+            CatLocalSupport.url(for: Locale(identifier: "tr_TR"))?.absoluteString
+                == "https://catlocal.app/tr/support/"
+        )
+        #expect(
+            CatLocalSupport.url(for: Locale(identifier: "de_DE"))?.absoluteString
+                == "https://catlocal.app/support/"
+        )
+    }
+
+    @Test
+    func settingsOffersLocalizedWebsiteSupport() throws {
+        let repository = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let settings = try String(
+            contentsOf: repository
+                .appendingPathComponent("CatLocal/Features/Settings/SettingsView.swift"),
+            encoding: .utf8
+        )
+
+        #expect(settings.contains("https://catlocal.app/tr/support/"))
+        #expect(settings.contains("https://catlocal.app/support/"))
+        #expect(settings.contains("title: \"Support\""))
+        #expect(settings.contains("detail: \"Get help or contact us on catlocal.app.\""))
+        #expect(settings.contains(".accessibilityIdentifier(\"settings-support\")"))
+    }
+
+    @Test
+    func permissionPromptsHaveEnglishAndTurkishLocalizations() throws {
+        let repository = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let catalogURL = repository
+            .appendingPathComponent("CatLocal/Resources/InfoPlist.xcstrings")
+        let catalogData = try Data(contentsOf: catalogURL)
+        let catalog = try #require(
+            JSONSerialization.jsonObject(with: catalogData) as? [String: Any]
+        )
+        let strings = try #require(catalog["strings"] as? [String: Any])
+        let expected: [String: [String: String]] = [
+            "NSCameraUsageDescription": [
+                "en": "CatLocal uses the camera to create private cat cards on this iPhone.",
+                "tr": "CatLocal, bu iPhone'da size özel kedi kartları oluşturmak için kamerayı kullanır.",
+            ],
+            "NSPhotoLibraryUsageDescription": [
+                "en": "CatLocal imports photos you choose to create private cat cards on this iPhone.",
+                "tr": "CatLocal, bu iPhone'da size özel kedi kartları oluşturmak için seçtiğiniz fotoğrafları içe aktarır.",
+            ],
+        ]
+
+        for (key, localizations) in expected {
+            let entry = try #require(strings[key] as? [String: Any])
+            let catalogLocalizations = try #require(
+                entry["localizations"] as? [String: Any]
+            )
+
+            for (language, value) in localizations {
+                let localization = try #require(
+                    catalogLocalizations[language] as? [String: Any]
+                )
+                let stringUnit = try #require(
+                    localization["stringUnit"] as? [String: Any]
+                )
+                #expect(stringUnit["state"] as? String == "translated")
+                #expect(stringUnit["value"] as? String == value)
+            }
+        }
+
+        let project = try String(
+            contentsOf: repository
+                .appendingPathComponent("CatLocal.xcodeproj/project.pbxproj"),
+            encoding: .utf8
+        )
+        #expect(project.contains("InfoPlist.xcstrings in Resources"))
+    }
+
     @Test(arguments: [
         (CatLocalLanguage.english, ["0 cats", "1 cat", "2 cats", "3 cats", "4 cats", "5 cats", "11 cats", "12 cats", "21 cats", "22 cats", "25 cats", "101 cats"]),
         (CatLocalLanguage.turkish, ["0 kedi", "1 kedi", "2 kedi", "3 kedi", "4 kedi", "5 kedi", "11 kedi", "12 kedi", "21 kedi", "22 kedi", "25 kedi", "101 kedi"]),
@@ -141,6 +236,10 @@ struct CatLocalCoreTests {
             "Settings",
             "Use English",
             "Privacy Receipt",
+            "Privacy Policy",
+            "Read the full policy on catlocal.app.",
+            "Support",
+            "Get help or contact us on catlocal.app.",
             "Welcome to CatLocal",
             "Back",
             "Capture or Import",
@@ -189,7 +288,9 @@ struct CatLocalCoreTests {
             "Make It Yours": "Kendi Dokunuşunuzu Katın",
             "Memory Place": "Anı Yeri",
             "Place Detail": "Anı Yeri Ayrıntısı",
+            "Privacy Policy": "Gizlilik Politikası",
             "Privacy Receipt": "Gizlilik Özeti",
+            "Support": "Destek",
             "Welcome to CatLocal": "CatLocal'a Hoş Geldiniz",
         ]
         for (key, expected) in turkishHeadingTranslations {

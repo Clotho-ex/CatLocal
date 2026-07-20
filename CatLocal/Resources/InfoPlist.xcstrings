@@ -1,0 +1,40 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "NSCameraUsageDescription" : {
+      "comment" : "Explains why CatLocal requests camera access.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CatLocal uses the camera to create private cat cards on this iPhone."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CatLocal, bu iPhone'da size özel kedi kartları oluşturmak için kamerayı kullanır."
+          }
+        }
+      }
+    },
+    "NSPhotoLibraryUsageDescription" : {
+      "comment" : "Explains why CatLocal requests photo-library access.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CatLocal imports photos you choose to create private cat cards on this iPhone."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CatLocal, bu iPhone'da size özel kedi kartları oluşturmak için seçtiğiniz fotoğrafları içe aktarır."
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

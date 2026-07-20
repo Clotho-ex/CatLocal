@@ -1,8 +1,27 @@
 import SwiftData
 import SwiftUI
 
+enum CatLocalPrivacyPolicy {
+    static func url(for locale: Locale) -> URL? {
+        let path = locale.language.languageCode?.identifier == CatLocalLanguage.turkish.rawValue
+            ? "tr/privacy/"
+            : "privacy/"
+        return URL(string: "https://catlocal.app/\(path)")
+    }
+}
+
+enum CatLocalSupport {
+    static func url(for locale: Locale) -> URL? {
+        let address = locale.language.languageCode?.identifier == CatLocalLanguage.turkish.rawValue
+            ? "https://catlocal.app/tr/support/"
+            : "https://catlocal.app/support/"
+        return URL(string: address)
+    }
+}
+
 struct SettingsView: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.locale) private var locale
     @Environment(\.modelContext) private var modelContext
     @Query private var records: [CatRecord]
 
@@ -154,7 +173,7 @@ struct SettingsView: View {
     }
 
     private var informationSection: some View {
-        Section("Privacy & About") {
+        Section("Support, Privacy & About") {
             NavigationLink {
                 PrivacyReceiptView()
             } label: {
@@ -165,6 +184,28 @@ struct SettingsView: View {
                 )
             }
             .accessibilityIdentifier("settings-privacy-receipt")
+
+            if let privacyPolicyURL = CatLocalPrivacyPolicy.url(for: locale) {
+                Link(destination: privacyPolicyURL) {
+                    SettingsRowLabel(
+                        title: "Privacy Policy",
+                        detail: "Read the full policy on catlocal.app.",
+                        systemImage: "arrow.up.right.square.fill"
+                    )
+                }
+                .accessibilityIdentifier("settings-privacy-policy")
+            }
+
+            if let supportURL = CatLocalSupport.url(for: locale) {
+                Link(destination: supportURL) {
+                    SettingsRowLabel(
+                        title: "Support",
+                        detail: "Get help or contact us on catlocal.app.",
+                        systemImage: "questionmark.circle.fill"
+                    )
+                }
+                .accessibilityIdentifier("settings-support")
+            }
 
             NavigationLink {
                 AboutCatLocalView()

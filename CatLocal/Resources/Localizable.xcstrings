@@ -3028,13 +3028,24 @@
         }
       }
     },
-    "Privacy & About": {
+    "Get help or contact us on catlocal.app.": {
       "extractionState": "manual",
       "localizations": {
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Gizlilik ve Hakkında"
+            "value": "catlocal.app üzerinden yardım alın veya bize ulaşın."
+          }
+        }
+      }
+    },
+    "Privacy Policy": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gizlilik Politikası"
           }
         }
       }
@@ -3068,6 +3079,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Fotoğraf yalnızca bu iPhone'da işlenir"
+          }
+        }
+      }
+    },
+    "Read the full policy on catlocal.app.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "catlocal.app'teki ayrıntılı gizlilik politikasını okuyun."
           }
         }
       }
@@ -3972,6 +3994,28 @@
         }
       },
       "extractionState": "manual"
+    },
+    "Support": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Destek"
+          }
+        }
+      }
+    },
+    "Support, Privacy & About": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Destek, Gizlilik ve Hakkında"
+          }
+        }
+      }
     },
     "Typed labels only. No GPS is requested.": {
       "localizations": {

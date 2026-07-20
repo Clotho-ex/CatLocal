@@ -36,7 +36,7 @@ These live source keys were refreshed or migrated to current source copy instead
 - `Nickname`
 - `OK`
 - `Open Settings`
-- `Privacy & About`
+- `Support, Privacy & About`
 - `Privacy Receipt`
 - `Private scan on this iPhone`
 - `Removing the background`
@@ -328,8 +328,10 @@ These are active, not stale. They are intentionally maintained because CatLocal 
 | `Preparing card` | Accessibility; Dynamic runtime lookup; Visible UI | `CatLocal/Features/Capture/CaptureView.swift:1377`, `CatLocal/Features/Capture/CaptureView.swift:1503` |
 | `Preparing cat card` | Accessibility; Dynamic runtime lookup; Visible UI | `CatLocal/Features/Capture/CaptureView.swift:1400`, `CatLocal/Features/Capture/CaptureView.swift:1524`, `CatLocal/Features/Capture/CaptureView.swift:2911` |
 | `Press and drag to catch the glint` | Dynamic runtime lookup | `CatLocal/Shared/UI/Loci/LociContext.swift:68` |
-| `Privacy & About` | Visible UI | `CatLocal/Features/Settings/SettingsView.swift:157` |
-| `Privacy Receipt` | Accessibility; Dynamic runtime lookup; Visible UI | `CatLocal/Features/Settings/SettingsView.swift:162`, `CatLocal/Features/Settings/SettingsView.swift:379` |
+| `Support, Privacy & About` | Visible UI | `CatLocal/Features/Settings/SettingsView.swift:176` |
+| `Support` | Accessibility; Dynamic runtime lookup; Visible UI | `CatLocal/Features/Settings/SettingsView.swift:202` |
+| `Get help or contact us on catlocal.app.` | Dynamic runtime lookup; Visible UI | `CatLocal/Features/Settings/SettingsView.swift:203` |
+| `Privacy Receipt` | Accessibility; Dynamic runtime lookup; Visible UI | `CatLocal/Features/Settings/SettingsView.swift:181`, `CatLocal/Features/Settings/SettingsView.swift:420` |
 | `Private scan on this iPhone` | Accessibility; Visible UI | `CatLocal/Features/Capture/CaptureView.swift:722` |
 | `Ready for Your First Cat` | Dynamic runtime lookup | `CatLocal/Features/Onboarding/OnboardingView.swift:348` |
 | `Recognition` | Dynamic runtime lookup | `CatLocal/Features/Settings/SettingsView.swift:352` |
