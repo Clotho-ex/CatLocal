@@ -149,8 +149,9 @@ The release-preparation commit contains:
 
 A signed Release archive for `1.0 (1)` was created and uploaded to App Store
 Connect on July 20, 2026. App Store Connect validated build `1` and shows it in
-TestFlight as `Ready to Submit`. No TestFlight group or tester has been added,
-no App Store submission was made, and the app has not been released.
+TestFlight as `Ready to Submit`. The `CatLocal Internal` group contains build
+`1`, and the account holder has been invited as its internal tester. No App
+Store submission was made, and the app has not been released.
 
 ### App Store Connect state verified on July 20, 2026
 
@@ -202,6 +203,9 @@ no App Store submission was made, and the app has not been released.
   App Store Connect reports bundle ID `app.catlocal.ios`, iPhone device family,
   arm64 architecture, iOS 18.0 minimum, English and Turkish localizations,
   included symbols, and `App Uses Non-Exempt Encryption: No`.
+- TestFlight instructions are saved, and the `CatLocal Internal` group contains
+  build `1.0 (1)` with the account holder in `Invited` status. Automatic
+  distribution is disabled so later builds must be added deliberately.
 
 ### 1. Complete and record native Turkish review
 
