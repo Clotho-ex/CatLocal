@@ -27,9 +27,11 @@ catalog-validator expectations. Current verification:
 - Compiled Turkish `Localizable.strings`: all five exact lookup variants resolve
   to the reviewed Turkish values above.
 
-Build `1.0 (2)` predates these catalog corrections. The native review remains
-open until the corrected next build is installed and the Catlas, new-cat
-editor, and existing-cat editor surfaces are confirmed on the physical device.
+Build `1.0 (3)` contains these catalog corrections and is available to the
+internal TestFlight group as `Testing`; it is also `Waiting for Review` for the
+external group. The native review remains open until build `1.0 (3)` is
+installed and the Catlas, new-cat editor, and existing-cat editor surfaces are
+confirmed on the physical device.
 
 ## Catalog Correction
 

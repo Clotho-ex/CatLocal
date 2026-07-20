@@ -20,7 +20,7 @@ privacy-first product behavior.
 - Release-preparation base commit: `e061b3f`
   (`Add localized legal and support links`)
 - Bundle ID: `app.catlocal.ios`
-- Prepared project version: `1.0 (2)`
+- Prepared project version: `1.0 (3)`
 - Minimum deployment target: iOS 18
 - Primary development, testing, and visual-review target: iOS 26
 
@@ -131,7 +131,7 @@ before answering App Store Connect privacy questions.
 The release-preparation work contains:
 
 - `MARKETING_VERSION` is `1.0` in Debug and Release. The initial release
-  archive used build `1`; the current project build is `2`.
+  archive used build `1`; the current project build is `3`.
 - The generated Release Info.plist was verified with bundle ID
   `app.catlocal.ios`, version `1.0`, build `1`, iOS 18 minimum, and
   `ITSAppUsesNonExemptEncryption = NO`.
@@ -159,11 +159,18 @@ languages, 13 plural entries, and zero stale entries, and the fix was pushed to
 Commit `fab120c` (`Prepare TestFlight build 2`) changed the project build number
 to `2` and was pushed to `main`. A signed Release archive for `1.0 (2)` was
 created, validated, and uploaded to App Store Connect on July 20, 2026. App
-Store Connect processed build `2` without a blocking warning. Build `1.0 (2)`
-is the only build in `CatLocal Internal` and is available there as `Testing`.
-It is also the only build in `CatLocal Friends` and is `Waiting for Review`,
-with automatic tester notification enabled and the existing external tester
-preserved. Build `1.0 (1)` was withdrawn from Beta App Review and removed from
+Store Connect processed build `2` without a blocking warning.
+
+Commit `131c7a6` (`Fix Turkish release labels`) added the missing
+case-sensitive Turkish catalog entries found during physical-device review.
+Commit `cb650f0` (`Prepare TestFlight build 3`) changed the project build number
+to `3`; both commits were pushed to `main`. A signed Release archive for
+`1.0 (3)` was created, validated, and uploaded on July 20, 2026. App Store
+Connect processed build `3` without a blocking warning. Build `1.0 (3)` is the
+only build in `CatLocal Internal` and is available there as `Testing`. It is
+also the only build in `CatLocal Friends` and is `Waiting for Review`, with
+automatic tester notification enabled and the existing external tester
+preserved. Build `1.0 (2)` was withdrawn from Beta App Review and removed from
 both groups. No App Store version submission was made, and the app has not been
 released.
 
@@ -191,8 +198,12 @@ released.
   Reduced Motion marked as supported. Voice Control, Captions, and Audio
   Descriptions are not marked as supported. Apple keeps the accessibility
   `Publish` action disabled until an app version has been released.
-- Content Rights remains unanswered. At the operator's direction, photograph
-  rights verification is deferred and must not be represented as complete.
+- A fresh App Store Connect session shows `Set Up Content Rights Information`.
+  Another open session still displayed a selected answer with an enabled
+  `Save` action, so the answer appears not to have been saved. Treat Content
+  Rights as incomplete until the operator explicitly saves and re-verifies it.
+  Photograph-rights verification remains deferred and must not be represented
+  as complete.
 - The age-rating questionnaire is complete. All listed features and content
   types were answered `No` or `None`, Kids Category/override was left
   `Not Applicable`, and App Store Connect calculated and saved a global `4+`
@@ -213,22 +224,22 @@ released.
   the corresponding locale's 6.9-inch set. The uploaded files are the
   `1320 x 2868`, non-transparent PNGs under
   `AppStore/Screenshots/upload-ready/`.
-- TestFlight build `1.0 (2)` is validated and processed. It is available to the
+- TestFlight build `1.0 (3)` is validated and processed. It is available to the
   internal group as `Testing` and is `Waiting for Review` for external testing.
   App Store Connect reports bundle ID `app.catlocal.ios`, iPhone device family,
   arm64 architecture, iOS 18.0 minimum, English and Turkish localizations,
   included symbols, and `App Uses Non-Exempt Encryption: No`.
 - TestFlight instructions are saved. `CatLocal Internal` contains only build
-  `1.0 (2)` and retains the account holder as its tester. `CatLocal Friends`
-  contains only build `1.0 (2)` and retains its existing invited tester.
+  `1.0 (3)` and retains the account holder as its tester. `CatLocal Friends`
+  contains only build `1.0 (3)` and retains its existing invited tester.
   Automatic distribution remains disabled so later builds must be added
   deliberately.
 - Yusufcan Var completed a physical-device check of build `1.0 (2)`. The
   strengthened failure path correctly rejected images without cats. Turkish
   review found four untranslated live labels: `Unplaced`, `Card Design`,
   `Name the Cat`, and `Encounter Note`. Their missing case-sensitive catalog
-  entries were corrected in source, so build `1.0 (2)` must not be selected for
-  the public release; the corrected source requires a new build.
+  entries were corrected in source and uploaded in build `1.0 (3)`. Native
+  review remains open until those surfaces are confirmed in build `1.0 (3)`.
 
 ### 1. Complete and record native Turkish review
 
@@ -278,7 +289,7 @@ Confirmed in the current record:
 
 - permanent bundle ID: `app.catlocal.ios`;
 - public version: `1.0`;
-- current uploaded build number: `2`;
+- current uploaded build number: `3`;
 - app name: `CatLocal`;
 - SKU: `catlocal-ios`;
 - primary category: Lifestyle;
@@ -287,10 +298,9 @@ Confirmed in the current record:
 - copyright: `2026 Yusufcan Var`;
 - App Review contact information.
 
-The operator completed App Store Connect's Content Rights answer. The public
-version remains `1.0`; build `2` contains the corrected cat-detection fallback
-but not the Turkish catalog corrections, so the next archive must use a new
-build number.
+The public version remains `1.0`; build `3` contains both the corrected
+cat-detection fallback and the Turkish catalog corrections. Content Rights
+still needs to be saved and re-verified in App Store Connect.
 
 Entered:
 
@@ -334,9 +344,10 @@ non-transparent. The lead direction uses the device-framed card:
 Completed:
 
 1. The operator chose to proceed before the deferred native Turkish review.
-2. The operator completed the App Store Connect Content Rights answer.
-   Photograph-rights evidence remains outside the repository and was not
-   independently verified during this handoff.
+2. The operator selected an App Store Connect Content Rights answer, but a
+   fresh session still shows the item as unset. The answer must be saved and
+   re-verified. Photograph-rights evidence remains outside the repository and
+   was not independently verified during this handoff.
 3. All ten upload files passed dimension and alpha validation.
 4. The sets preserve the focused story:
    - private field journal;
@@ -400,14 +411,12 @@ Apple reference:
 
 ### 5. Archive, upload, and run TestFlight
 
-1. Confirm version/build values and a clean `main`.
-2. Create a Release archive using the configured Apple development team.
-3. Resolve any certificate, provisioning, agreement, or App Store Connect
-   authentication request with the account holder.
-4. Validate the archive.
-5. Upload it to App Store Connect.
-6. Wait for build processing and resolve any warnings.
-7. Add the processed build to internal TestFlight.
+Archive and upload are complete for `1.0 (3)`. The signed archive validated with
+bundle ID `app.catlocal.ios`, version `1.0`, build `3`, iOS 18.0 minimum,
+arm64 architecture, English and Turkish localizations, symbols, a valid privacy
+manifest, and `ITSAppUsesNonExemptEncryption = NO`. App Store Connect processed
+the upload. Build `1.0 (3)` is `Testing` internally and `Waiting for Review`
+externally. Build `1.0 (2)` has no tester-group access.
 
 Run the primary physical-device TestFlight pass on iOS 26 in English and
 Turkish:
@@ -467,7 +476,7 @@ Apple reference:
 
 ## Inputs the New Chat May Need From Yusufcan Var
 
-- Final confirmation of the prepared public version `1.0 (2)`.
+- Final confirmation of the prepared public version `1.0 (3)`.
 - App Store Connect/App Store role access.
 - App Review phone number; keep it out of Git.
 - Category, territories, price, and release-method decisions.
