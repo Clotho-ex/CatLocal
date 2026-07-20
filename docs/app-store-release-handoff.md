@@ -169,6 +169,11 @@ submission was made, and signing was not changed.
 - English and Turkish Privacy Policy URLs are saved.
 - The App Privacy response is published, stating that the app does not collect
   data. App Store Connect records the publication by Yusufcan Var.
+- An iPhone App Accessibility draft is saved with VoiceOver, Larger Text, Dark
+  Interface, Differentiate Without Color Alone, Sufficient Contrast, and
+  Reduced Motion marked as supported. Voice Control, Captions, and Audio
+  Descriptions are not marked as supported. Apple keeps the accessibility
+  `Publish` action disabled until an app version has been released.
 - Content Rights remains unanswered. At the operator's direction, photograph
   rights verification is deferred and must not be represented as complete.
 - The age-rating questionnaire is complete. All listed features and content
