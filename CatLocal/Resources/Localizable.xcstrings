@@ -3825,6 +3825,18 @@
         }
       }
     },
+    "That subject doesn't look like a cat. Tap directly on the cat or choose another photo.": {
+      "comment": "Recovery guidance shown when a manually selected foreground subject is not recognized as a cat.",
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu nesne bir kediye benzemiyor. Doğrudan kediye dokunun veya başka bir fotoğraf seçin."
+          }
+        }
+      }
+    },
     "The card was not deleted. Please try again.": {
       "extractionState": "manual",
       "localizations": {

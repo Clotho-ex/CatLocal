@@ -96,6 +96,10 @@ Foreground instance masking runs against the full prepared photo. The selected
 cat's detection bounds choose the matching Vision instance, but they must not
 crop the image before masking because imperfect detector bounds can omit paws,
 tails, or ear tips that the foreground mask would otherwise preserve.
+When automatic cat detection finds no candidate and the user manually selects a
+foreground instance, CatLocal runs animal recognition again on the isolated
+cutout. The capture flow accepts that cutout only when it is recognized as a
+cat; otherwise it returns to foreground selection with recoverable guidance.
 
 ## Persistence
 

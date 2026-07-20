@@ -2668,6 +2668,43 @@ struct CatLocalCoreTests {
     }
 
     @Test
+    func manualForegroundSelectionRejectsCutoutWithoutDetectedCat() async {
+        let analyzer = ManualForegroundValidationAnalyzer(detections: [])
+
+        do {
+            _ = try await analyzer.catValidatedCutout(
+                from: SendableImage(value: UIImage()),
+                selection: .normalizedSourcePoint(CGPoint(x: 0.5, y: 0.5))
+            )
+            Issue.record("Expected a manually selected non-cat subject to be rejected.")
+        } catch CatVisionError.noCat {
+            // Expected.
+        } catch {
+            Issue.record("Expected CatVisionError.noCat, got \(error).")
+        }
+
+        #expect(await analyzer.cutoutCallCount == 1)
+        #expect(await analyzer.detectCallCount == 1)
+    }
+
+    @Test
+    func manualForegroundSelectionAcceptsCutoutWithDetectedCat() async throws {
+        let detection = CatDetection(
+            boundingBox: CGRect(x: 0.2, y: 0.2, width: 0.6, height: 0.6),
+            confidence: 0.92
+        )
+        let analyzer = ManualForegroundValidationAnalyzer(detections: [detection])
+
+        _ = try await analyzer.catValidatedCutout(
+            from: SendableImage(value: UIImage()),
+            selection: .normalizedSourcePoint(CGPoint(x: 0.5, y: 0.5))
+        )
+
+        #expect(await analyzer.cutoutCallCount == 1)
+        #expect(await analyzer.detectCallCount == 1)
+    }
+
+    @Test
     func catSelectionOverlayMapsVisionBoundsIntoAspectFitImage() {
         let overlayRect = CatSelectionOverlayLayout.rect(
             for: CGRect(x: 0.25, y: 0.6, width: 0.5, height: 0.2),
@@ -3326,6 +3363,29 @@ private struct RGBAValue: Equatable {
     let green: UInt8
     let blue: UInt8
     let alpha: UInt8
+}
+
+private actor ManualForegroundValidationAnalyzer: CatAnalyzing {
+    private let detections: [CatDetection]
+    private(set) var cutoutCallCount = 0
+    private(set) var detectCallCount = 0
+
+    init(detections: [CatDetection]) {
+        self.detections = detections
+    }
+
+    func detectCats(in image: SendableImage) async throws -> [CatDetection] {
+        detectCallCount += 1
+        return detections
+    }
+
+    func cutout(
+        from image: SendableImage,
+        selection: ForegroundSelection
+    ) async throws -> SendableImage {
+        cutoutCallCount += 1
+        return image
+    }
 }
 
 private func requireSendable<T: Sendable>(_ value: T) {}

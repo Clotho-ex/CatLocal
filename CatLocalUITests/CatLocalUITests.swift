@@ -1492,7 +1492,7 @@ final class CatLocalUITests: XCTestCase {
         XCTAssertGreaterThan(photoFrame.height, photoFrame.width)
         selectionPhoto.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.02)).tap()
 
-        let retryGuidance = app.descendants(matching: .any)["foreground-selection-guidance"]
+        let retryGuidance = app.staticTexts["foreground-selection-guidance"]
         XCTAssertTrue(retryGuidance.waitForExistence(timeout: 5))
         XCTAssertTrue(selectionPhoto.exists)
 
@@ -1510,6 +1510,46 @@ final class CatLocalUITests: XCTestCase {
 
         selectionPhoto.tap()
         XCTAssertTrue(app.buttons["save-cat-immediate"].waitForExistence(timeout: 10))
+    }
+
+    func testValidationImportRejectsTappedForegroundThatIsNotACat() {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "-ui-testing-reset",
+            "-catlocal-ui-import-fixture",
+            "-catlocal-ui-synthetic-photo",
+            "-catlocal-ui-force-foreground-fallback",
+            "-catlocal-ui-synthetic-cutout",
+            "-catlocal-ui-reject-manual-selection",
+            "-catlocal-ui-skip-sticker-reveal"
+        ]
+        app.launch()
+
+        XCTAssertTrue(app.staticTexts["CatLocal"].waitForExistence(timeout: 8))
+        let cameraButton = app.tabBars.buttons["Camera"]
+        XCTAssertTrue(cameraButton.waitForExistence(timeout: 5))
+        cameraButton.tap()
+
+        let validationButton = app.buttons["Use validation photo"]
+        if !validationButton.waitForExistence(timeout: 5) {
+            cameraButton.tap()
+        }
+        XCTAssertTrue(validationButton.waitForExistence(timeout: 8))
+        validationButton.tap()
+
+        XCTAssertTrue(app.staticTexts["Tap the cat"].waitForExistence(timeout: 8))
+        let selectionPhoto = app.descendants(matching: .any)["foreground-selection-photo"]
+        XCTAssertTrue(selectionPhoto.waitForExistence(timeout: 5))
+        selectionPhoto.tap()
+
+        let retryGuidance = app.staticTexts["foreground-selection-guidance"]
+        XCTAssertTrue(retryGuidance.waitForExistence(timeout: 5))
+        XCTAssertEqual(
+            retryGuidance.label,
+            "That subject doesn't look like a cat. Tap directly on the cat or choose another photo."
+        )
+        XCTAssertTrue(selectionPhoto.exists)
+        XCTAssertFalse(app.buttons["save-cat-immediate"].exists)
     }
 
     func testValidationForegroundFallbackOffersNamedPhotoAreas() {

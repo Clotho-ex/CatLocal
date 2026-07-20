@@ -1975,6 +1975,10 @@ struct CaptureView: View {
         ProcessInfo.processInfo.arguments.contains("-catlocal-ui-force-foreground-fallback")
     }
 
+    private var rejectsManualSelectionForValidation: Bool {
+        ProcessInfo.processInfo.arguments.contains("-catlocal-ui-reject-manual-selection")
+    }
+
     private var showsMultipleCatSelectionForValidation: Bool {
         ProcessInfo.processInfo.arguments.contains("-catlocal-ui-multiple-cat-selection")
     }
@@ -2444,6 +2448,9 @@ struct CaptureView: View {
                 guard Self.validationSyntheticSubjectBounds.contains(point) else {
                     throw CatVisionError.noMatchingForeground
                 }
+                if rejectsManualSelectionForValidation {
+                    throw CatVisionError.noCat
+                }
                 try Task.checkCancellation()
                 guard processingGate.isCurrent(sessionID) else { return }
                 await beginStickerReveal(
@@ -2454,10 +2461,19 @@ struct CaptureView: View {
             }
             #endif
 
-            let result = try await processor.cutout(
-                from: SendableImage(value: originalImage),
-                selection: selection
-            )
+            let sourceImage = SendableImage(value: originalImage)
+            let result = switch selection {
+            case .detected:
+                try await processor.cutout(
+                    from: sourceImage,
+                    selection: selection
+                )
+            case .normalizedSourcePoint:
+                try await processor.catValidatedCutout(
+                    from: sourceImage,
+                    selection: selection
+                )
+            }
             try Task.checkCancellation()
             guard processingGate.isCurrent(sessionID) else { return }
             await beginStickerReveal(
@@ -2468,20 +2484,29 @@ struct CaptureView: View {
             return
         } catch {
             guard processingGate.isCurrent(sessionID) else { return }
-            if
-                case .normalizedSourcePoint = selection,
-                let visionError = error as? CatVisionError,
-                case .noMatchingForeground = visionError
-            {
-                showForegroundSelectionRetry()
-                return
+            if case .normalizedSourcePoint = selection,
+               let visionError = error as? CatVisionError {
+                switch visionError {
+                case .noCat:
+                    showForegroundSelectionRetry(
+                        message: "That subject doesn't look like a cat. Tap directly on the cat or choose another photo."
+                    )
+                    return
+                case .noMatchingForeground:
+                    showForegroundSelectionRetry()
+                    return
+                default:
+                    break
+                }
             }
             fail(with: error)
         }
     }
 
-    private func showForegroundSelectionRetry() {
-        foregroundSelectionMessage = "That spot wasn't a clear foreground subject. Tap directly on the cat and try again."
+    private func showForegroundSelectionRetry(
+        message: String = "That spot wasn't a clear foreground subject. Tap directly on the cat and try again."
+    ) {
+        foregroundSelectionMessage = message
         captureWarningFeedbackTrigger += 1
         stage = .choosingForeground
     }

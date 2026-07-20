@@ -10,6 +10,21 @@ protocol CatAnalyzing: Sendable {
     ) async throws -> SendableImage
 }
 
+extension CatAnalyzing {
+    func catValidatedCutout(
+        from image: SendableImage,
+        selection: ForegroundSelection
+    ) async throws -> SendableImage {
+        let selectedSubject = try await cutout(from: image, selection: selection)
+        try Task.checkCancellation()
+        let detections = try await detectCats(in: selectedSubject)
+        guard !detections.isEmpty else {
+            throw CatVisionError.noCat
+        }
+        return selectedSubject
+    }
+}
+
 enum ForegroundSelection: Sendable {
     case detected(CatDetection)
     case normalizedSourcePoint(CGPoint)
