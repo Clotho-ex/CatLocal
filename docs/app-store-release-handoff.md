@@ -20,7 +20,7 @@ privacy-first product behavior.
 - Release-preparation base commit: `e061b3f`
   (`Add localized legal and support links`)
 - Bundle ID: `app.catlocal.ios`
-- Prepared project version: `1.0 (1)`
+- Prepared project version: `1.0 (2)`
 - Minimum deployment target: iOS 18
 - Primary development, testing, and visual-review target: iOS 26
 
@@ -128,9 +128,10 @@ before answering App Store Connect privacy questions.
 
 ### Release preparation completed on July 20, 2026
 
-The release-preparation commit contains:
+The release-preparation work contains:
 
-- `MARKETING_VERSION` is `1.0` in Debug and Release; build remains `1`.
+- `MARKETING_VERSION` is `1.0` in Debug and Release. The initial release
+  archive used build `1`; the current project build is `2`.
 - The generated Release Info.plist was verified with bundle ID
   `app.catlocal.ios`, version `1.0`, build `1`, iOS 18 minimum, and
   `ITSAppUsesNonExemptEncryption = NO`.
@@ -147,11 +148,24 @@ The release-preparation commit contains:
 - Localization validation passed with 327 keys, two languages, 13 plural
   entries, and zero stale entries.
 
-A signed Release archive for `1.0 (1)` was created and uploaded to App Store
-Connect on July 20, 2026. App Store Connect validated build `1` and shows it in
-TestFlight as `Ready to Submit`. The `CatLocal Internal` group contains build
-`1`, and the account holder has been invited as its internal tester. No App
-Store submission was made, and the app has not been released.
+The manual foreground fallback was strengthened in commit `ca292ce`
+(`Validate manual cat selections`). When automatic cat detection misses and the
+user taps a foreground subject, CatLocal now performs a second on-device cat
+check and rejects people or objects with recoverable guidance. The focused
+regression tests passed, the localization validator passed with 328 keys, two
+languages, 13 plural entries, and zero stale entries, and the fix was pushed to
+`main`.
+
+Commit `fab120c` (`Prepare TestFlight build 2`) changed the project build number
+to `2` and was pushed to `main`. A signed Release archive for `1.0 (2)` was
+created, validated, and uploaded to App Store Connect on July 20, 2026. App
+Store Connect processed build `2` without a blocking warning. Build `1.0 (2)`
+is the only build in `CatLocal Internal` and is available there as `Testing`.
+It is also the only build in `CatLocal Friends` and is `Waiting for Review`,
+with automatic tester notification enabled and the existing external tester
+preserved. Build `1.0 (1)` was withdrawn from Beta App Review and removed from
+both groups. No App Store version submission was made, and the app has not been
+released.
 
 ### App Store Connect state verified on July 20, 2026
 
@@ -199,13 +213,16 @@ Store submission was made, and the app has not been released.
   the corresponding locale's 6.9-inch set. The uploaded files are the
   `1320 x 2868`, non-transparent PNGs under
   `AppStore/Screenshots/upload-ready/`.
-- TestFlight build `1.0 (1)` is validated and marked `Ready to Submit`.
+- TestFlight build `1.0 (2)` is validated and processed. It is available to the
+  internal group as `Testing` and is `Waiting for Review` for external testing.
   App Store Connect reports bundle ID `app.catlocal.ios`, iPhone device family,
   arm64 architecture, iOS 18.0 minimum, English and Turkish localizations,
   included symbols, and `App Uses Non-Exempt Encryption: No`.
-- TestFlight instructions are saved, and the `CatLocal Internal` group contains
-  build `1.0 (1)` with the account holder in `Invited` status. Automatic
-  distribution is disabled so later builds must be added deliberately.
+- TestFlight instructions are saved. `CatLocal Internal` contains only build
+  `1.0 (2)` and retains the account holder as its tester. `CatLocal Friends`
+  contains only build `1.0 (2)` and retains its existing invited tester.
+  Automatic distribution remains disabled so later builds must be added
+  deliberately.
 
 ### 1. Complete and record native Turkish review
 
@@ -436,7 +453,7 @@ Apple reference:
 
 ## Inputs the New Chat May Need From Yusufcan Var
 
-- Final confirmation of the prepared public version `1.0 (1)`.
+- Final confirmation of the prepared public version `1.0 (2)`.
 - App Store Connect/App Store role access.
 - App Review phone number; keep it out of Git.
 - Category, territories, price, and release-method decisions.
