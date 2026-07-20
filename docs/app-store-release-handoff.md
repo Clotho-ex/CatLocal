@@ -147,8 +147,10 @@ The release-preparation commit contains:
 - Localization validation passed with 327 keys, two languages, 13 plural
   entries, and zero stale entries.
 
-No archive was uploaded, no TestFlight build was created, no App Store
-submission was made, and signing was not changed.
+A signed Release archive for `1.0 (1)` was created and uploaded to App Store
+Connect on July 20, 2026. App Store Connect validated build `1` and shows it in
+TestFlight as `Ready to Submit`. No TestFlight group or tester has been added,
+no App Store submission was made, and the app has not been released.
 
 ### App Store Connect state verified on July 20, 2026
 
@@ -196,6 +198,10 @@ submission was made, and signing was not changed.
   the corresponding locale's 6.9-inch set. The uploaded files are the
   `1320 x 2868`, non-transparent PNGs under
   `AppStore/Screenshots/upload-ready/`.
+- TestFlight build `1.0 (1)` is validated and marked `Ready to Submit`.
+  App Store Connect reports bundle ID `app.catlocal.ios`, iPhone device family,
+  arm64 architecture, iOS 18.0 minimum, English and Turkish localizations,
+  included symbols, and `App Uses Non-Exempt Encryption: No`.
 
 ### 1. Complete and record native Turkish review
 
