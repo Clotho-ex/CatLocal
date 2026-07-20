@@ -1,0 +1,20 @@
+CatLocal is a private field journal for the cats you meet.
+
+Photograph a cat or choose a photo from your library. CatLocal uses Apple Vision on your iPhone to find the cat, separate it from the background, and turn the encounter into a tactile collectible card.
+
+MAKE EACH ENCOUNTER YOURS
+
+• Choose a card design
+• Add an optional name and note
+• Type a Memory Place to organize your private Catlas
+• Revisit and edit saved cards anytime
+
+PRIVATE BY DESIGN
+
+• Cat detection and cutout creation happen on-device
+• No account, analytics, advertising, or cloud database
+• Cat photos and card details stay in local app storage
+• CatLocal does not request GPS or save coordinates
+• Stored originals are re-encoded without source EXIF or GPS metadata
+
+Your collection belongs to you, on your iPhone.

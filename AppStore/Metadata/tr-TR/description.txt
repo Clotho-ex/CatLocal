@@ -1,0 +1,20 @@
+CatLocal, karşılaştığınız kediler için size özel bir saha günlüğüdür.
+
+Bir kedinin fotoğrafını çekin veya arşivinizden özel bir fotoğraf seçin. CatLocal, kediyi bulmak, arka plandan ayırmak ve bu karşılaşmayı dokunsal bir koleksiyon kartına dönüştürmek için iPhone’unuzdaki Apple Vision teknolojisini kullanır.
+
+HER KARŞILAŞMAYI KENDİNİZE GÖRE KAYDEDİN
+
+• Bir kart tasarımı seçin
+• İsterseniz ad ve not ekleyin
+• Özel Catlas’ınızı düzenlemek için bir Anı Yeri yazın
+• Kaydettiğiniz kartlara dönün ve dilediğiniz zaman düzenleyin
+
+GİZLİLİK TEMELİ ÜZERİNE KURULDU
+
+• Kedi algılama ve arka plansız görsel oluşturma işlemleri aygıtta gerçekleşir
+• Hesap, analiz, reklam veya bulut veri tabanı yoktur
+• Kedi fotoğrafları ve kart bilgileri uygulamanın yerel saklama alanında kalır
+• CatLocal GPS erişimi istemez ve koordinat kaydetmez
+• Saklanan asıl fotoğraflar, kaynak EXIF ve GPS bilgileri olmadan yeniden kodlanır
+
+Koleksiyonunuz size aittir ve iPhone’unuzda kalır.
